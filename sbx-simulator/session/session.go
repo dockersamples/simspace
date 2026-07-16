@@ -224,8 +224,10 @@ func shellTurn(lab *manifest.Lab, cmdline string, fs *filesystem.FS, st *state.S
 		shell(fs.Root(), cmdline, out, errOut)
 		return nil
 	}
-	WriteLines(out, res.Stdout, opts)
-	WriteLines(errOut, res.Stderr, opts)
+	noDelay := opts
+	noDelay.Delay = 0
+	WriteLines(out, res.Stdout, noDelay)
+	WriteLines(errOut, res.Stderr, noDelay)
 	return st.Save()
 }
 
