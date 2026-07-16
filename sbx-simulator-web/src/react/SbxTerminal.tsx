@@ -104,6 +104,7 @@ export function SbxTerminal({
   const historyPos = useRef<number>(-1);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const prevBusyRef = useRef(false);
 
   // Effective pacing: prop overrides win, else the lab's resolved settings.
   const opts = simulator?.options ?? { stream: true, delayMs: 20, thinkMs: 700 };
@@ -143,6 +144,18 @@ export function SbxTerminal({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [lines]);
+
+  // Re-focus the input after a command completes. The focus() call cannot live
+  // in the submit() finally block because setBusy(false) only queues a render —
+  // the input is still disabled when finally runs, so focus() would be a no-op.
+  // This effect fires after React commits the busy=false update, when the input
+  // is already re-enabled.
+  useEffect(() => {
+    if (prevBusyRef.current && !busy) {
+      inputRef.current?.focus();
+    }
+    prevBusyRef.current = busy;
+  }, [busy]);
 
   // Stream a list of lines, pausing between them when streaming is enabled.
   const emit = useCallback(
@@ -330,7 +343,6 @@ export function SbxTerminal({
       }
     } finally {
       setBusy(false);
-      inputRef.current?.focus();
     }
   }, [busy, simulator, input, shellPrompt, append, runCommand, runSessionTurn]);
 
