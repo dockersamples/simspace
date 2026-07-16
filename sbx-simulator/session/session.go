@@ -213,6 +213,9 @@ func Once(lab *manifest.Lab, prompt string, fs *filesystem.FS, st *state.Store, 
 // to running cmdline as a real process (§12.4). cmdline is the text after the
 // `!`.
 func shellTurn(lab *manifest.Lab, cmdline string, fs *filesystem.FS, st *state.Store, out, errOut io.Writer, opts Options) error {
+	if err := st.Reload(); err != nil {
+		return err
+	}
 	res, err := engine.RunShell(lab, cmdline, fs, st)
 	if err != nil {
 		return err
@@ -253,6 +256,9 @@ func shell(dir, cmdline string, out, errOut io.Writer) {
 
 // turn dispatches one REPL prompt and persists the resulting state.
 func turn(lab *manifest.Lab, prompt string, fs *filesystem.FS, st *state.Store, out, errOut io.Writer, opts Options) error {
+	if err := st.Reload(); err != nil {
+		return err
+	}
 	think(out, opts)
 	res, err := engine.RunAgent(lab, prompt, fs, st)
 	if err != nil {

@@ -145,6 +145,29 @@ func (s *Store) AppendHistory(commandLine string) {
 // it exists for templating and tests.
 func (s *Store) Data() map[string]any { return s.data }
 
+// Reload re-reads the state file from disk, replacing the in-memory state. If
+// the file does not yet exist it is a no-op (the seeded state is kept). This
+// is called at the start of each interactive session turn so that state
+// changes made externally (e.g. from another terminal) are picked up.
+func (s *Store) Reload() error {
+	raw, err := os.ReadFile(s.path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("read state %s: %w", s.path, err)
+	}
+	var data map[string]any
+	if uerr := json.Unmarshal(raw, &data); uerr != nil {
+		return fmt.Errorf("parse state %s: %w", s.path, uerr)
+	}
+	if data == nil {
+		data = map[string]any{}
+	}
+	s.data = data
+	return nil
+}
+
 // Save persists the state as indented JSON, creating $SBX_SIM_HOME if needed.
 func (s *Store) Save() error {
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
