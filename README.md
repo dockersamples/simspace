@@ -40,6 +40,10 @@ sbx-simulator/
   state/            filesystem-backed state store
   docs/             scenario authoring spec
   testdata/labs/    example labs
+sbx-simulator-web/
+  src/engine/       TypeScript port of the simulator scenario engine
+  src/react/        <SbxTerminal> component
+  src/demo/         Vite demo playground
 ```
 
 ## Components
@@ -61,6 +65,19 @@ every time. No AI providers, no network, no Docker Hub required.
 
 See [`sbx-simulator/docs/scenario-spec.md`](sbx-simulator/docs/scenario-spec.md)
 for the full authoring reference.
+
+### `sbx-simulator-web`
+
+A browser-based React port of the simulator that runs labs directly from their
+`sbx-simulator.yaml` spec — no Go binary, no server, no network. It reimplements
+the scenario engine in TypeScript and wraps it in a single `<SbxTerminal>`
+component: learners type `sbx …` commands and chat with scripted agents in an
+in-browser terminal, driven by the same first-match-wins engine as the CLI. A
+Vite demo playground (`npm run dev`) lets authors edit a spec and watch state
+update live.
+
+See [`sbx-simulator-web/README.md`](sbx-simulator-web/README.md) for usage,
+props, and the exported headless engine.
 
 ## Building
 
