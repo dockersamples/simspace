@@ -115,16 +115,23 @@ func checkWhen(w manifest.When, where string) Findings {
 	if len(w.Command) > 0 && w.Agent {
 		fs = append(fs, Finding{Error, where, "`command` and `agent` are mutually exclusive"})
 	}
+	if w.Shell && (len(w.Command) > 0 || w.Agent) {
+		fs = append(fs, Finding{Error, where, "`shell` is mutually exclusive with `command` and `agent`"})
+	}
 	if w.Prompt != nil && len(w.PromptContains) > 0 {
 		fs = append(fs, Finding{Error, where, "set only one of `prompt` or `promptContains`"})
 	}
-	// promptContains is only honored for agent scenarios.
-	if !w.Agent && len(w.PromptContains) > 0 {
-		fs = append(fs, Finding{Warning, where, "`promptContains` is ignored outside an `agent` scenario"})
+	// promptContains is only honored for agent and shell scenarios.
+	if !w.Agent && !w.Shell && len(w.PromptContains) > 0 {
+		fs = append(fs, Finding{Warning, where, "`promptContains` is ignored outside an `agent` or `shell` scenario"})
 	}
-	// agent scenarios match on the prompt, not args.
-	if w.Agent && len(w.Args) > 0 {
-		fs = append(fs, Finding{Warning, where, "`args` is ignored by an `agent` scenario"})
+	// agent and shell scenarios match on the prompt/command text, not args.
+	if (w.Agent || w.Shell) && len(w.Args) > 0 {
+		kind := "agent"
+		if w.Shell {
+			kind = "shell"
+		}
+		fs = append(fs, Finding{Warning, where, fmt.Sprintf("`args` is ignored by a `%s` scenario", kind)})
 	}
 	return fs
 }
@@ -232,12 +239,13 @@ func checkReachability(lab *manifest.Lab) Findings {
 // covers reports whether every input matching `spec` also matches `general` —
 // i.e. general is at least as permissive as spec, so an earlier general
 // scenario shadows a later spec one. Conservative: any uncertainty yields false
-// (no warning). Command and agent scenarios never shadow each other.
+// (no warning). Command, agent, and shell scenarios never shadow each other
+// (different dispatch contexts).
 func covers(general, spec *manifest.When) bool {
-	if general.Agent != spec.Agent {
+	if general.Agent != spec.Agent || general.Shell != spec.Shell {
 		return false
 	}
-	if general.Agent {
+	if general.Agent || general.Shell {
 		return promptCovers(general, spec) && stateCovers(general, spec)
 	}
 	return coversCommand(general, spec)

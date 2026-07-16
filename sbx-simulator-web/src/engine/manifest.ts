@@ -103,6 +103,9 @@ function normalizeWhen(raw: unknown, id: string): When {
   if (w.agent !== undefined) {
     when.agent = Boolean(w.agent);
   }
+  if (w.shell !== undefined) {
+    when.shell = Boolean(w.shell);
+  }
   if (w.prompt !== undefined) {
     when.prompt = String(w.prompt);
   }

@@ -104,3 +104,20 @@ scenarios:
     then:
       output:
         - "Agent: Tests already exist at app/server.test.js."
+
+  # --- shell mode: mock an inspection command --------------------------------
+  # A `!cmd` shell escape is matched against shell scenarios *before* the real
+  # command runs. `!npm test` is mocked here so the lab can show a passing test
+  # run without a real test runner in the sandbox. An unmatched `!cmd` (e.g.
+  # `!ls`) still falls through to the real shell.
+  - id: shell-npm-test
+    when:
+      shell: true
+      prompt: "npm test"
+    then:
+      output:
+        - "> app@1.0.0 test"
+        - "> jest"
+        - ""
+        - "PASS  app/server.test.js"
+        - "Tests:       1 passed, 1 total"

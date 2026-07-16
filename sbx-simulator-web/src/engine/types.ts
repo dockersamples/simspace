@@ -34,6 +34,8 @@ export interface When {
   command?: string[];
   args?: Record<string, Matcher>;
   agent?: boolean;
+  /** Match a shell-escape line (`!cmd`) typed in a session, not a CLI command. */
+  shell?: boolean;
   prompt?: string;
   promptContains?: string[];
   state?: Record<string, StateValue>;

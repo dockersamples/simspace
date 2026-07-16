@@ -5,7 +5,7 @@
 import { applyThen } from "./apply";
 import { Command } from "./commands";
 import { FS } from "./filesystem";
-import { match, matchAgent } from "./match";
+import { match, matchAgent, matchShell } from "./match";
 import { Store } from "./state";
 import { Lab, Session, Then } from "./types";
 
@@ -61,6 +61,35 @@ export function runAgent(lab: Lab, prompt: string, fs: FS, st: Store): Result {
     stderr,
     exit: resolveExit(then, lab),
     matched: m ? m.scenario.id : "",
+  };
+}
+
+/**
+ * runShell dispatches a single shell-escape line (`!cmd`) typed inside a
+ * session: it matches a shell scenario (when.shell) and, if one fires, applies
+ * its effects and records the command in history. It returns null when no shell
+ * scenario matches, so the caller can fall back to its default handling (in the
+ * web terminal, the "host commands are not mocked" message). `command` is the
+ * text after the `!`; a leading `!` is tolerated and ignored.
+ */
+export function runShell(
+  lab: Lab,
+  command: string,
+  fs: FS,
+  st: Store,
+): Result | null {
+  const m = matchShell(lab, command, st);
+  if (!m) return null;
+
+  st.appendHistory("! " + command.trim());
+  const then = m.scenario.then;
+  const { stdout, stderr } = applyThen(then, fs, st, m.args);
+
+  return {
+    stdout,
+    stderr,
+    exit: resolveExit(then, lab),
+    matched: m.scenario.id,
   };
 }
 

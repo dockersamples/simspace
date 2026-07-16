@@ -4,7 +4,8 @@
 
 > **1.1 adds interactive agent sessions** (§12): the `when.agent` /
 > `when.promptContains` matchers, the `then.session` effect, top-level
-> `settings`, and `defaults.unmatchedAgent`. All 1.0 labs remain valid.
+> `settings`, and `defaults.unmatchedAgent`. It also adds `when.shell` (§6.6)
+> for mocking `!cmd` shell escapes inside a session. All 1.0 labs remain valid.
 
 This document specifies the `sbx-simulator.yaml` file that authors write to define a lab.
 It is the contract between Labspaces, the lab author, and the SBX Simulator
@@ -245,6 +246,39 @@ turns or `sbx run -p`), never against a typed CLI command. Command scenarios
 (those with `command`, or with neither `command` nor `agent`) are never matched
 against agent prompts. This keeps the two dispatch paths cleanly separated:
 `command` and `agent` may not both appear in one `when`.
+
+### 6.6 `shell` — dispatch context
+
+`shell: true` marks a **shell scenario**, matched only against shell-escape
+lines (`!cmd`) typed inside a session (§12.4). It uses the same `prompt` /
+`promptContains` + `state` matchers as an agent scenario, applied to the command
+text *after* the `!` (a leading `!` on the matcher is tolerated, so
+`prompt: "cat app/server.js"` and `prompt: "!cat app/server.js"` are
+equivalent). A shell scenario with neither `prompt` nor `promptContains` is the
+catch-all for any shell command. Shell scenarios are never matched against CLI
+commands or agent prompts, and `shell` is mutually exclusive with `command` and
+`agent`.
+
+Shell scenarios let a lab **mock** an inspection command (`!cat …`, `!ls …`) so
+a learner sees author-controlled output instead of whatever the host would
+produce. Matching is tried *first*, before the command runs:
+
+- In the **CLI**, `!cmd` runs the real process (§12.4) only when no shell
+  scenario matches; a match short-circuits the real command entirely.
+- In the **web simulator**, which has no real shell, a match is the only way to
+  produce output — an unmatched `!cmd` reports that host commands are not
+  mocked.
+
+```yaml
+  - id: shell-cat-server
+    when:
+      shell: true
+      prompt: "cat app/server.js"
+    then:
+      output:
+        - "const express = require('express');"
+        - "app.listen(3000);"
+```
 
 ---
 
@@ -580,11 +614,22 @@ agent> !ls app
 agent> !cat app/server.js
 ```
 
-This is genuine process output, not a scripted scenario: it is never paced or
-streamed, it is not matched against any scenario, and it touches no simulator
-state. A non-zero exit status is reported to stderr but the session continues. A
-bare `!` prints a short usage hint. Shell mode is a session-only affordance; it
-does not apply to one-shot `sbx run -p`.
+A `!cmd` line is first matched against the lab's **shell scenarios**
+(`shell: true`, §6.6). If one matches, its scripted effects apply (files, state,
+output) exactly like an agent turn, the state is persisted, and the real command
+is **not** run — this is how an author mocks an inspection command. If no shell
+scenario matches, `!cmd` falls back to running the real process:
+
+Real shell output is genuine process output, not a scripted scenario: it is
+never paced or streamed, and it touches no simulator state. A non-zero exit
+status is reported to stderr but the session continues. A bare `!` (with no
+matching catch-all shell scenario) prints a short usage hint. Shell mode is a
+session-only affordance; it does not apply to one-shot `sbx run -p`.
+
+**Web simulator.** The in-browser simulator has no real shell to escape to, so a
+`!cmd` that matches no shell scenario reports that host commands are not mocked
+(rather than running a process); a matching shell scenario behaves exactly as in
+the CLI.
 
 ### 12.5 Notes
 

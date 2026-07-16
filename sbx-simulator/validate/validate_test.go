@@ -237,6 +237,60 @@ scenarios:
 	}
 }
 
+func TestShellWhenConflicts(t *testing.T) {
+	lab := parse(t, `
+version: "1.1"
+metadata: { id: t, title: t }
+scenarios:
+  - id: shell-and-command
+    when: { command: run, shell: true }
+    then: { output: ["x"] }
+  - id: shell-and-agent
+    when: { shell: true, agent: true }
+    then: { output: ["y"] }
+  - id: shell-keyword-ok
+    when: { shell: true, promptContains: [ls] }
+    then: { output: ["z"] }
+  - id: args-on-shell
+    when: { shell: true, args: { 0: "x" } }
+    then: { output: ["w"] }
+`)
+	fs := Lab(lab)
+	if !findingsContain(fs, Error, "shell-and-command", "mutually exclusive") {
+		t.Error("expected shell+command mutual-exclusion error")
+	}
+	if !findingsContain(fs, Error, "shell-and-agent", "mutually exclusive") {
+		t.Error("expected shell+agent mutual-exclusion error")
+	}
+	// promptContains IS honored for shell scenarios -> no ignored warning.
+	for _, f := range fs {
+		if f.Where == location(2, "shell-keyword-ok") && strings.Contains(f.Message, "`promptContains` is ignored") {
+			t.Errorf("promptContains should be honored on a shell scenario: %s", f)
+		}
+	}
+	if !findingsContain(fs, Warning, "args-on-shell", "`args` is ignored by a `shell` scenario") {
+		t.Error("expected args-ignored warning for a shell scenario")
+	}
+}
+
+func TestShellReachabilityShadowing(t *testing.T) {
+	lab := parse(t, `
+version: "1.1"
+metadata: { id: t, title: t }
+scenarios:
+  - id: shell-catchall
+    when: { shell: true }
+    then: { output: ["any"] }
+  - id: shell-keyword
+    when: { shell: true, promptContains: [ls] }
+    then: { output: ["ls"] }
+`)
+	fs := Lab(lab)
+	if !findingsContain(fs, Warning, "shell-keyword", "unreachable", "shell-catchall") {
+		t.Fatalf("expected shell catch-all to shadow keyword scenario, got: %v", fs)
+	}
+}
+
 func TestAgentReachabilityShadowing(t *testing.T) {
 	lab := parse(t, `
 version: "1.1"

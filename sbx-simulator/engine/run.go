@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"strings"
+
 	"github.com/dockersamples/sbx-simulator/commands"
 	"github.com/dockersamples/sbx-simulator/filesystem"
 	"github.com/dockersamples/sbx-simulator/manifest"
@@ -82,6 +84,34 @@ func RunAgent(lab *manifest.Lab, prompt string, fs *filesystem.FS, st State) (*R
 		Stderr:  stderr,
 		Exit:    resolveExit(then, lab, match != nil),
 		Matched: id,
+	}, nil
+}
+
+// RunShell dispatches a single shell-escape line (`!cmd`) typed in a session
+// against the lab's shell scenarios (when.shell). If one matches, it applies the
+// scenario's effects, records the command in history, and returns the Result.
+// It returns a nil Result (with nil error) when no shell scenario matches, so
+// the caller can fall back to running the real command. command is the text
+// after the `!`.
+func RunShell(lab *manifest.Lab, command string, fs *filesystem.FS, st State) (*Result, error) {
+	match := MatchShell(lab, command, st)
+	if match == nil {
+		return nil, nil
+	}
+
+	st.Append("history", "! "+strings.TrimSpace(command))
+	then := &match.Scenario.Then
+
+	stdout, stderr, err := applyThen(then, fs, st, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Result{
+		Stdout:  stdout,
+		Stderr:  stderr,
+		Exit:    resolveExit(then, lab, true),
+		Matched: match.Scenario.ID,
 	}, nil
 }
 

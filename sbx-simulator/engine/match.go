@@ -30,7 +30,7 @@ type MatchResult struct {
 func Match(lab *manifest.Lab, cmd commands.Command, st StateReader) *MatchResult {
 	for i := range lab.Scenarios {
 		sc := &lab.Scenarios[i]
-		if sc.When.Agent {
+		if sc.When.Agent || sc.When.Shell {
 			continue
 		}
 		if captures, ok := matchWhen(&sc.When, cmd, st); ok {
@@ -53,6 +53,68 @@ func MatchAgent(lab *manifest.Lab, prompt string, st StateReader) *MatchResult {
 		}
 	}
 	return nil
+}
+
+// MatchShell returns the first shell scenario (when.shell) whose command text
+// and state conditions match the given shell-escape command, or nil if none
+// match. command is the text after the `!`; a leading `!` on either side is
+// ignored, so a matcher may be written as "cat app/server.js" or
+// "!cat app/server.js".
+func MatchShell(lab *manifest.Lab, command string, st StateReader) *MatchResult {
+	normalized := stripBang(command)
+	for i := range lab.Scenarios {
+		sc := &lab.Scenarios[i]
+		if !sc.When.Shell {
+			continue
+		}
+		if matchShellWhen(&sc.When, normalized, st) {
+			return &MatchResult{Scenario: sc}
+		}
+	}
+	return nil
+}
+
+// matchShellWhen evaluates a shell scenario against a (bang-stripped) command
+// and state.
+func matchShellWhen(w *manifest.When, command string, st StateReader) bool {
+	if !shellPromptMatches(w, command) {
+		return false
+	}
+	for path, expected := range w.State {
+		actual, present := st.Get(path)
+		if !stateEqual(expected, actual, present) {
+			return false
+		}
+	}
+	return true
+}
+
+// shellPromptMatches applies a shell scenario's prompt/promptContains matcher to
+// the bang-stripped command text. A scenario with neither matcher is the
+// catch-all for any shell command.
+func shellPromptMatches(w *manifest.When, command string) bool {
+	if w.Prompt != nil {
+		return command == stripBang(*w.Prompt)
+	}
+	if len(w.PromptContains) > 0 {
+		lower := strings.ToLower(command)
+		for _, kw := range w.PromptContains {
+			if !strings.Contains(lower, strings.ToLower(kw)) {
+				return false
+			}
+		}
+		return true
+	}
+	return true
+}
+
+// stripBang trims s and removes a single leading "!" shell-escape marker.
+func stripBang(s string) string {
+	trimmed := strings.TrimSpace(s)
+	if strings.HasPrefix(trimmed, "!") {
+		return strings.TrimSpace(trimmed[1:])
+	}
+	return trimmed
 }
 
 // matchAgentWhen evaluates an agent scenario against a prompt and state.

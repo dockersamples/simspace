@@ -92,12 +92,15 @@ type Scenario struct {
 
 // When holds the conditions that must all hold for a scenario to fire.
 type When struct {
-	Command        CommandPath        `yaml:"command"`
-	Args           map[string]Matcher `yaml:"args"`
-	Agent          bool               `yaml:"agent"`
-	Prompt         *string            `yaml:"prompt"`
-	PromptContains []string           `yaml:"promptContains"`
-	State          map[string]any     `yaml:"state"`
+	Command CommandPath        `yaml:"command"`
+	Args    map[string]Matcher `yaml:"args"`
+	Agent   bool               `yaml:"agent"`
+	// Shell marks a scenario matched against a `!cmd` shell escape typed in a
+	// session, rather than a CLI command or an agent prompt (see §6.6, §12.4).
+	Shell          bool           `yaml:"shell"`
+	Prompt         *string        `yaml:"prompt"`
+	PromptContains []string       `yaml:"promptContains"`
+	State          map[string]any `yaml:"state"`
 }
 
 // Then holds the effects applied when a scenario fires. Order of application is

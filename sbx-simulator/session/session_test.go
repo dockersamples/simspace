@@ -154,8 +154,8 @@ func TestREPLPrintsWelcomeBanner(t *testing.T) {
 	got := out.String()
 	for _, want := range []string{
 		"SBX Simulator · Agent Session", // title
-		"Simulated environment",          // scripted disclaimer
-		`\___/`,                          // Docker whale
+		"Simulated environment",         // scripted disclaimer
+		`\___/`,                         // Docker whale
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("banner missing %q; got:\n%s", want, got)
@@ -248,6 +248,63 @@ func TestShellModeReportsNonZeroExit(t *testing.T) {
 	}
 	if !strings.Contains(errOut.String(), "status 3") {
 		t.Errorf("expected non-zero exit status reported; got:\n%s", errOut.String())
+	}
+}
+
+func TestShellModeUsesScenarioWhenDefined(t *testing.T) {
+	lab, err := manifest.Parse([]byte(`
+version: "1.1"
+metadata: { id: t, title: t }
+scenarios:
+  - id: run
+    when: { command: run }
+    then:
+      session:
+        prompt: "agent> "
+        intro: ["ready"]
+        outro: ["bye"]
+  - id: shell-cat
+    when:
+      shell: true
+      prompt: "cat secret.txt"
+    then:
+      output: ["MOCKED: pretend contents"]
+      state: { peeked: true }
+`))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	var sess *manifest.Session
+	for i := range lab.Scenarios {
+		if lab.Scenarios[i].ID == "run" {
+			sess = lab.Scenarios[i].Then.Session
+		}
+	}
+	root := t.TempDir()
+	fs, _ := filesystem.New(root)
+	st, _ := state.Load(filepath.Join(root, ".sbx-sim"), lab.State)
+
+	// A real `cat secret.txt` would fail (the file does not exist); the shell
+	// scenario must intercept it instead. `!echo real` has no shell scenario, so
+	// it falls back to running the real command.
+	in := strings.NewReader("!cat secret.txt\n!echo real-fallback\n/exit\n")
+	var out, errOut bytes.Buffer
+	if err := Run(lab, sess, fs, st, in, &out, &errOut, Options{Stream: false}); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	if !strings.Contains(out.String(), "MOCKED: pretend contents") {
+		t.Errorf("expected mocked shell output; got:\n%s", out.String())
+	}
+	if strings.Contains(errOut.String(), "secret.txt") {
+		t.Errorf("real `cat` should not have run; stderr:\n%s", errOut.String())
+	}
+	if v, _ := st.Get("peeked"); v != true {
+		t.Errorf("shell scenario state effect not applied: peeked = %v; want true", v)
+	}
+	// Unmatched `!echo` falls back to the real shell.
+	if !strings.Contains(out.String(), "real-fallback") {
+		t.Errorf("expected real-shell fallback output; got:\n%s", out.String())
 	}
 }
 

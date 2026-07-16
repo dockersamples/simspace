@@ -19,7 +19,7 @@ export interface MatchResult {
  */
 export function match(lab: Lab, cmd: Command, st: Store): MatchResult | null {
   for (const scenario of lab.scenarios) {
-    if (scenario.when.agent) continue;
+    if (scenario.when.agent || scenario.when.shell) continue;
     const result = matchWhen(scenario.when, cmd, st);
     if (result.ok) {
       return { scenario, args: result.captures };
@@ -51,6 +51,56 @@ function matchAgentWhen(w: When, prompt: string, st: Store): boolean {
     return false;
   }
   return stateMatches(w.state, st);
+}
+
+/**
+ * matchShell returns the first shell scenario (when.shell) whose command text
+ * and state conditions match, or null if none match. The caller passes the text
+ * after the `!` shell escape; a leading `!` on either side is ignored so authors
+ * may write the matcher as `cat app/server.js` or `!cat app/server.js`.
+ */
+export function matchShell(
+  lab: Lab,
+  command: string,
+  st: Store,
+): MatchResult | null {
+  const normalized = stripBang(command);
+  for (const scenario of lab.scenarios) {
+    if (!scenario.when.shell) continue;
+    if (matchShellWhen(scenario.when, normalized, st)) {
+      return { scenario, args: {} };
+    }
+  }
+  return null;
+}
+
+function matchShellWhen(w: When, command: string, st: Store): boolean {
+  if (!shellPromptMatches(w, command)) {
+    return false;
+  }
+  return stateMatches(w.state, st);
+}
+
+/**
+ * shellPromptMatches applies a shell scenario's `prompt`/`promptContains`
+ * matcher against the (bang-stripped) command text. A scenario with neither
+ * matcher is the catch-all for any shell command.
+ */
+function shellPromptMatches(w: When, command: string): boolean {
+  if (w.prompt !== undefined) {
+    return command === stripBang(w.prompt);
+  }
+  if (w.promptContains && w.promptContains.length > 0) {
+    const lower = command.toLowerCase();
+    return w.promptContains.every((kw) => lower.includes(kw.toLowerCase()));
+  }
+  return true;
+}
+
+/** stripBang trims a string and removes a single leading `!` shell-escape marker. */
+function stripBang(s: string): string {
+  const trimmed = s.trim();
+  return trimmed.startsWith("!") ? trimmed.slice(1).trim() : trimmed;
 }
 
 /**

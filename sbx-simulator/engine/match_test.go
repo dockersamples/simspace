@@ -169,6 +169,71 @@ scenarios:
 	}
 }
 
+func TestMatchShell(t *testing.T) {
+	lab := parseLab(t, `
+version: "1.1"
+metadata: { id: t, title: t }
+scenarios:
+  - id: cmd-run
+    when:
+      command: run
+    then:
+      output: ["not a shell scenario"]
+  - id: shell-cat
+    when:
+      shell: true
+      prompt: "cat app/server.js"
+    then:
+      output: ["file contents"]
+  - id: shell-ls
+    when:
+      shell: true
+      promptContains: [ls]
+    then:
+      output: ["server.js"]
+  - id: shell-gated
+    when:
+      shell: true
+      prompt: "whoami"
+      state: { sandbox.running: true }
+    then:
+      output: ["agent"]
+`)
+
+	// Exact match on the command after the "!".
+	if res := MatchShell(lab, "cat app/server.js", fakeState{}); idOf(res) != "shell-cat" {
+		t.Fatalf("exact: got %v; want shell-cat", idOf(res))
+	}
+	// A leading "!" on the typed command is tolerated.
+	if res := MatchShell(lab, "!cat app/server.js", fakeState{}); idOf(res) != "shell-cat" {
+		t.Fatalf("bang-prefixed: got %v; want shell-cat", idOf(res))
+	}
+	// promptContains keyword trigger.
+	if res := MatchShell(lab, "ls app", fakeState{}); idOf(res) != "shell-ls" {
+		t.Fatalf("promptContains: got %v; want shell-ls", idOf(res))
+	}
+	// State precondition gates the scenario.
+	if res := MatchShell(lab, "whoami", fakeState{}); res != nil {
+		t.Fatalf("gated (stopped): got %v; want <nil>", idOf(res))
+	}
+	if res := MatchShell(lab, "whoami", fakeState{"sandbox.running": true}); idOf(res) != "shell-gated" {
+		t.Fatalf("gated (running): got %v; want shell-gated", idOf(res))
+	}
+	// No shell scenario matches -> nil (caller falls back to the real shell).
+	if res := MatchShell(lab, "pwd", fakeState{}); res != nil {
+		t.Fatalf("unmatched: got %v; want <nil>", idOf(res))
+	}
+
+	// Command matching never selects a shell scenario, and shell matching never
+	// selects a command scenario.
+	if res := Match(lab, commands.Parse([]string{"run"}), fakeState{}); idOf(res) != "cmd-run" {
+		t.Fatalf("command match: got %v; want cmd-run", idOf(res))
+	}
+	if res := MatchShell(lab, "run", fakeState{}); res != nil {
+		t.Fatalf("shell match must skip command scenarios: got %v; want <nil>", idOf(res))
+	}
+}
+
 func TestStateEqualNumericAndZero(t *testing.T) {
 	// int expected (from YAML) vs float64 actual (from JSON state) must match.
 	if !stateEqual(2, float64(2), true) {

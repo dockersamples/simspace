@@ -102,6 +102,59 @@ func TestSandboxLifecycleGolden(t *testing.T) {
 
 // TestTemplatingCaptureAndState verifies {{ args.* }} / {{ state.* }} rendering
 // through a full Run, including a captured arg flowing into state and output.
+func TestRunShell(t *testing.T) {
+	lab, err := manifest.Parse([]byte(`
+version: "1.1"
+metadata: { id: t, title: t }
+scenarios:
+  - id: shell-touch
+    when:
+      shell: true
+      prompt: "touch marker"
+    then:
+      files:
+        - create: "marker"
+          content: "made by a shell scenario\n"
+      state: { app.marked: true }
+      output: ["created marker"]
+`))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+
+	root := t.TempDir()
+	fs, _ := filesystem.New(root)
+	st, _ := state.Load(filepath.Join(root, ".sbx-sim"), lab.State)
+
+	// A matching shell scenario applies its effects and returns a Result.
+	res, err := RunShell(lab, "touch marker", fs, st)
+	if err != nil {
+		t.Fatalf("RunShell: %v", err)
+	}
+	if res == nil || res.Matched != "shell-touch" {
+		t.Fatalf("matched = %v; want shell-touch", res)
+	}
+	if strings.Join(res.Stdout, "\n") != "created marker" {
+		t.Errorf("stdout = %q; want [created marker]", res.Stdout)
+	}
+	if _, err := os.Stat(filepath.Join(root, "marker")); err != nil {
+		t.Errorf("expected marker file to be created: %v", err)
+	}
+	if v, _ := st.Get("app.marked"); v != true {
+		t.Errorf("app.marked = %v; want true", v)
+	}
+
+	// No matching shell scenario -> nil Result, nil error, so the caller can
+	// fall back to running the real command.
+	res, err = RunShell(lab, "cat something-else", fs, st)
+	if err != nil {
+		t.Fatalf("RunShell (unmatched): %v", err)
+	}
+	if res != nil {
+		t.Fatalf("unmatched RunShell = %v; want nil", res)
+	}
+}
+
 func TestTemplatingCaptureAndState(t *testing.T) {
 	lab, err := manifest.Parse([]byte(`
 version: "1.0"

@@ -266,6 +266,19 @@ export function SbxTerminal({
         return;
       }
       if (line.startsWith("!")) {
+        // Shell escape (`!cmd`): try the lab's scripted shell scenarios first,
+        // and only fall back to the "not mocked" message if none match.
+        const shellOutcome = simulator.shell(line.slice(1));
+        if (shellOutcome) {
+          await emit(
+            shellOutcome.lines.map((l) => ({
+              text: l.text,
+              kind: (l.stream === "stderr" ? "stderr" : "stdout") as LineKind,
+            })),
+          );
+          notify();
+          return;
+        }
         await emit([
           {
             text: "shell escape (!) is not available in the web simulator; host commands are not mocked.",

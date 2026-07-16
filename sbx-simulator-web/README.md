@@ -17,11 +17,17 @@ Same input + same state → same output, every time, just like the CLI.
 - ✅ **Agent prompts** — interactive agent sessions (`then.session`), the
   scripted-agent banner, keyword/exact prompt matching, and one-shot
   `sbx run -p "…"`.
-- 🚫 **Host commands** — `ls`, `cat`, and other shell commands are **not**
-  mocked. Anything that isn't `sbx` returns a `command not found` message, and
-  the session `!shell` escape is disabled (there is no real process to run). The
-  one exception is `clear`, a terminal built-in that wipes the screen (like a
-  shell's `clear` / Ctrl-L) without touching lab state.
+- ✅ **Scripted shell escapes** — inside a session, a `!cmd` line is matched
+  against **shell scenarios** (`when.shell: true`) using the same
+  `prompt` / `promptContains` matchers as agent prompts, applied to the command
+  after the `!`. This lets a lab mock inspection commands like
+  `!cat app/server.js` or `!ls app`.
+- 🚫 **Host commands** — `ls`, `cat`, and other shell commands are **not** run
+  for real. Anything that isn't `sbx` returns a `command not found` message, and
+  a session `!cmd` that matches no shell scenario reports that host commands are
+  not mocked (there is no real process to run). The one exception is `clear`, a
+  terminal built-in that wipes the screen (like a shell's `clear` / Ctrl-L)
+  without touching lab state.
 
 Everything runs against an **in-memory** state store and virtual filesystem, so
 `then.files` effects (including a `replace` whose `find` is missing failing the

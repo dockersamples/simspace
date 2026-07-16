@@ -94,6 +94,27 @@ scenarios:
     then:
       output:
         - "Agent: Tests already exist at app/server.test.js."
+
+  # Shell-mode (!cmd) scenarios: scripted output for shell escapes typed in the
+  # session. Exact match on the command after the "!".
+  - id: shell-cat-server
+    when:
+      shell: true
+      prompt: "cat app/server.js"
+    then:
+      output:
+        - "const express = require('express');"
+        - "const app = express();"
+        - "app.get('/', (_, res) => res.send('hello'));"
+        - "app.listen(3000);"
+
+  - id: shell-ls
+    when:
+      shell: true
+      promptContains: [ls]
+    then:
+      output:
+        - "server.js"
 `;
 
 const sandboxLifecycle = `version: "1.1"

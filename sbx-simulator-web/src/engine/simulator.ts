@@ -8,7 +8,7 @@
 import { parseCommand, tokenize } from "./commands";
 import { FS, FSError } from "./filesystem";
 import { checkSchemaVersion, parseManifest } from "./manifest";
-import { run, runAgent } from "./run";
+import { run, runAgent, runShell } from "./run";
 import { Store } from "./state";
 import { Lab, Options, resolveOptions, Session } from "./types";
 
@@ -145,6 +145,27 @@ export class Simulator {
     } catch (e) {
       return { lines: [err(fsMessage(e))], exit: 1, matched: "" };
     }
+    return {
+      lines: [...result.stdout.map(out), ...result.stderr.map(err)],
+      exit: result.exit,
+      matched: result.matched,
+    };
+  }
+
+  /**
+   * shell dispatches a shell-escape line (`!cmd`) typed inside a session against
+   * the lab's shell scenarios (`when.shell`). `command` is the text after the
+   * `!`. It returns an AgentOutcome when a scenario matches, or null when none
+   * does — letting the caller fall back to its own "not mocked" handling.
+   */
+  shell(command: string): AgentOutcome | null {
+    let result;
+    try {
+      result = runShell(this.lab, command, this.fs, this.store);
+    } catch (e) {
+      return { lines: [err(fsMessage(e))], exit: 1, matched: "" };
+    }
+    if (result === null) return null;
     return {
       lines: [...result.stdout.map(out), ...result.stderr.map(err)],
       exit: result.exit,

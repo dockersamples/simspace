@@ -177,7 +177,9 @@ func Run(lab *manifest.Lab, sess *manifest.Session, fs *filesystem.FS, st *state
 			break
 		}
 		if strings.HasPrefix(line, shellPrefix) {
-			shell(fs.Root(), strings.TrimPrefix(line, shellPrefix), out, errOut)
+			if err := shellTurn(lab, strings.TrimPrefix(line, shellPrefix), fs, st, out, errOut, opts); err != nil {
+				return err
+			}
 			continue
 		}
 		if err := turn(lab, line, fs, st, out, errOut, opts); err != nil {
@@ -202,6 +204,26 @@ func Once(lab *manifest.Lab, prompt string, fs *filesystem.FS, st *state.Store, 
 		return 1, err
 	}
 	return res.Exit, nil
+}
+
+// shellTurn handles a `!cmd` shell escape. It first tries the lab's shell
+// scenarios (when.shell): if one matches, its scripted effects are applied and
+// persisted, and its output is printed plainly (like real shell output, not an
+// indented agent reply). Only when no shell scenario matches does it fall back
+// to running cmdline as a real process (§12.4). cmdline is the text after the
+// `!`.
+func shellTurn(lab *manifest.Lab, cmdline string, fs *filesystem.FS, st *state.Store, out, errOut io.Writer, opts Options) error {
+	res, err := engine.RunShell(lab, cmdline, fs, st)
+	if err != nil {
+		return err
+	}
+	if res == nil {
+		shell(fs.Root(), cmdline, out, errOut)
+		return nil
+	}
+	WriteLines(out, res.Stdout, opts)
+	WriteLines(errOut, res.Stderr, opts)
+	return st.Save()
 }
 
 // shell runs cmdline as a real shell command in dir (the lab root), streaming
