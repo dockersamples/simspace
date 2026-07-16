@@ -1,0 +1,10 @@
+# Build artifacts — rebuilt inside the image.
+/sbx
+/dist/
+
+# Runtime state seeded per lab, not source.
+.sbx-sim/
+
+# VCS and local workspace metadata.
+.git/
+.workspace/

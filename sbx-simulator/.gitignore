@@ -1,0 +1,6 @@
+# SBX Simulator runtime state (seeded per lab, not source)
+.sbx-sim/
+
+# Built binaries
+/sbx
+/dist/
