@@ -5,6 +5,7 @@
 
 import { parse as parseYaml } from "yaml";
 import {
+  Control,
   Lab,
   Matcher,
   SchemaVersion,
@@ -49,6 +50,7 @@ export function parseManifest(text: string): Lab {
     state: doc.state as Record<string, StateValue> | undefined,
     settings: doc.settings as Lab["settings"],
     defaults: doc.defaults as Lab["defaults"],
+    controls: doc.controls !== undefined ? parseControls(doc.controls) : undefined,
     scenarios,
   };
 }
@@ -176,4 +178,38 @@ function normalizeMatcher(raw: unknown, id: string, name: string): Matcher {
   throw new ManifestError(
     `scenario "${id}" arg "${name}": matcher must be a scalar or mapping`,
   );
+}
+
+function parseControls(raw: unknown): Control[] {
+  if (!Array.isArray(raw)) {
+    throw new ManifestError("`controls` must be a list");
+  }
+  return raw.map((c, i) => parseControl(c, i));
+}
+
+function parseControl(raw: unknown, index: number): Control {
+  if (raw === null || typeof raw !== "object") {
+    throw new ManifestError(`control #${index} must be a mapping`);
+  }
+  const c = raw as Record<string, unknown>;
+  const id =
+    typeof c.id === "string" && c.id
+      ? c.id
+      : `control-${index}`;
+  const label = typeof c.label === "string" ? c.label : "";
+  if (!label) {
+    throw new ManifestError(`control "${id}": \`label\` is required`);
+  }
+  const statePath = typeof c.state === "string" ? c.state : "";
+  if (!statePath) {
+    throw new ManifestError(`control "${id}": \`state\` is required`);
+  }
+  return {
+    id,
+    label,
+    description: typeof c.description === "string" ? c.description : undefined,
+    state: statePath,
+    enabled: c.enabled !== undefined ? (c.enabled as StateValue) : true,
+    disabled: c.disabled !== undefined ? (c.disabled as StateValue) : false,
+  };
 }

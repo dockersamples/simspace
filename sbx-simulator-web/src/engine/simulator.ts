@@ -8,7 +8,7 @@ import { FS, FSError } from "./filesystem";
 import { checkSchemaVersion, parseManifest } from "./manifest";
 import { run, runAgent } from "./run";
 import { Store } from "./state";
-import { Lab, Options, resolveOptions, Session } from "./types";
+import { Lab, Options, resolveOptions, Session, StateValue } from "./types";
 
 /** One line of terminal output tagged with the stream it belongs to. */
 export interface OutputLine {
@@ -69,6 +69,17 @@ export class Simulator {
   reset(): void {
     this.store = Store.seed(this.lab.state);
     this.fs = new FS(this.seedFiles);
+  }
+
+  /** getState returns the current value at a dot-path, or null if absent. */
+  getState(path: string): StateValue {
+    const { value, present } = this.store.get(path);
+    return present && value !== undefined ? value : null;
+  }
+
+  /** setControl writes a value to the state store (called by control toggles). */
+  setControl(path: string, value: StateValue): void {
+    this.store.set(path, value);
   }
 
   /** execute runs one command line against the lab's scenarios. */

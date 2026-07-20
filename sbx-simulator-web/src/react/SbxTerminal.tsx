@@ -10,7 +10,8 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Session } from "../engine/types";
+import type { Control, Session } from "../engine/types";
+import { Simulator } from "../engine/simulator";
 import { useSimulator } from "./useSimulator";
 import "./SbxTerminal.css";
 
@@ -92,6 +93,9 @@ export function SbxTerminal({
   const [lines, setLines] = useState<TermLine[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+  const [controlValues, setControlValues] = useState<Record<string, boolean>>({});
+  const [dialogStyle, setDialogStyle] = useState<React.CSSProperties>({});
 
   const modeRef = useRef<Mode>({ kind: "command" });
   const idRef = useRef(0);
@@ -99,6 +103,7 @@ export function SbxTerminal({
   const historyPos = useRef<number>(-1);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const controlsBtnRef = useRef<HTMLButtonElement>(null);
   const prevBusyRef = useRef(false);
 
   // Effective pacing: prop overrides win, else the lab's resolved settings.
@@ -124,7 +129,9 @@ export function SbxTerminal({
     modeRef.current = { kind: "command" };
     setLines([]);
     setBusy(false);
+    setShowControls(false);
     if (!simulator) return;
+    setControlValues(deriveControlValues(simulator));
     const intro =
       greeting ??
       defaultGreeting(simulator.lab.metadata?.title, simulator.lab.metadata?.summary);
@@ -361,11 +368,34 @@ export function SbxTerminal({
     }
   };
 
+  const openControls = useCallback(() => {
+    if (controlsBtnRef.current) {
+      const rect = controlsBtnRef.current.getBoundingClientRect();
+      setDialogStyle({
+        top: rect.bottom + 6,
+        right: Math.max(8, window.innerWidth - rect.right),
+      });
+    }
+    setShowControls((v) => !v);
+  }, []);
+
+  const handleControlToggle = useCallback(
+    (control: Control, on: boolean) => {
+      if (!simulator) return;
+      simulator.setControl(control.state, on ? control.enabled : control.disabled);
+      setControlValues((prev) => ({ ...prev, [control.id]: on }));
+      notify();
+    },
+    [simulator, notify],
+  );
+
   const reset = useCallback(() => {
     if (!simulator) return;
     simulator.reset();
     modeRef.current = { kind: "command" };
     idRef.current++;
+    setControlValues(deriveControlValues(simulator));
+    setShowControls(false);
     const intro =
       greeting ??
       defaultGreeting(simulator.lab.metadata?.title, simulator.lab.metadata?.summary);
@@ -407,6 +437,20 @@ export function SbxTerminal({
           <span className="sbx-term-title">
             {simulator?.lab.metadata?.title ?? "Simulator"}
           </span>
+          {simulator?.lab.controls?.length ? (
+            <button
+              ref={controlsBtnRef}
+              type="button"
+              className="sbx-term-controls-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                openControls();
+              }}
+              aria-label="Open lab settings"
+            >
+              Settings
+            </button>
+          ) : null}
           <button
             type="button"
             className="sbx-term-reset"
@@ -418,6 +462,48 @@ export function SbxTerminal({
             Reset
           </button>
         </div>
+      )}
+
+      {showControls && simulator?.lab.controls && (
+        <>
+          <div
+            className="sbx-term-backdrop"
+            onClick={() => setShowControls(false)}
+          />
+          <div className="sbx-term-controls-dialog" style={dialogStyle}>
+            <div className="sbx-term-controls-dialog-header">
+              <span>Settings</span>
+              <button
+                type="button"
+                className="sbx-term-controls-close"
+                onClick={() => setShowControls(false)}
+                aria-label="Close settings"
+              >
+                ×
+              </button>
+            </div>
+            {simulator.lab.controls.map((control) => (
+              <div key={control.id} className="sbx-term-control-item">
+                <div className="sbx-term-control-text">
+                  <div className="sbx-term-control-label">{control.label}</div>
+                  {control.description && (
+                    <div className="sbx-term-control-desc">
+                      {control.description}
+                    </div>
+                  )}
+                </div>
+                <label className="sbx-toggle">
+                  <input
+                    type="checkbox"
+                    checked={controlValues[control.id] ?? false}
+                    onChange={(e) => handleControlToggle(control, e.target.checked)}
+                  />
+                  <span className="sbx-toggle-track" />
+                </label>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <div className="sbx-term-body" ref={scrollRef}>
@@ -450,6 +536,19 @@ export function SbxTerminal({
 
 function sess_prompt(sess: Session): string {
   return sess.prompt && sess.prompt.length > 0 ? sess.prompt : "> ";
+}
+
+/** Derives the on/off state for each control from the simulator's current state. */
+function deriveControlValues(sim: Simulator): Record<string, boolean> {
+  if (!sim.lab.controls?.length) return {};
+  return Object.fromEntries(
+    sim.lab.controls.map((c) => {
+      const current = sim.getState(c.state);
+      const isOn =
+        JSON.stringify(current) === JSON.stringify(c.enabled);
+      return [c.id, isOn];
+    }),
+  );
 }
 
 function defaultGreeting(title?: string, summary?: string): string[] {

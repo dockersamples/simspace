@@ -76,9 +76,11 @@ objectives:               # OPTIONAL. Shown by Labspaces; not used by the engine
 
 state: { ... }            # OPTIONAL. Initial runtime state. See §4.
 
-settings: { ... }         # OPTIONAL. Presentation settings. See §11.
+settings: { ... }         # OPTIONAL. Presentation settings. See §13.
 
 defaults: { ... }         # OPTIONAL. Cross-scenario defaults. See §8.
+
+controls: [ ... ]         # OPTIONAL. Learner-facing toggle panel. See §11.
 
 scenarios: [ ... ]        # REQUIRED. Ordered list. See §5–7.
 ```
@@ -91,8 +93,9 @@ Field summary:
 | `metadata`   | no       | Catalog + display info (opaque to the engine)    |
 | `objectives` | no       | Author/Labspaces display only                    |
 | `state`      | no       | Seed for the state store (empty tree if omitted) |
-| `settings`   | no       | Output streaming/pacing (§11)                    |
+| `settings`   | no       | Output streaming/pacing (§13)                    |
 | `defaults`   | no       | Fallbacks applied when no scenario matches (§8)  |
+| `controls`   | no       | Toggle panel wired to state variables (§11)      |
 | `scenarios`  | yes      | The ordered match rules                          |
 
 ---
@@ -214,7 +217,7 @@ when:
 ### 6.4 `agent` — agent prompt dispatch
 
 `agent: true` marks an **agent scenario**, matched only against prompts typed
-in a session REPL (§12). Command scenarios are never matched against agent
+in a session REPL (§14). Command scenarios are never matched against agent
 prompts; `command` and `agent` are mutually exclusive.
 
 An agent scenario with **neither** `prompt` nor `promptContains` is a catch-all
@@ -242,7 +245,7 @@ then:
   stderr: [ ... ]    # optional stderr lines
   exit: 0            # optional exit code (default 0)
   mcp: [ ... ]       # optional mocked MCP call blocks, §9
-  session: { ... }   # optional: enter an interactive agent session, §12
+  session: { ... }   # optional: enter an interactive agent session, §14
 ```
 
 ### 7.1 `files` — filesystem operations
@@ -410,7 +413,98 @@ state). Scenarios always take priority over built-ins.
 
 ---
 
-## 11. Worked example — Docker container lifecycle
+## 11. `controls` — learner-facing toggle panel
+
+`controls` is an optional top-level list that defines toggles shown in the
+**Settings** dialog next to the Reset button. Each toggle wires a UI switch to
+a state variable, letting learners flip lab behaviour (e.g. enabling a network
+policy, unlocking a feature flag) without running commands.
+
+```yaml
+controls:
+  - id: network-example-com          # REQUIRED. Unique slug; used internally.
+    label: "Enable access to example.com"   # REQUIRED. Shown in the dialog.
+    description: "Allows scenarios that require example.com to be reachable."  # OPTIONAL
+    state: network.exampleDomainAllowed     # REQUIRED. Dot-path to write.
+    enabled: true                    # Value written when toggle is ON  (default: true)
+    disabled: false                  # Value written when toggle is OFF (default: false)
+```
+
+### How controls interact with state
+
+- **Initial position**: the toggle is ON when the current value at `state` is
+  JSON-equal to `enabled`; otherwise it starts OFF. The initial state comes
+  from the lab's `state:` seed, so the author controls the default position.
+- **Toggle action**: flipping the switch immediately calls `setControl(state,
+  value)` in the engine — the state store is updated synchronously before the
+  next command is matched.
+- **Reset**: pressing Reset re-seeds the full state from the manifest, which
+  also restores all toggle positions to their initial state.
+
+### `enabled` / `disabled` values
+
+Both fields accept any `StateValue` — boolean, number, string, or null. The
+most common pattern is `true` / `false`, but you can write any JSON-serializable
+value:
+
+```yaml
+controls:
+  - id: tier
+    label: "Use Pro tier"
+    state: account.tier
+    enabled: "pro"
+    disabled: "free"
+```
+
+### Full example
+
+```yaml
+state:
+  network:
+    exampleDomainAllowed: false
+
+controls:
+  - id: network-example-com
+    label: "Enable network access to example.com"
+    description: "Allows scenarios that require example.com to be reachable."
+    state: network.exampleDomainAllowed
+    enabled: true
+    disabled: false
+
+scenarios:
+  - id: curl-allowed
+    when:
+      command: curl
+      state: { network.exampleDomainAllowed: true }
+    then:
+      output: ["<!DOCTYPE html>..."]
+
+  - id: curl-blocked
+    when:
+      command: curl
+    then:
+      stderr: ["curl: (7) Failed to connect: network policy blocks this domain."]
+      exit: 7
+```
+
+When the learner flips the toggle ON, `network.exampleDomainAllowed` is set to
+`true`; the next `curl` command matches `curl-allowed`. Flipping it OFF sets
+the value back to `false` and the next `curl` matches `curl-blocked`.
+
+### Control fields
+
+| Field         | Required | Type         | Description                               |
+| ------------- | -------- | ------------ | ----------------------------------------- |
+| `id`          | yes      | string       | Unique slug (used internally)             |
+| `label`       | yes      | string       | Human-readable name shown in the dialog   |
+| `description` | no       | string       | Optional sub-label with more context      |
+| `state`       | yes      | dot-path     | State variable this toggle writes to      |
+| `enabled`     | no       | StateValue   | Value when ON (default `true`)            |
+| `disabled`    | no       | StateValue   | Value when OFF (default `false`)          |
+
+---
+
+## 12. Worked example — Docker container lifecycle
 
 ```yaml
 version: "2.0"
@@ -496,7 +590,7 @@ scenarios:
 
 ---
 
-## 12. Settings (output streaming)
+## 13. Settings (output streaming)
 
 Optional top-level presentation settings. Streaming is **cosmetic only** — it
 never changes *what* is printed, so labs stay deterministic.
@@ -510,12 +604,12 @@ settings:
 
 ---
 
-## 13. Agent sessions
+## 14. Agent sessions
 
 A command scenario can enter an **interactive agent REPL** by declaring a
 `session` effect. This is entirely data-driven.
 
-### 13.1 Entering a session — `then.session`
+### 14.1 Entering a session — `then.session`
 
 ```yaml
 scenarios:
@@ -538,7 +632,7 @@ whale ASCII art, title, and scripted-environment disclaimer), then `intro`,
 and enters the REPL. The session ends on `/exit`, `/quit`, or the Reset
 button.
 
-### 13.2 Turns — agent scenarios
+### 14.2 Turns — agent scenarios
 
 Each line the learner types is matched against **agent scenarios** (`agent:
 true`) using `prompt` / `promptContains` + `state`, first-match-wins.
@@ -560,13 +654,13 @@ true`) using `prompt` / `promptContains` + `state`, first-match-wins.
 
 State changes persist across turns — a conversation is a state machine.
 
-### 13.3 One-shot mode
+### 14.3 One-shot mode
 
 Pass `-p "<prompt>"` (or `--prompt`) on a command that opens a session to run
 a single agent turn and exit without entering the REPL. This is handled by
 the terminal component, not the scenario engine.
 
-### 13.4 Shell commands inside a session (`!cmd`)
+### 14.4 Shell commands inside a session (`!cmd`)
 
 Inside a session REPL, a line beginning with `!` runs the text after it
 through the **normal command matching engine** — the same first-match-wins
@@ -601,7 +695,7 @@ This scenario fires whether the learner types `docker ps` at the top level or
 
 ---
 
-## 14. Open questions / deferred
+## 15. Open questions / deferred
 
 - Regex/range arg matchers and `state` operators (`>`, `exists`, `contains`).
 - Cross-file scenario includes / reusable scenario libraries.

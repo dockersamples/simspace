@@ -20,7 +20,17 @@ state:
   app:
     hasHealth: false
     hasTests: false
+  network:
+    enabled: false
   phase: start
+
+controls:
+  - id: network-access
+    label: "Enable network access"
+    description: "Allows the sandbox to make outbound network requests."
+    state: network.enabled
+    enabled: true
+    disabled: false
 
 defaults:
   unmatchedAgent:
@@ -44,6 +54,7 @@ scenarios:
         intro:
           - "Agent ready. Ask me to build something into app/server.js."
           - 'Try: "add a health endpoint" or "add tests". Type /exit to quit.'
+          - 'Use !curl to test network access (toggle it in Settings).'
         outro:
           - "Agent session ended. The sandbox is still running."
 
@@ -95,18 +106,21 @@ scenarios:
       output:
         - "Agent: Tests already exist at app/server.test.js."
 
-  # Shell-mode (!cmd) scenarios: scripted output for shell escapes typed in the
-  # session. Exact match on the command after the "!".
-  - id: shell-cat-server
+  # curl is gated by the network.enabled toggle (set via Settings).
+  - id: curl-allowed
     when:
-      shell: true
-      prompt: "cat app/server.js"
+      command: curl
+      state: { network.enabled: true }
     then:
       output:
-        - "const express = require('express');"
-        - "const app = express();"
-        - "app.get('/', (_, res) => res.send('hello'));"
-        - "app.listen(3000);"
+        - '{"status":"ok","uptime":42}'
+
+  - id: curl-blocked
+    when:
+      command: curl
+    then:
+      stderr: ["curl: (7) Failed to connect: blocked by network policy."]
+      exit: 7
 `;
 
 const sandboxLifecycle = `version: "2.0"
@@ -120,7 +134,16 @@ metadata:
 state:
   sandbox:
     running: false
+    verboseLogging: false
   phase: start
+
+controls:
+  - id: verbose-logging
+    label: "Enable verbose logging"
+    description: "Show detailed log output when running 'logs'."
+    state: sandbox.verboseLogging
+    enabled: true
+    disabled: false
 
 defaults:
   unmatched:
@@ -138,7 +161,7 @@ scenarios:
         phase: running
       output:
         - "Starting sandbox..."
-        - "Sandbox is running. View logs with: sbx logs"
+        - "Sandbox is running. View logs with: logs"
 
   - id: run-already
     when:
@@ -163,6 +186,17 @@ scenarios:
       state: { sandbox.running: false }
     then:
       output: ["No sandbox is running."]
+
+  - id: logs-verbose
+    when:
+      command: logs
+      state: { sandbox.running: true, sandbox.verboseLogging: true }
+    then:
+      output:
+        - "[sim] sandbox started"
+        - "[sim] container health check: OK"
+        - "[sim] network bridge initialized"
+        - "[sim] port 3000 mapped to host"
 
   - id: logs
     when:

@@ -148,3 +148,146 @@
 .sbx-term-error .term-stderr {
   padding: 14px;
 }
+
+/* ── Controls button (same style as Reset) ─────────────────────────────── */
+.sbx-term-controls-btn {
+  background: transparent;
+  color: var(--term-dim);
+  border: 1px solid #30363d;
+  border-radius: 5px;
+  padding: 2px 10px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.sbx-term-controls-btn:hover {
+  color: var(--term-fg);
+  border-color: #484f58;
+}
+
+/* ── Controls dialog (fixed-positioned so it escapes overflow:hidden) ───── */
+.sbx-term-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.sbx-term-controls-dialog {
+  position: fixed;
+  z-index: 101;
+  width: 300px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.sbx-term-controls-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-bottom: 1px solid #30363d;
+  color: #8b949e;
+  letter-spacing: 0.03em;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.sbx-term-controls-close {
+  background: transparent;
+  border: none;
+  color: #6e7681;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  font-family: inherit;
+}
+.sbx-term-controls-close:hover {
+  color: #d1d5da;
+}
+
+.sbx-term-controls-empty {
+  padding: 14px 12px;
+  color: #6e7681;
+  font-size: 12px;
+}
+
+/* ── Individual control row ─────────────────────────────────────────────── */
+.sbx-term-control-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border-bottom: 1px solid #21262d;
+}
+.sbx-term-control-item:last-child {
+  border-bottom: none;
+}
+
+.sbx-term-control-text {
+  flex: 1;
+  min-width: 0;
+}
+.sbx-term-control-label {
+  color: #d1d5da;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.sbx-term-control-desc {
+  color: #6e7681;
+  font-size: 11px;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* ── Toggle switch ──────────────────────────────────────────────────────── */
+.sbx-toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  display: inline-block;
+}
+.sbx-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.sbx-toggle-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background: #30363d;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.sbx-toggle-track::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #8b949e;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.18s, background 0.18s;
+}
+.sbx-toggle input:checked + .sbx-toggle-track {
+  background: #238636;
+}
+.sbx-toggle input:checked + .sbx-toggle-track::after {
+  transform: translateX(16px);
+  background: #7ee787;
+}
+.sbx-toggle input:focus-visible + .sbx-toggle-track {
+  outline: 2px solid #4fc3f7;
+  outline-offset: 2px;
+}

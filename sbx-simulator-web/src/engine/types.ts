@@ -100,6 +100,19 @@ export interface Defaults {
   exit?: number;
 }
 
+/** A learner-facing control that writes to the state store when toggled. */
+export interface Control {
+  id: string;
+  label: string;
+  description?: string;
+  /** Dot-path into the state store that this control modifies. */
+  state: string;
+  /** Value written when the toggle is enabled. */
+  enabled: StateValue;
+  /** Value written when the toggle is disabled. */
+  disabled: StateValue;
+}
+
 export interface Metadata {
   id?: string;
   title?: string;
@@ -107,7 +120,7 @@ export interface Metadata {
   authors?: string[];
 }
 
-/** A parsed sbx-simulator.yaml. */
+/** A parsed simulator.yaml. */
 export interface Lab {
   version: string;
   metadata?: Metadata;
@@ -116,6 +129,7 @@ export interface Lab {
   state?: Record<string, StateValue>;
   settings?: Settings;
   defaults?: Defaults;
+  controls?: Control[];
   scenarios: Scenario[];
 }
 
