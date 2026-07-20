@@ -82,6 +82,11 @@ export class Simulator {
     this.store.set(path, value);
   }
 
+  /** listDir returns the immediate children of a directory in the virtual FS. */
+  listDir(dir: string = ""): { name: string; isDir: boolean }[] {
+    return this.fs.listDir(dir);
+  }
+
   /** execute runs one command line against the lab's scenarios. */
   execute(line: string): CommandOutcome {
     const argv = tokenize(line.trim());

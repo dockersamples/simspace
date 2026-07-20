@@ -105,6 +105,7 @@ export function SbxTerminal({
   const inputRef = useRef<HTMLInputElement>(null);
   const controlsBtnRef = useRef<HTMLButtonElement>(null);
   const prevBusyRef = useRef(false);
+  const completionRef = useRef<{ candidates: string[]; index: number } | null>(null);
 
   // Effective pacing: prop overrides win, else the lab's resolved settings.
   const opts = simulator?.options ?? { stream: true, delayMs: 20, thinkMs: 700 };
@@ -354,6 +355,40 @@ export function SbxTerminal({
       setInput(h[historyPos.current]);
       return;
     }
+    if (e.key === "Tab") {
+      e.preventDefault();
+      if (!simulator) return;
+      // On a non-Tab keypress the cycle state is reset (see below); on Tab we
+      // either start a new completion or advance through the existing candidates.
+      let cycle = completionRef.current;
+      if (!cycle) {
+        const candidates = tabCandidates(input, simulator);
+        if (candidates.length === 0) return;
+        cycle = { candidates, index: 0 };
+        completionRef.current = cycle;
+      } else {
+        cycle.index = (cycle.index + 1) % cycle.candidates.length;
+      }
+      setInput(cycle.candidates[cycle.index]);
+      return;
+    }
+    // Any other key resets the Tab-completion cycle.
+    completionRef.current = null;
+    if (e.ctrlKey && e.key === "w") {
+      e.preventDefault();
+      const el = inputRef.current;
+      const pos = el?.selectionStart ?? input.length;
+      const before = input.slice(0, pos);
+      const after = input.slice(pos);
+      // Strip trailing whitespace, then strip back to the preceding whitespace.
+      const newBefore = before.replace(/\s+$/, "").replace(/\S+$/, "");
+      setInput(newBefore + after);
+      // Restore cursor to the new position after React re-renders.
+      requestAnimationFrame(() => {
+        el?.setSelectionRange(newBefore.length, newBefore.length);
+      });
+      return;
+    }
     if (e.key === "ArrowDown") {
       e.preventDefault();
       const h = history.current;
@@ -549,6 +584,39 @@ function deriveControlValues(sim: Simulator): Record<string, boolean> {
       return [c.id, isOn];
     }),
   );
+}
+
+/**
+ * Returns the list of completions for the current input line. Each candidate
+ * is a full replacement for `input` with the last token completed. Directories
+ * get a trailing "/" so the next Tab continues into them.
+ */
+function tabCandidates(input: string, simulator: Simulator): string[] {
+  // Split into the prefix (everything before the last token) and the token
+  // being completed. We split on whitespace but respect a leading "./".
+  const match = input.match(/^(.*\s)?(\S*)$/);
+  if (!match) return [];
+  const prefix = match[1] ?? "";
+  const token = match[2] ?? "";
+
+  // Resolve the directory to list and the basename fragment to filter on.
+  const lastSlash = token.lastIndexOf("/");
+  const dir = lastSlash < 0 ? "" : token.slice(0, lastSlash);
+  const fragment = lastSlash < 0 ? token : token.slice(lastSlash + 1);
+
+  let entries: { name: string; isDir: boolean }[];
+  try {
+    entries = simulator.listDir(dir);
+  } catch {
+    return [];
+  }
+
+  return entries
+    .filter((e) => e.name.startsWith(fragment))
+    .map((e) => {
+      const completed = (dir ? dir + "/" : "") + e.name + (e.isDir ? "/" : "");
+      return prefix + completed;
+    });
 }
 
 function defaultGreeting(title?: string, summary?: string): string[] {
