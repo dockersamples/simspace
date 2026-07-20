@@ -294,7 +294,7 @@ export function SbxTerminal({
         }
         await emit([
           {
-            text: "shell escape (!) is not available in the web simulator; host commands are not mocked.",
+            text: `Command not supported in this environment: ${line.slice(1).trim()}`,
             kind: "stderr",
           },
         ]);
