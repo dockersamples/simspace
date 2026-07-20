@@ -35,6 +35,57 @@ export class FS {
     return this.files.get(this.resolve(path));
   }
 
+  /** isFile reports whether path exists as a regular file. */
+  isFile(path: string): boolean {
+    return this.files.has(this.resolve(path));
+  }
+
+  /** isDir reports whether path is a known directory (explicit or implied). */
+  isDir(path: string): boolean {
+    const clean = this.resolve(path);
+    if (this.dirs.has(clean)) return true;
+    const prefix = clean + "/";
+    for (const p of this.files.keys()) {
+      if (p.startsWith(prefix)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * listDir returns the immediate children of a directory. Pass "" for the
+   * lab root. Each entry carries its name and whether it is itself a directory.
+   */
+  listDir(dir: string = ""): { name: string; isDir: boolean }[] {
+    const prefix = dir ? dir + "/" : "";
+    const seen = new Map<string, boolean>(); // name → isDir
+
+    const addEntry = (name: string, isDirectory: boolean) => {
+      if (!seen.has(name)) seen.set(name, isDirectory);
+    };
+
+    for (const path of this.files.keys()) {
+      const rest = prefix ? (path.startsWith(prefix) ? path.slice(prefix.length) : null) : path;
+      if (rest === null) continue;
+      const slash = rest.indexOf("/");
+      if (slash < 0) {
+        addEntry(rest, false);
+      } else {
+        addEntry(rest.slice(0, slash), true);
+      }
+    }
+    for (const d of this.dirs) {
+      const rest = prefix ? (d.startsWith(prefix) ? d.slice(prefix.length) : null) : d;
+      if (rest === null || rest === "") continue;
+      if (!rest.includes("/")) {
+        addEntry(rest, true);
+      }
+    }
+
+    return [...seen.entries()]
+      .map(([name, isDirectory]) => ({ name, isDir: isDirectory }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   /** snapshot returns a copy of all files keyed by path. */
   snapshot(): Record<string, string> {
     return Object.fromEntries(this.files);

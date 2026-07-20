@@ -1,26 +1,24 @@
 # Docker Sandboxes Learning Runtime
 
 A reusable platform for building deterministic, interactive learning experiences
-that teach Docker Sandboxes workflows — without requiring production
-infrastructure, AI API keys, or organizational permissions.
+— without requiring production infrastructure, AI API keys, or organizational
+permissions.
 
-Labs run inside a Docker Sandbox, using this project as the template image. 
 Authors write a scenario file and instructional content; learners get a browser-
-based environment with a working terminal, guided instructions, and a simulated 
-`sbx` CLI that responds predictably every time.
+based mock terminal that responds to any command predictably, every time.
 
 ## Why a simulator?
 
-Real `sbx` workflows depend on AI providers, Docker Hub organizations, API keys,
+Real CLI workflows depend on AI providers, Docker Hub organizations, API keys,
 and network connectivity — none of which a learner can be guaranteed to have.
 Generative AI is also non-deterministic: the same prompt produces different
 output every time, which makes for a poor educational experience.
 
-The simulator removes all of those dependencies. It replaces the `sbx` binary
-inside the sandbox image with a config-driven state machine: every command is
-matched against author-declared scenarios and produces the exact same output,
-file changes, and state transitions — every time, on any machine, with no
-external services required. Learners experience realistic `sbx` workflows;
+The simulator removes all of those dependencies. It is a config-driven,
+in-memory state machine: every command is matched against author-declared
+scenarios and produces the exact same output, file changes, and state
+transitions — every time, on any machine, with no external services required.
+Any command can be simulated (`docker run`, `kubectl apply`, `git push`, …);
 authors control exactly what happens.
 
 ## Repository layout
@@ -55,29 +53,20 @@ instructional content, a browser-based terminal (xterm.js over WebSocket), and
 HTTP endpoints for running commands and saving files. It reads a
 `labspace.yaml` from the sandbox at `/home/agent/labspace/instructions/`.
 
-### `sbx-simulator`
-
-A config-driven, filesystem-backed state machine that replaces the real `sbx`
-CLI inside the sandbox image. Each lab ships a `sbx-simulator.yaml` declaring
-scenarios: when a command matches a scenario, the simulator applies its
-defined output, file mutations, and state changes — same input, same result,
-every time. No AI providers, no network, no Docker Hub required.
-
-See [`sbx-simulator/docs/scenario-spec.md`](sbx-simulator/docs/scenario-spec.md)
-for the full authoring reference.
-
 ### `sbx-simulator-web`
 
-A browser-based React port of the simulator that runs labs directly from their
-`sbx-simulator.yaml` spec — no Go binary, no server, no network. It reimplements
-the scenario engine in TypeScript and wraps it in a single `<SbxTerminal>`
-component: learners type `sbx …` commands and chat with scripted agents in an
-in-browser terminal, driven by the same first-match-wins engine as the CLI. A
-Vite demo playground (`npm run dev`) lets authors edit a spec and watch state
-update live.
+A browser-based React terminal that runs labs from a `simulator.yaml` spec —
+no binary, no server, no network. Authors define scenarios for any command;
+learners type them in an in-browser terminal powered by a first-match-wins
+scenario engine. Built-in `ls` and `cat` automatically reflect the virtual
+filesystem. A Vite demo playground (`npm run dev`) lets authors edit a spec
+and watch state update live.
 
 See [`sbx-simulator-web/README.md`](sbx-simulator-web/README.md) for usage,
 props, and the exported headless engine.
+
+See [`sbx-simulator/docs/scenario-spec.md`](sbx-simulator/docs/scenario-spec.md)
+for the full `simulator.yaml` authoring reference.
 
 ## Building
 
@@ -100,11 +89,10 @@ the interface server, and the final sandbox stage assembles them into the
 
 ## Authoring a lab
 
-1. Write a `sbx-simulator.yaml` with scenarios for each `sbx` command the
-   learner will run. Validate it with `sbx --check`.
+1. Write a `simulator.yaml` with scenarios for each command the learner will
+   run. See [`sbx-simulator/docs/scenario-spec.md`](sbx-simulator/docs/scenario-spec.md)
+   for the full schema reference.
 2. Write a `labspace.yaml` describing the lab sections and instructions.
-3. Package both into a Docker image layered on top of the sandbox template.
-4. Publish via the kit spec in `kit/spec.yaml`.
+3. Embed the spec in your lab's React/HTML page via `<SbxTerminal spec={...} />`.
 
-See [`sbx-simulator/README.md`](sbx-simulator/README.md) and
-[`interface/README.md`](interface/README.md) for per-component details.
+See [`interface/README.md`](interface/README.md) for the Labspace UI details.

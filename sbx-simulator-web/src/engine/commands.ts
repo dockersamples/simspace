@@ -1,9 +1,8 @@
-// Parses a raw sbx invocation (argv without the binary name) into the
-// structured form the engine matches against. Ported from the Go commands
-// package. See sbx-simulator/docs/scenario-spec.md §6.
+// Parses a raw command line (argv) into the structured form the engine matches
+// against.
 
 export interface Command {
-  /** Reconstructed command line including the leading "sbx", for history. */
+  /** Reconstructed command line, for history. */
   line: string;
   /** Positional (non-flag) tokens in order. Leading tokens form the path. */
   tokens: string[];
@@ -21,7 +20,7 @@ export interface Command {
  */
 export function parseCommand(args: string[]): Command {
   const cmd: Command = {
-    line: "sbx " + args.join(" "),
+    line: args.join(" "),
     tokens: [],
     flags: {},
   };

@@ -1,8 +1,7 @@
-// Type definitions for the SBX Simulator lab manifest and engine, ported from
-// the Go implementation's manifest package. See sbx-simulator/docs/scenario-spec.md.
+// Type definitions for the terminal simulator lab manifest and engine.
 
 /** SchemaVersion is the scenario schema version this build understands. */
-export const SchemaVersion = "1.1";
+export const SchemaVersion = "2.0";
 
 /** A JSON-compatible value, matching the untyped `any` state tree in Go. */
 export type StateValue =
@@ -30,12 +29,10 @@ export interface Matcher {
 
 /** When holds the conditions that must all hold for a scenario to fire. */
 export interface When {
-  /** Subcommand token path after `sbx`. Always normalized to a token list. */
+  /** Command token path (e.g. ["docker", "run"]). Always normalized to a token list. */
   command?: string[];
   args?: Record<string, Matcher>;
   agent?: boolean;
-  /** Match a shell-escape line (`!cmd`) typed in a session, not a CLI command. */
-  shell?: boolean;
   prompt?: string;
   promptContains?: string[];
   state?: Record<string, StateValue>;
@@ -120,6 +117,17 @@ export interface Lab {
   settings?: Settings;
   defaults?: Defaults;
   scenarios: Scenario[];
+}
+
+/** The outcome of running one command or prompt against a lab. */
+export interface Result {
+  stdout: string[];
+  stderr: string[];
+  exit: number;
+  /** Matched scenario ID, "__builtin__" for built-ins, or "" for unmatched default. */
+  matched: string;
+  /** Set when the matched scenario declares a session effect. */
+  session?: Session;
 }
 
 /** Resolved presentation options after applying defaults. */

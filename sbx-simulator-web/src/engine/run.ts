@@ -1,24 +1,16 @@
 // Runs one command or one agent prompt against a lab: match a scenario, apply
 // its effects (or the unmatched default), record history, and return the
-// output/exit. Ported from engine/run.go.
+// output/exit.
 
 import { applyThen } from "./apply";
+import { runBuiltin } from "./builtins";
 import { Command } from "./commands";
 import { FS } from "./filesystem";
-import { match, matchAgent, matchShell } from "./match";
+import { match, matchAgent } from "./match";
 import { Store } from "./state";
-import { Lab, Session, Then } from "./types";
+import { Lab, Result, Then } from "./types";
 
-/** The outcome of running one command or prompt against a lab. */
-export interface Result {
-  stdout: string[];
-  stderr: string[];
-  exit: number;
-  /** Matched scenario ID, or "" if the unmatched default was used. */
-  matched: string;
-  /** Set when the matched command scenario declares a session effect. */
-  session?: Session;
-}
+export type { Result };
 
 /**
  * run executes one parsed command: it matches a scenario, applies its effects
@@ -29,16 +21,30 @@ export function run(lab: Lab, cmd: Command, fs: FS, st: Store): Result {
   st.appendHistory(cmd.line);
 
   const m = match(lab, cmd, st);
-  const then = m ? m.scenario.then : unmatchedThen(lab);
-  const args = m ? m.args : {};
+  if (m) {
+    const then = m.scenario.then;
+    const { stdout, stderr } = applyThen(then, fs, st, m.args);
+    return {
+      stdout,
+      stderr,
+      exit: resolveExit(then, lab),
+      matched: m.scenario.id,
+      session: then.session,
+    };
+  }
 
-  const { stdout, stderr } = applyThen(then, fs, st, args);
+  // No scenario matched — try built-in filesystem commands before falling back
+  // to the lab's unmatched default.
+  const builtin = runBuiltin(cmd, fs);
+  if (builtin) return builtin;
 
+  const then = unmatchedThen(lab);
+  const { stdout, stderr } = applyThen(then, fs, st, {});
   return {
     stdout,
     stderr,
     exit: resolveExit(then, lab),
-    matched: m ? m.scenario.id : "",
+    matched: "",
     session: then.session,
   };
 }
@@ -64,42 +70,13 @@ export function runAgent(lab: Lab, prompt: string, fs: FS, st: Store): Result {
   };
 }
 
-/**
- * runShell dispatches a single shell-escape line (`!cmd`) typed inside a
- * session: it matches a shell scenario (when.shell) and, if one fires, applies
- * its effects and records the command in history. It returns null when no shell
- * scenario matches, so the caller can fall back to its default handling (in the
- * web terminal, the "host commands are not mocked" message). `command` is the
- * text after the `!`; a leading `!` is tolerated and ignored.
- */
-export function runShell(
-  lab: Lab,
-  command: string,
-  fs: FS,
-  st: Store,
-): Result | null {
-  const m = matchShell(lab, command, st);
-  if (!m) return null;
-
-  st.appendHistory("! " + command.trim());
-  const then = m.scenario.then;
-  const { stdout, stderr } = applyThen(then, fs, st, m.args);
-
-  return {
-    stdout,
-    stderr,
-    exit: resolveExit(then, lab),
-    matched: m.scenario.id,
-  };
-}
-
 function unmatchedThen(lab: Lab): Then {
   if (lab.defaults?.unmatched) {
     return lab.defaults.unmatched;
   }
   return {
-    stderr: ["Error: unknown or unexpected command in this lab."],
-    exit: 1,
+    stderr: ["command not found — this command is not simulated in this lab."],
+    exit: 127,
   };
 }
 

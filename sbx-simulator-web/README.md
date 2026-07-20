@@ -1,37 +1,36 @@
-# SBX Simulator — Web
+# Terminal Simulator — Web
 
-An in-browser React terminal that runs [SBX Simulator](../sbx-simulator) labs
-directly from their `sbx-simulator.yaml` spec — no Go binary, no server, no
-network. It is a faithful port of the simulator's scenario engine to
-TypeScript, wrapped in a single `<SbxTerminal>` component.
-
-Give it a lab spec and it renders a terminal where learners type `sbx …`
-commands and, when a `sbx run` scenario opens one, chat with a scripted agent.
-Same input + same state → same output, every time, just like the CLI.
+An in-browser React terminal that runs labs directly from a `simulator.yaml`
+spec — no binary, no server, no network. Authors define scenarios for any
+command (`docker run`, `git push`, `kubectl apply`, …) and learners type them
+in a browser terminal that responds with scripted, deterministic output.
 
 ## What it simulates (and what it doesn't)
 
-- ✅ **The `sbx` command** — the full scenario engine: command/arg/state
-  matching, `then` effects (files, state deltas, output, MCP), templating, and
-  the `sbx --version` / `sbx sim reset` meta-commands.
-- ✅ **Agent prompts** — interactive agent sessions (`then.session`), the
+- ✅ **Any command** — the full scenario engine: command/arg/state matching,
+  `then` effects (files, state deltas, output, MCP), and templating. Commands
+  are not restricted to any particular program or prefix.
+- ✅ **Agent sessions** — interactive agent REPLs (`then.session`), the
   scripted-agent banner, keyword/exact prompt matching, and one-shot
-  `sbx run -p "…"`.
-- ✅ **Scripted shell escapes** — inside a session, a `!cmd` line is matched
-  against **shell scenarios** (`when.shell: true`) using the same
-  `prompt` / `promptContains` matchers as agent prompts, applied to the command
-  after the `!`. This lets a lab mock inspection commands like
-  `!cat app/server.js` or `!ls app`.
-- 🚫 **Host commands** — `ls`, `cat`, and other shell commands are **not** run
-  for real. Anything that isn't `sbx` returns a `command not found` message, and
-  a session `!cmd` that matches no shell scenario reports that host commands are
-  not mocked (there is no real process to run). The one exception is `clear`, a
-  terminal built-in that wipes the screen (like a shell's `clear` / Ctrl-L)
-  without touching lab state.
+  `-p "…"` mode.
+- ✅ **`ls` and `cat`** — built-in commands that reflect the virtual
+  filesystem automatically. A `!ls app` or `!cat app/server.js` inside a
+  session works without any scenario, as long as a `then.files` effect has
+  created those paths. Define a `command: ls` scenario to override the
+  built-in output.
+- ✅ **`!cmd` in sessions** — inside a session REPL, a line starting with `!`
+  runs the rest through the normal command engine (same matching as top-level
+  commands, including built-ins). The `!` distinguishes "run a command" from
+  "talk to the agent".
+- ✅ **`clear`** — a terminal built-in that wipes the screen without touching
+  lab state, available in both command and session mode.
+- 🚫 **Real processes** — no actual shell is executed. An unmatched command
+  with no built-in produces a `command not found` message (customizable via
+  `defaults.unmatched`).
 
-Everything runs against an **in-memory** state store and virtual filesystem, so
-`then.files` effects (including a `replace` whose `find` is missing failing the
-lab) behave exactly as they do on the CLI.
+Everything runs against an **in-memory** state store and virtual filesystem,
+so `then.files` effects behave consistently and `ls`/`cat` reflect them
+immediately.
 
 ## Usage
 
@@ -52,35 +51,46 @@ function Lab({ specYaml }: { specYaml: string }) {
 
 ### Props
 
-| Prop            | Type                                | Default              | Purpose                                                        |
-| --------------- | ----------------------------------- | -------------------- | -------------------------------------------------------------- |
-| `spec`          | `string`                            | —                    | The `sbx-simulator.yaml` document text. **Required.**          |
-| `files`         | `Record<string, string>`            | `{}`                 | Seed the virtual filesystem, keyed by lab-relative path.       |
-| `version`       | `string`                            | `"web"`              | Reported by `sbx --version`.                                   |
-| `shellPrompt`   | `string`                            | `"$ "`               | Prompt shown in command mode.                                  |
-| `streaming`     | `boolean`                           | lab `settings`       | Override line-by-line streamed output.                         |
-| `streamDelayMs` | `number`                            | lab `settings` (20)  | Per-line delay while streaming.                                |
-| `agentThinkMs`  | `number`                            | lab `settings` (700) | "Evaluating…" spinner duration before agent replies (0 = off). |
-| `showHeader`    | `boolean`                           | `true`               | Show the title bar + Reset button.                             |
-| `greeting`      | `string[]`                          | derived              | Lines printed once on start (pass `[]` to suppress).           |
-| `onStateChange` | `(state) => void`                   | —                    | Called with a fresh state snapshot after every command/turn.   |
-| `className`     | `string`                            | —                    | Extra class on the root element.                               |
-| `style`         | `React.CSSProperties`               | —                    | Inline style on the root (e.g. to set a height).               |
+| Prop            | Type                     | Default              | Purpose                                                        |
+| --------------- | ------------------------ | -------------------- | -------------------------------------------------------------- |
+| `spec`          | `string`                 | —                    | The `simulator.yaml` document text. **Required.**              |
+| `files`         | `Record<string, string>` | `{}`                 | Seed the virtual filesystem, keyed by lab-relative path.       |
+| `shellPrompt`   | `string`                 | `"$ "`               | Prompt shown in command mode.                                  |
+| `streaming`     | `boolean`                | lab `settings`       | Override line-by-line streamed output.                         |
+| `streamDelayMs` | `number`                 | lab `settings` (20)  | Per-line delay while streaming.                                |
+| `agentThinkMs`  | `number`                 | lab `settings` (700) | "Evaluating…" spinner duration before agent replies (0 = off). |
+| `showHeader`    | `boolean`                | `true`               | Show the title bar + Reset button.                             |
+| `greeting`      | `string[]`               | derived              | Lines printed once on start (pass `[]` to suppress).           |
+| `onStateChange` | `(state) => void`        | —                    | Called with a fresh state snapshot after every command/turn.   |
+| `className`     | `string`                 | —                    | Extra class on the root element.                               |
+| `style`         | `React.CSSProperties`    | —                    | Inline style on the root (e.g. to set a height).               |
 
-Changing `spec` (or `files`) rebuilds the simulator and clears the terminal.
-The **Reset** button — and typing `sbx sim reset` — re-seed state and files from
-the manifest, exactly like deleting `$SBX_SIM_HOME` on the CLI.
+Changing `spec` (or `files`) rebuilds the simulator and resets the terminal.
+The **Reset** button re-seeds state and files from the manifest.
 
 ### Headless engine
 
-The engine is exported too, for tests or non-React embeddings:
+The engine is exported for tests or non-React embeddings:
 
 ```ts
 import { Simulator } from "sbx-simulator-web";
 
 const sim = new Simulator({ spec, files: { "app/server.js": "…" } });
-const out = sim.execute("sbx run"); // { lines, exit, matched, session? }
-if (out.session) sim.prompt("add a health endpoint");
+
+// Run a command
+const out = sim.execute("docker run --name web -d nginx");
+console.log(out.lines, out.exit, out.matched);
+
+// Enter an agent session (if the matched scenario set then.session)
+if (out.session) {
+  sim.prompt("add a health endpoint");
+}
+
+// Built-ins reflect the virtual FS
+sim.execute("docker run --name web -d nginx"); // triggers then.files
+sim.execute("ls app");                          // lists virtual app/ directory
+sim.execute("cat app/server.js");               // prints virtual file content
+
 console.log(sim.state(), sim.files());
 ```
 
@@ -93,15 +103,15 @@ npm run build       # type-check + production build of the demo
 npm run typecheck   # tsc --noEmit
 ```
 
-The demo (`src/demo/`) is a playground with two sample labs adapted from the
-CLI's `testdata/labs`; edit the YAML on the left and the terminal reloads.
+The demo (`src/demo/`) is a playground; edit the YAML on the left and the
+terminal reloads.
 
 ## Layout
 
 ```
 src/
-  engine/     TypeScript port of the Go scenario engine
-    types.ts        manifest/effect types + settings resolution
+  engine/     TypeScript scenario engine
+    types.ts        manifest/effect types, Result, settings resolution
     manifest.ts     YAML -> Lab (normalizes command paths & arg matchers)
     commands.ts     command-line tokenize + parse (tokens/flags)
     state.ts        in-memory dot-path state store
@@ -109,7 +119,8 @@ src/
     template.ts     {{ args.* }} / {{ state.* }} substitution
     match.ts        first-match-wins command & agent matching
     apply.ts        applies then: files -> state -> output -> mcp
-    run.ts          run() / runAgent() with unmatched defaults
+    builtins.ts     built-in ls/cat commands over the virtual FS
+    run.ts          run() / runAgent() with built-in + unmatched defaults
     mcp.ts          mocked MCP call rendering
     simulator.ts    high-level facade the component drives
   react/
@@ -119,7 +130,5 @@ src/
   demo/         Vite demo playground
 ```
 
-The engine mirrors the Go packages of the same name in
-[`../sbx-simulator`](../sbx-simulator); see its
-[`docs/scenario-spec.md`](../sbx-simulator/docs/scenario-spec.md) for the full
-`sbx-simulator.yaml` schema.
+See [`../sbx-simulator/docs/scenario-spec.md`](../sbx-simulator/docs/scenario-spec.md)
+for the full `simulator.yaml` schema reference.

@@ -1,6 +1,12 @@
 # SBX Simulator — Implementation Plan
 
-**Status:** Draft **Target:** simulator v1.0, scenario schema v1.0
+> **Archived.** This document describes the Go CLI binary (`sbx-simulator`)
+> which is no longer the primary focus. The canonical spec is now
+> [`scenario-spec.md`](scenario-spec.md) (schema v2.0), implemented by the
+> TypeScript engine in `sbx-simulator-web/`. The Go binary remains in the
+> repository for reference; M0–M8 below reflect its completed implementation.
+
+**Status:** Archived **Target:** simulator v1.0–1.1 (Go binary), scenario schema v1.1
 
 Companion to `docs/scenario-spec.md`. Language: **Go** (single static binary,
 drops into a lab container as `sbx`).

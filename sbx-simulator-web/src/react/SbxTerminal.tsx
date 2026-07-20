@@ -1,9 +1,7 @@
-// SbxTerminal renders an in-browser "terminal" that runs an SBX Simulator lab
-// from its spec YAML. It mirrors the CLI (cmd/sbx/main.go + session package):
-// you type `sbx …` commands at a shell prompt, a `sbx run` scenario can drop
-// you into an interactive agent session, and output streams line-by-line with
-// the agent "Evaluating…" spinner. Host commands (ls, cat, …) are intentionally
-// not simulated.
+// SbxTerminal renders an in-browser mock terminal driven by a simulator YAML
+// spec. Any command defined in the spec can be typed at the shell prompt. A
+// scenario with a `session` effect drops the user into an interactive agent
+// REPL; inside a session, `!cmd` runs a command scenario.
 
 import {
   KeyboardEvent,
@@ -17,12 +15,10 @@ import { useSimulator } from "./useSimulator";
 import "./SbxTerminal.css";
 
 export interface SbxTerminalProps {
-  /** The sbx-simulator.yaml document text. */
+  /** The simulator YAML document text. */
   spec: string;
   /** Optional seed for the virtual filesystem, keyed by lab-relative path. */
   files?: Record<string, string>;
-  /** Version string reported by `sbx --version`. Defaults to "web". */
-  version?: string;
   /** Shell prompt shown in command mode. Defaults to "$ ". */
   shellPrompt?: string;
   /** Override streaming; defaults to the lab's `settings.streaming`. */
@@ -81,7 +77,6 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export function SbxTerminal({
   spec,
   files,
-  version,
   shellPrompt = "$ ",
   streaming,
   streamDelayMs,
@@ -92,7 +87,7 @@ export function SbxTerminal({
   className,
   style,
 }: SbxTerminalProps) {
-  const { simulator, error } = useSimulator(spec, files, version);
+  const { simulator, error } = useSimulator(spec, files);
 
   const [lines, setLines] = useState<TermLine[]>([]);
   const [input, setInput] = useState("");
@@ -222,7 +217,7 @@ export function SbxTerminal({
         { text: "", kind: "system" },
         ...WHALE.map((text) => ({ text, kind: "whale" as LineKind })),
         { text: "", kind: "system" },
-        { text: "  SBX Simulator · Agent Session", kind: "title" },
+        { text: "  Simulator · Agent Session", kind: "title" },
         { text: "", kind: "system" },
         {
           text: "  ⚠ Simulated environment — the agent's replies are scripted by",
@@ -279,25 +274,16 @@ export function SbxTerminal({
         return;
       }
       if (line.startsWith("!")) {
-        // Shell escape (`!cmd`): try the lab's scripted shell scenarios first,
-        // and only fall back to the "not mocked" message if none match.
-        const shellOutcome = simulator.shell(line.slice(1));
-        if (shellOutcome) {
-          await emit(
-            shellOutcome.lines.map((l) => ({
-              text: l.text,
-              kind: (l.stream === "stderr" ? "stderr" : "stdout") as LineKind,
-            })),
-          );
-          notify();
-          return;
-        }
-        await emit([
-          {
-            text: `Command not supported in this environment: ${line.slice(1).trim()}`,
-            kind: "stderr",
-          },
-        ]);
+        // Shell escape (`!cmd`): run the command text through the normal
+        // scenario engine — the same matching used in command mode.
+        const cmdOutcome = simulator.execute(line.slice(1));
+        await emit(
+          cmdOutcome.lines.map((l) => ({
+            text: l.text,
+            kind: (l.stream === "stderr" ? "stderr" : "stdout") as LineKind,
+          })),
+        );
+        notify();
         return;
       }
       await think();
@@ -419,7 +405,7 @@ export function SbxTerminal({
             <i />
           </span>
           <span className="sbx-term-title">
-            {simulator?.lab.metadata?.title ?? "SBX Simulator"}
+            {simulator?.lab.metadata?.title ?? "Simulator"}
           </span>
           <button
             type="button"
@@ -470,6 +456,6 @@ function defaultGreeting(title?: string, summary?: string): string[] {
   const lines: string[] = [];
   if (title) lines.push(title);
   if (summary) lines.push(summary);
-  lines.push("Type a command to begin — e.g. `sbx run`.");
+  lines.push("Type a command to begin.");
   return lines;
 }

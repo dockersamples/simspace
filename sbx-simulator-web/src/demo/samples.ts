@@ -6,7 +6,7 @@ export interface Sample {
   files?: Record<string, string>;
 }
 
-const interactiveAgent = `version: "1.1"
+const interactiveAgent = `version: "2.0"
 
 metadata:
   id: interactive-agent
@@ -107,17 +107,9 @@ scenarios:
         - "const app = express();"
         - "app.get('/', (_, res) => res.send('hello'));"
         - "app.listen(3000);"
-
-  - id: shell-ls
-    when:
-      shell: true
-      promptContains: [ls]
-    then:
-      output:
-        - "server.js"
 `;
 
-const sandboxLifecycle = `version: "1.1"
+const sandboxLifecycle = `version: "2.0"
 
 metadata:
   id: sandbox-lifecycle

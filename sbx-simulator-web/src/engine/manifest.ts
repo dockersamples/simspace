@@ -1,7 +1,7 @@
-// Parses an sbx-simulator.yaml document into a typed Lab. Mirrors the Go
-// manifest package: it normalizes the two flexible YAML forms — the
-// scalar-or-sequence `command` path and the scalar-or-mapping arg `Matcher` —
-// into the canonical shapes the engine matches against.
+// Parses a simulator YAML document into a typed Lab. It normalizes the two
+// flexible YAML forms — the scalar-or-sequence `command` path and the
+// scalar-or-mapping arg `Matcher` — into the canonical shapes the engine
+// matches against.
 
 import { parse as parseYaml } from "yaml";
 import {
@@ -55,11 +55,11 @@ export function parseManifest(text: string): Lab {
 
 /**
  * checkSchemaVersion reports whether a lab's declared schema version is
- * compatible with this build. Any 1.x manifest is accepted (major must match).
+ * compatible with this build. Any 2.x manifest is accepted (major must match).
  */
 export function checkSchemaVersion(v: string): void {
   if (!v) {
-    throw new ManifestError("sbx-simulator.yaml is missing a `version` field");
+    throw new ManifestError("simulator.yaml is missing a `version` field");
   }
   const major = v.split(".")[0];
   const want = SchemaVersion.split(".")[0];
@@ -102,9 +102,6 @@ function normalizeWhen(raw: unknown, id: string): When {
   }
   if (w.agent !== undefined) {
     when.agent = Boolean(w.agent);
-  }
-  if (w.shell !== undefined) {
-    when.shell = Boolean(w.shell);
   }
   if (w.prompt !== undefined) {
     when.prompt = String(w.prompt);
