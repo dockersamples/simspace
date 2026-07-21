@@ -15,10 +15,18 @@ export interface MatchResult {
 /**
  * match returns the first command scenario whose `when` is fully satisfied, or
  * null if none match. Agent scenarios (when.agent) are never matched here.
+ * `terminalId` is the id of the terminal the command came from; scenarios with
+ * a `when.terminal` only match when it equals this id.
  */
-export function match(lab: Lab, cmd: Command, st: Store): MatchResult | null {
+export function match(
+  lab: Lab,
+  cmd: Command,
+  st: Store,
+  terminalId?: string,
+): MatchResult | null {
   for (const scenario of lab.scenarios) {
     if (scenario.when.agent) continue;
+    if (!terminalMatches(scenario.when, terminalId)) continue;
     const result = matchWhen(scenario.when, cmd, st);
     if (result.ok) {
       return { scenario, args: result.captures };
@@ -29,20 +37,31 @@ export function match(lab: Lab, cmd: Command, st: Store): MatchResult | null {
 
 /**
  * matchAgent returns the first agent scenario whose prompt and state conditions
- * match, or null if none match.
+ * match, or null if none match. `terminalId` scopes `when.terminal` the same
+ * way as command matching.
  */
 export function matchAgent(
   lab: Lab,
   prompt: string,
   st: Store,
+  terminalId?: string,
 ): MatchResult | null {
   for (const scenario of lab.scenarios) {
     if (!scenario.when.agent) continue;
+    if (!terminalMatches(scenario.when, terminalId)) continue;
     if (matchAgentWhen(scenario.when, prompt, st)) {
       return { scenario, args: {} };
     }
   }
   return null;
+}
+
+/**
+ * terminalMatches passes when the scenario names no terminal (matches any) or
+ * names exactly the terminal the command came from.
+ */
+function terminalMatches(w: When, terminalId?: string): boolean {
+  return w.terminal === undefined || w.terminal === terminalId;
 }
 
 function matchAgentWhen(w: When, prompt: string, st: Store): boolean {

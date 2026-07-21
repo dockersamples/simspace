@@ -1,8 +1,20 @@
 title: "Getting Started (Simulated)"
 description: "A fully in-browser lab — every command is scripted and runs locally."
 
-# Path to the simulator scenario spec (relative to this file).
+# Path to the simulator scenario spec (relative to this file). All terminals
+# below share this one spec, and one shared state + filesystem.
 simulator: simulator.yaml
+
+# Multiple terminal tabs, all backed by the shared simulator above. Code blocks
+# can target a specific one with `terminal-id=<id>` in the fence info string;
+# the first terminal is the default when a code block omits `terminal-id`.
+terminals:
+  - id: host
+    title: Host
+    icon: dns
+  - id: agent
+    title: Agent
+    icon: smart_toy
 
 # Seed files for the virtual filesystem. Built-in `ls`/`cat` reflect these.
 files:
@@ -21,6 +33,8 @@ sections:
     contentPath: 01-run.md
   - title: Edit and save a file
     contentPath: 02-edit.md
+  - title: Work with the agent
+    contentPath: 03-agent.md
 
 variables:
   containerName: web

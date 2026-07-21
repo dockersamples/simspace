@@ -7,63 +7,81 @@ import {
 } from "react";
 import { useWorkshop } from "./WorkshopContext";
 
-// Tabs shown in the right-hand pane. The first tab is always the simulated
-// terminal (no URL — it is rendered as a component, not an iframe). Any
-// `services` declared in labspace.yaml become external-URL iframe tabs, and
-// authors can open more via the `tablink` markdown directive.
+// Tabs shown in the right-hand pane. Every declared terminal becomes a tab
+// (rendered as a component, not an iframe) — `kind: "terminal"`. Any `services`
+// declared in labspace.yaml become external-URL iframe tabs, and authors can
+// open more via the `tablink` markdown directive — `kind: "service"`.
 
 const TabContext = createContext([]);
-
-const TERMINAL_TAB = {
-  id: "terminal",
-  icon: "terminal",
-  title: "Terminal",
-};
 
 export function TabContextProvider({ children }) {
   const workshop = useWorkshop();
   const [customTabs, setCustomTabs] = useState([]);
   const [labspaceTabOverrides, setLabspaceTabOverrides] = useState({});
-  const [activeTab, setActiveTab] = useState("terminal");
+
+  // The declared terminals, always at least one. Their ids are the terminal
+  // tab ids, and the first one is the default focus target.
+  const terminalTabs = useMemo(
+    () =>
+      (workshop.terminals || []).map((t) => ({
+        id: t.id,
+        title: t.title || t.id,
+        icon: t.icon || "terminal",
+        kind: "terminal",
+      })),
+    [workshop.terminals],
+  );
+  const defaultTerminalId = terminalTabs[0]?.id || "terminal";
+  const isTerminalId = useCallback(
+    (id) => terminalTabs.some((t) => t.id === id),
+    [terminalTabs],
+  );
+
+  const [activeTab, setActiveTab] = useState(defaultTerminalId);
 
   const addTab = useCallback((url, title, id) => {
     if (!title) title = url;
     if (!id) id = title;
-    setCustomTabs((prevTabs) => [...prevTabs, { url, title, id }]);
+    setCustomTabs((prevTabs) => [...prevTabs, { url, title, id, kind: "service" }]);
     setActiveTab(id);
   }, []);
 
-  const removeTab = useCallback((id) => {
-    setCustomTabs((prevTabs) => {
-      const updatedTabs = prevTabs.filter((tab) => tab.id !== id);
+  const removeTab = useCallback(
+    (id) => {
+      // Terminal tabs are permanent — only service/custom tabs can be closed.
+      if (isTerminalId(id)) return;
+      setCustomTabs((prevTabs) => {
+        const updatedTabs = prevTabs.filter((tab) => tab.id !== id);
 
-      setActiveTab((prevActiveTab) => {
-        if (prevActiveTab === id) {
-          const tabIndex = prevTabs.findIndex((tab) => tab.id === id);
-          if (updatedTabs.length > 0) {
-            const newIndex =
-              tabIndex === 0
-                ? 0
-                : Math.min(tabIndex - 1, updatedTabs.length - 1);
-            return updatedTabs[newIndex].id;
+        setActiveTab((prevActiveTab) => {
+          if (prevActiveTab === id) {
+            const tabIndex = prevTabs.findIndex((tab) => tab.id === id);
+            if (updatedTabs.length > 0) {
+              const newIndex =
+                tabIndex === 0
+                  ? 0
+                  : Math.min(tabIndex - 1, updatedTabs.length - 1);
+              return updatedTabs[newIndex].id;
+            }
+            return defaultTerminalId;
           }
-          return "terminal";
-        }
-        return prevActiveTab;
-      });
+          return prevActiveTab;
+        });
 
-      return updatedTabs;
-    });
-  }, []);
+        return updatedTabs;
+      });
+    },
+    [isTerminalId, defaultTerminalId],
+  );
 
   const displayLink = useCallback(
     (url, title, id, icon) => {
       if (!title) title = url;
       if (!id) id = title;
 
-      // The terminal tab has no external URL — just focus it.
-      if (id === "terminal") {
-        setActiveTab("terminal");
+      // A terminal tab has no external URL — just focus it.
+      if (isTerminalId(id)) {
+        setActiveTab(id);
         return;
       }
 
@@ -81,15 +99,15 @@ export function TabContextProvider({ children }) {
           existingTab.url = url;
           return prevTabs;
         }
-        return [...prevTabs, { url, title, id, icon }];
+        return [...prevTabs, { url, title, id, icon, kind: "service" }];
       });
       setActiveTab(id);
     },
-    [workshop.services],
+    [workshop.services, isTerminalId],
   );
 
   const tabs = useMemo(() => {
-    const tabs = [TERMINAL_TAB];
+    const tabs = [...terminalTabs];
 
     (workshop.services || []).forEach((service) => {
       tabs.push({
@@ -97,12 +115,13 @@ export function TabContextProvider({ children }) {
         url: labspaceTabOverrides[service.id] || service.url,
         icon: service.icon || "link",
         title: service.title || service.id,
+        kind: "service",
       });
     });
 
     tabs.push(...customTabs);
     return tabs;
-  }, [workshop.services, customTabs, labspaceTabOverrides]);
+  }, [terminalTabs, workshop.services, customTabs, labspaceTabOverrides]);
 
   return (
     <TabContext.Provider

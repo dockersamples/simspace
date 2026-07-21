@@ -17,10 +17,16 @@ export type { Result };
  * (or the unmatched default), records the command in history, and returns the
  * output/exit. State mutations are applied to st in place.
  */
-export function run(lab: Lab, cmd: Command, fs: FS, st: Store): Result {
+export function run(
+  lab: Lab,
+  cmd: Command,
+  fs: FS,
+  st: Store,
+  terminalId?: string,
+): Result {
   st.appendHistory(cmd.line);
 
-  const m = match(lab, cmd, st);
+  const m = match(lab, cmd, st, terminalId);
   if (m) {
     const then = m.scenario.then;
     const { stdout, stderr } = applyThen(then, fs, st, m.args);
@@ -54,10 +60,16 @@ export function run(lab: Lab, cmd: Command, fs: FS, st: Store): Result {
  * matches an agent scenario (or falls back to defaults.unmatchedAgent), applies
  * its effects, records the prompt in history, and returns the output.
  */
-export function runAgent(lab: Lab, prompt: string, fs: FS, st: Store): Result {
+export function runAgent(
+  lab: Lab,
+  prompt: string,
+  fs: FS,
+  st: Store,
+  terminalId?: string,
+): Result {
   st.appendHistory("agent> " + prompt);
 
-  const m = matchAgent(lab, prompt, st);
+  const m = matchAgent(lab, prompt, st, terminalId);
   const then = m ? m.scenario.then : unmatchedAgentThen(lab);
 
   const { stdout, stderr } = applyThen(then, fs, st, {});

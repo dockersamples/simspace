@@ -34,6 +34,15 @@ export function remarkCodeIndexer() {
         : "true";
       node.data.hProperties["data-display-copy-button"] =
         codeBlockMeta.includes("no-copy-button") ? "false" : "true";
+      // `terminal-id=<id>` targets a specific terminal tab for the Run/Save
+      // buttons. Empty when unset — the CodeBlock falls back to the primary.
+      const terminalIdMeta = codeBlockMeta.find((m) =>
+        m.startsWith("terminal-id="),
+      );
+      node.data.hProperties["data-terminal-id"] = terminalIdMeta
+        ? terminalIdMeta.split("=").slice(1).join("=")
+        : "";
+
       const saveAsMeta = codeBlockMeta.find((m) => m.startsWith("save-as"));
       node.data.hProperties["data-display-save-as-button"] = saveAsMeta
         ? "true"

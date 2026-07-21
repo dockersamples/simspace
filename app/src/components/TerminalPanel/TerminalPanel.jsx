@@ -1,24 +1,39 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { SbxTerminal } from "../../terminal/SbxTerminal";
 import { useWorkshop } from "../../WorkshopContext";
 import { useTabs } from "../../TabContext";
 import { useTerminal } from "../../context/TerminalContext";
 import "./TerminalPanel.scss";
 
-// The right-hand pane. Always hosts the simulated <SbxTerminal>; any declared
-// services / custom tabs render as external iframes. The terminal stays mounted
-// (its simulator state is preserved) even when another tab is focused.
+// The right-hand pane. Hosts one simulated <SbxTerminal> per declared terminal
+// plus any service iframes. Every terminal stays mounted (its simulator state is
+// preserved) even when another tab is focused, so an agent session and a host
+// shell can run side by side.
 export function TerminalPanel() {
   const workshop = useWorkshop();
   const { tabs, activeTab, setActiveTab, removeTab } = useTabs();
-  const { register } = useTerminal();
-  const termRef = useRef(null);
+  const { register, simulator, error, subscribe, broadcast, resetAll } =
+    useTerminal();
 
-  useEffect(() => {
-    register(termRef.current);
-  }, [register]);
+  // Stable per-id ref callbacks so terminals don't re-register every render.
+  const refCallbacks = useRef({});
+  const getRefCallback = useCallback(
+    (id) => {
+      if (!refCallbacks.current[id]) {
+        refCallbacks.current[id] = (handle) => register(id, handle);
+      }
+      return refCallbacks.current[id];
+    },
+    [register],
+  );
 
-  const serviceTabs = tabs.filter((t) => t.id !== "terminal");
+  const handleChange = useCallback(
+    () => broadcast({ type: "state" }),
+    [broadcast],
+  );
+
+  const terminals = workshop.terminals || [];
+  const serviceTabs = tabs.filter((t) => t.kind === "service");
 
   return (
     <div className="terminal-panel d-flex flex-fill flex-column">
@@ -36,7 +51,7 @@ export function TerminalPanel() {
             >
               <span className="material-symbols-outlined me-1">{tab.icon}</span>
               <span>{tab.title}</span>
-              {tab.id !== "terminal" && activeTab === tab.id && (
+              {tab.kind === "service" && activeTab === tab.id && (
                 <span
                   role="button"
                   tabIndex={0}
@@ -54,17 +69,24 @@ export function TerminalPanel() {
         </div>
       )}
 
-      <div
-        className="flex-fill"
-        style={{ display: activeTab === "terminal" ? "flex" : "none" }}
-      >
-        <SbxTerminal
-          ref={termRef}
-          spec={workshop.simulatorSpec}
-          files={workshop.files}
+      {terminals.map((terminal) => (
+        <div
+          key={terminal.id}
           className="flex-fill"
-        />
-      </div>
+          style={{ display: activeTab === terminal.id ? "flex" : "none" }}
+        >
+          <SbxTerminal
+            ref={getRefCallback(terminal.id)}
+            simulator={simulator}
+            error={error}
+            terminalId={terminal.id}
+            onChange={handleChange}
+            subscribe={subscribe}
+            onReset={resetAll}
+            className="flex-fill"
+          />
+        </div>
+      ))}
 
       {serviceTabs.map((tab) => (
         <iframe

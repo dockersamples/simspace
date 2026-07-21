@@ -14,8 +14,12 @@ import {
 } from "react";
 import type { Control, Session } from "../engine/types";
 import { Simulator } from "../engine/simulator";
-import { useSimulator } from "./useSimulator";
 import "./SbxTerminal.css";
+
+/** A cross-terminal event broadcast so peers can refresh shared UI. */
+export interface TerminalEvent {
+  type: "state" | "reset";
+}
 
 /** Imperative API for driving the terminal from outside (Run / Save buttons). */
 export interface SbxTerminalHandle {
@@ -28,10 +32,12 @@ export interface SbxTerminalHandle {
 }
 
 export interface SbxTerminalProps {
-  /** The simulator YAML document text. */
-  spec: string;
-  /** Optional seed for the virtual filesystem, keyed by lab-relative path. */
-  files?: Record<string, string>;
+  /** The shared simulator instance backing every terminal. */
+  simulator: Simulator | null;
+  /** A build/parse error for the shared simulator, if any. */
+  error?: string | null;
+  /** This terminal's id — passed to the engine for `when.terminal` matching. */
+  terminalId?: string;
   /** Shell prompt shown in command mode. Defaults to "$ ". */
   shellPrompt?: string;
   /** Override streaming; defaults to the lab's `settings.streaming`. */
@@ -44,8 +50,12 @@ export interface SbxTerminalProps {
   showHeader?: boolean;
   /** Extra lines printed once on start (dim). Set to [] to suppress the default. */
   greeting?: string[];
-  /** Called with a fresh state snapshot after every command/turn. */
-  onStateChange?: (state: Record<string, unknown>) => void;
+  /** Called after this terminal mutates shared state, so peers can refresh. */
+  onChange?: () => void;
+  /** Subscribe to cross-terminal events; returns an unsubscribe function. */
+  subscribe?: (fn: (event: TerminalEvent) => void) => () => void;
+  /** Reset the whole shared machine (re-seed state + clear all transcripts). */
+  onReset?: () => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -90,22 +100,23 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
   function SbxTerminal(
     {
-      spec,
-      files,
+      simulator,
+      error,
+      terminalId,
       shellPrompt = "$ ",
       streaming,
       streamDelayMs,
       agentThinkMs,
       showHeader = true,
       greeting,
-      onStateChange,
+      onChange,
+      subscribe,
+      onReset,
       className,
       style,
     },
     ref,
   ) {
-  const { simulator, error } = useSimulator(spec, files);
-
   const [lines, setLines] = useState<TermLine[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -214,9 +225,11 @@ export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
     setLines((prev) => prev.filter((l) => l.id !== id));
   }, [stream, thinkMs]);
 
+  // Announce that this terminal changed shared state so peers can refresh
+  // (e.g. keep every terminal's Settings toggles in sync).
   const notify = useCallback(() => {
-    if (simulator && onStateChange) onStateChange(simulator.state());
-  }, [simulator, onStateChange]);
+    onChange?.();
+  }, [onChange]);
 
   // Render an agent turn: indent non-empty lines and tag stderr distinctly.
   const emitAgentTurn = useCallback(
@@ -264,7 +277,7 @@ export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
   const runCommand = useCallback(
     async (line: string) => {
       if (!simulator) return;
-      const outcome = simulator.execute(line);
+      const outcome = simulator.execute(line, terminalId);
       await emit(
         outcome.lines.map((l) => ({
           text: l.text,
@@ -278,7 +291,7 @@ export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
         const oneShot = simulator.oneShotPrompt(line);
         if (oneShot !== null) {
           await think();
-          const ao = simulator.prompt(oneShot);
+          const ao = simulator.prompt(oneShot, terminalId);
           await emitAgentTurn(ao);
           notify();
           return;
@@ -286,7 +299,7 @@ export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
         await enterSession(outcome.session);
       }
     },
-    [simulator, emit, think, emitAgentTurn, enterSession, notify],
+    [simulator, terminalId, emit, think, emitAgentTurn, enterSession, notify],
   );
 
   const runSessionTurn = useCallback(
@@ -300,7 +313,7 @@ export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
       if (line.startsWith("!")) {
         // Shell escape (`!cmd`): run the command text through the normal
         // scenario engine — the same matching used in command mode.
-        const cmdOutcome = simulator.execute(line.slice(1));
+        const cmdOutcome = simulator.execute(line.slice(1), terminalId);
         await emit(
           cmdOutcome.lines.map((l) => ({
             text: l.text,
@@ -311,11 +324,11 @@ export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
         return;
       }
       await think();
-      const ao = simulator.prompt(line);
+      const ao = simulator.prompt(line, terminalId);
       await emitAgentTurn(ao);
       notify();
     },
-    [simulator, emit, think, emitAgentTurn, notify],
+    [simulator, terminalId, emit, think, emitAgentTurn, notify],
   );
 
   // Runs a raw line through the terminal exactly as if it had been typed and
@@ -465,9 +478,12 @@ export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
     [simulator, notify],
   );
 
-  const reset = useCallback(() => {
+  // Clears this terminal's transcript and re-greets. The shared machine's state
+  // and filesystem are re-seeded once by the context (resetAll), which then
+  // broadcasts a "reset" event that lands here — so every terminal's view is
+  // rebuilt without each one re-seeding the shared state.
+  const resetView = useCallback(() => {
     if (!simulator) return;
-    simulator.reset();
     modeRef.current = { kind: "command" };
     idRef.current++;
     setControlValues(deriveControlValues(simulator));
@@ -478,18 +494,30 @@ export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
     setLines(
       intro.map((text) => ({ id: nextId(), text, kind: "system" as LineKind })),
     );
-    notify();
     inputRef.current?.focus();
-  }, [simulator, greeting, notify]);
+  }, [simulator, greeting]);
+
+  // React to changes made in any terminal: a "reset" rebuilds this view; any
+  // other change re-derives the Settings toggles from the now-shared state.
+  useEffect(() => {
+    if (!subscribe) return;
+    return subscribe((event) => {
+      if (event.type === "reset") {
+        resetView();
+      } else if (simulator) {
+        setControlValues(deriveControlValues(simulator));
+      }
+    });
+  }, [subscribe, resetView, simulator]);
 
   useImperativeHandle(
     ref,
     () => ({
       runCommand: (text: string) => void runLine(text),
       saveFile,
-      reset,
+      reset: () => onReset?.(),
     }),
-    [runLine, saveFile, reset],
+    [runLine, saveFile, onReset],
   );
 
   if (error) {
@@ -542,7 +570,7 @@ export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
             className="sbx-term-reset"
             onClick={(e) => {
               e.stopPropagation();
-              reset();
+              onReset?.();
             }}
           >
             Reset

@@ -25,6 +25,10 @@ defaults:
   unmatched:
     stderr: ["Error: that command isn't part of this lab yet."]
     exit: 1
+  unmatchedAgent:
+    output:
+      - "I can only respond to the prompts this lab has scripted. Try asking me"
+      - 'to "scaffold the app".'
 
 scenarios:
   - id: run-start
@@ -77,6 +81,8 @@ scenarios:
         - "web"
 
   # curl is gated by the network-access toggle (set via the Settings button).
+  # The toggle writes shared state, so enabling it in one terminal unblocks
+  # curl in every terminal.
   - id: curl-allowed
     when:
       command: curl
@@ -91,3 +97,39 @@ scenarios:
     then:
       stderr: ["curl: (7) Failed to connect: blocked by network policy."]
       exit: 7
+
+  # The agent session only starts in the Agent terminal (`when.terminal`). Run
+  # `claude` in the Host terminal and it falls through to the unmatched default.
+  - id: start-agent
+    when:
+      command: [claude]
+      terminal: agent
+    then:
+      output:
+        - "Launching agent (simulated)…"
+      session:
+        intro:
+          - "Ask me to scaffold the app, then type /exit to leave."
+        prompt: "agent> "
+        outro:
+          - "Leaving the agent session."
+
+  # A scripted agent turn that writes into the SHARED filesystem — so the Host
+  # terminal can immediately `cat` the file the agent just created.
+  - id: scaffold
+    when:
+      agent: true
+      terminal: agent
+      promptContains: ["scaffold"]
+    then:
+      output:
+        - "Created app/server.js — a minimal Express server listening on :3000."
+      files:
+        - create: app/server.js
+          content: |
+            const express = require("express");
+            const app = express();
+
+            app.get("/", (_, res) => res.send("Hello from the agent!"));
+
+            app.listen(3000, () => console.log("listening on :3000"));

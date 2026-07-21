@@ -114,6 +114,9 @@ function normalizeWhen(raw: unknown, id: string): When {
   if (w.state !== undefined) {
     when.state = w.state as Record<string, StateValue>;
   }
+  if (w.terminal !== undefined) {
+    when.terminal = String(w.terminal);
+  }
   return when;
 }
 

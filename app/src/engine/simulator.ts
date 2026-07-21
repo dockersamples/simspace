@@ -92,8 +92,12 @@ export class Simulator {
     return this.fs.listDir(dir);
   }
 
-  /** execute runs one command line against the lab's scenarios. */
-  execute(line: string): CommandOutcome {
+  /**
+   * execute runs one command line against the lab's scenarios. `terminalId`
+   * identifies the terminal the command came from, so scenarios can scope
+   * themselves with `when.terminal`.
+   */
+  execute(line: string, terminalId?: string): CommandOutcome {
     const argv = tokenize(line.trim());
     if (argv.length === 0) {
       return { lines: [], exit: 0, matched: "" };
@@ -102,7 +106,7 @@ export class Simulator {
     const cmd = parseCommand(argv);
     let result;
     try {
-      result = run(this.lab, cmd, this.fs, this.store);
+      result = run(this.lab, cmd, this.fs, this.store, terminalId);
     } catch (e) {
       return { lines: [err(fsMessage(e))], exit: 1, matched: "" };
     }
@@ -127,11 +131,14 @@ export class Simulator {
     return null;
   }
 
-  /** prompt dispatches a single agent prompt (a REPL turn or one-shot). */
-  prompt(text: string): AgentOutcome {
+  /**
+   * prompt dispatches a single agent prompt (a REPL turn or one-shot).
+   * `terminalId` scopes `when.terminal` on agent scenarios.
+   */
+  prompt(text: string, terminalId?: string): AgentOutcome {
     let result;
     try {
-      result = runAgent(this.lab, text, this.fs, this.store);
+      result = runAgent(this.lab, text, this.fs, this.store, terminalId);
     } catch (e) {
       return { lines: [err(fsMessage(e))], exit: 1, matched: "" };
     }

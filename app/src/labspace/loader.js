@@ -15,6 +15,17 @@
 //   services:                        # optional external-URL tabs
 //     - title: Docs
 //       url: https://example.com
+//   terminals:                       # optional multiple terminal tabs
+//     - id: host                     # (defaults to a single "terminal" tab)
+//       title: Host
+//       icon: dns
+//     - id: agent
+//       title: Agent
+//       icon: smart_toy
+//
+// All terminals share ONE simulator instance (state + filesystem), so a change
+// made in one is visible in the others — like two shells on the same machine.
+// Scenarios can scope themselves to a terminal with `when.terminal: <id>`.
 
 import { parse } from "yaml";
 import { slugify } from "./slugify";
@@ -73,6 +84,23 @@ export async function loadLabspace(labUrl = resolveLabUrl()) {
   }
   const simulatorSpec = await fetchText(resolve(raw.simulator));
 
+  // Terminals become tabs in the right-hand pane. They all share the single
+  // simulator above, so commands run in any terminal act on the same state and
+  // filesystem. Authors declare several (e.g. a host shell and an agent
+  // session) so commands can target one via `terminal-id` in a code block and
+  // scenarios can gate on `when.terminal`. With none declared, a single default
+  // terminal is used.
+  const terminalDefs =
+    Array.isArray(raw.terminals) && raw.terminals.length
+      ? raw.terminals
+      : [{ id: "terminal", title: "Terminal", icon: "terminal" }];
+
+  const terminals = terminalDefs.map((t, index) => ({
+    id: t.id || slugify(t.title || "") || `terminal-${index}`,
+    title: t.title || "Terminal",
+    icon: t.icon || "terminal",
+  }));
+
   return {
     title: raw.title || "Labspace",
     subtitle: raw.description || "",
@@ -80,6 +108,7 @@ export async function loadLabspace(labUrl = resolveLabUrl()) {
     services,
     variables: raw.variables || {},
     files: raw.files || {},
+    terminals,
     simulatorSpec,
   };
 }

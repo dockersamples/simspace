@@ -36,6 +36,11 @@ export interface When {
   prompt?: string;
   promptContains?: string[];
   state?: Record<string, StateValue>;
+  /**
+   * The id of the terminal the command must come from. Omitted means the
+   * scenario matches commands from any terminal.
+   */
+  terminal?: string;
 }
 
 /** A single filesystem mutation. Exactly one operation verb is set. */

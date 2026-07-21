@@ -19,6 +19,11 @@ export function CodeBlock({ node, inline, className, children, ...props }) {
 
   // These properties are populated by the codeIndexer remark plugin
   const saveAsPath = node.properties.dataSaveAsPath;
+  // The terminal the Run/Save buttons target. Resolves to the primary terminal
+  // when unset or when the id doesn't match a declared terminal.
+  const targetTerminalId = terminal.resolveTerminalId(
+    node.properties.dataTerminalId,
+  );
   const canRun =
     !printMode &&
     node.properties.dataDisplayRunButton === "true" &&
@@ -43,19 +48,24 @@ export function CodeBlock({ node, inline, className, children, ...props }) {
     return Promise.resolve();
   }, [children]);
 
-  // Feed the code block into the simulated terminal, as if the learner typed it.
+  // Feed the code block into the targeted terminal, as if the learner typed it.
   const onRunClick = useCallback(() => {
-    setActiveTab("terminal");
-    terminal.runCommand(String(children).replace(/\n$/, ""));
+    setActiveTab(targetTerminalId);
+    terminal.runCommand(targetTerminalId, String(children).replace(/\n$/, ""));
     return Promise.resolve();
-  }, [children, terminal, setActiveTab]);
+  }, [children, terminal, setActiveTab, targetTerminalId]);
 
-  // Write the code block to the virtual filesystem at its `save-as` path.
+  // Write the code block to the targeted terminal's virtual filesystem at its
+  // `save-as` path.
   const onSaveAsClick = useCallback(() => {
-    setActiveTab("terminal");
-    terminal.saveFile(saveAsPath, String(children).replace(/\n$/, ""));
+    setActiveTab(targetTerminalId);
+    terminal.saveFile(
+      targetTerminalId,
+      saveAsPath,
+      String(children).replace(/\n$/, ""),
+    );
     return Promise.resolve();
-  }, [children, saveAsPath, terminal, setActiveTab]);
+  }, [children, saveAsPath, terminal, setActiveTab, targetTerminalId]);
 
   if (!match || inline) {
     return (
