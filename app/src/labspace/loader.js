@@ -31,13 +31,14 @@ import { parse } from "yaml";
 import { slugify } from "./slugify";
 
 /**
- * Resolves the URL of the labspace.yaml to load. Defaults to `labspace.yaml`
- * next to the app, overridable with a `?lab=<path>` query parameter so one
- * build can host several labs.
+ * Resolves the URL of the labspace.yaml to load. Defaults to `lab/labspace.yaml`
+ * (the lab lives in its own directory so it can be mounted/replaced as a single
+ * unit without clobbering the app's own assets), overridable with a `?lab=<path>`
+ * query parameter so one build can host several labs.
  */
 export function resolveLabUrl() {
   const override = new URLSearchParams(window.location.search).get("lab");
-  return new URL(override || "labspace.yaml", document.baseURI).toString();
+  return new URL(override || "lab/labspace.yaml", document.baseURI).toString();
 }
 
 async function fetchText(url) {

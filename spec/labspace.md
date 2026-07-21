@@ -36,6 +36,9 @@ Key properties:
 
 - **Single source.** One `labspace.yaml` fully describes a lab. Paths it
   references are resolved **relative to the `labspace.yaml` file itself**.
+- **Self-contained directory.** A lab lives in its own directory (the default is
+  `lab/`, holding `labspace.yaml` and everything it references) so it can be
+  mounted or swapped as a single unit without touching the app's own assets.
 - **One simulator, many terminals.** Every declared terminal tab is backed by
   the **same** simulator instance — one shared state tree and one shared
   virtual filesystem. A change made in one terminal is visible in the others,
@@ -48,17 +51,20 @@ Key properties:
 
 ## 2. Resolving which lab to load
 
-By default the app loads `labspace.yaml` served next to the app. A `?lab=<path>`
-query parameter overrides the path, so a single build can host several labs:
+By default the app loads `lab/labspace.yaml` (relative to the app's base URI) —
+the lab lives in its own `lab/` directory so it can be mounted or replaced as a
+whole without clobbering the app's assets. A `?lab=<path>` query parameter
+overrides the path, so a single build can host several labs:
 
 ```
-https://example.com/            → loads ./labspace.yaml
-https://example.com/?lab=labs/docker-networking.yaml
+https://example.com/            → loads ./lab/labspace.yaml
+https://example.com/?lab=labs/docker-networking/labspace.yaml
 ```
 
 The override is resolved relative to the app's base URI. All paths **inside**
 the chosen `labspace.yaml` (`simulator`, `sections[].contentPath`) are then
-resolved relative to that file's location.
+resolved relative to that file's location — so within `lab/` they stay simple
+(`simulator.yaml`, `00-intro.md`).
 
 ---
 

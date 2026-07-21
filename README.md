@@ -33,7 +33,8 @@ app/                  the consolidated static app (build + deploy this)
     engine/           in-browser scenario engine (TypeScript)
     terminal/         <SbxTerminal> mock terminal component
     components/       instructions panel, terminal panel, markdown renderer
-  public/             a sample lab (labspace.yaml + simulator.yaml + *.md)
+  public/
+    lab/              a sample lab (labspace.yaml + simulator.yaml + *.md)
 spec/                 specifications for the two YAML formats
 AGENTS.md             onboarding guide for agentic coding sessions
 Dockerfile            builds app/ and serves it with nginx (optional)
@@ -59,15 +60,20 @@ client-side, no server.
 ```bash
 cd app
 npm install
-npm run dev        # local dev server, serves the sample lab in app/public/
+npm run dev        # local dev server, serves the sample lab in app/public/lab/
 npm run build      # static build → app/dist
 npm run preview    # serve the production build
 ```
 
 ## Authoring a lab
 
-A lab is a `labspace.yaml` plus the files it references. Deploy one lab per
-site (or host several and select with `?lab=<path>`):
+A lab is a `labspace.yaml` plus the files it references, kept together in a
+`lab/` directory. The app loads `lab/labspace.yaml` by default; all paths inside
+it are resolved relative to the `labspace.yaml`, so they stay simple
+(`simulator.yaml`, `00-intro.md`). Keeping the lab in its own directory means a
+Docker dev environment can mount just that directory without clobbering the
+app's own assets. Deploy one lab per site (or host several and select with
+`?lab=<path>`):
 
 ```yaml
 title: "My Lab"
@@ -94,7 +100,7 @@ services:                        # optional external-URL tabs (iframes)
   code blocks (a Run button), `save-as=<path>` blocks (a Save button), file
   links, variable prompts, and OS-conditional content.
 
-The sample lab under [`app/public/`](app/public) is a complete, working
+The sample lab under [`app/public/lab/`](app/public/lab) is a complete, working
 example — copy it as a starting point.
 
 ## Deploying

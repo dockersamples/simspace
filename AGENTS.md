@@ -43,7 +43,9 @@ app/                 THE PRODUCT — the consolidated static React app
     terminal/        <SbxTerminal> mock terminal component
     components/       WorkshopPanel (instructions + markdown), TerminalPanel, ExportView
     context/          React contexts (Workshop, Tab, Terminal, PrintMode)
-  public/            a complete SAMPLE LAB (labspace.yaml + simulator.yaml + *.md)
+  public/
+    lab/             a complete SAMPLE LAB (labspace.yaml + simulator.yaml + *.md)
+                     — the default lab, loaded from lab/labspace.yaml
   dist/              build output — generated, do not edit
 spec/                the two format specifications (see above)
 .github/workflows/   GitHub Pages deploy workflow
@@ -60,7 +62,7 @@ running the app and exercising the lab, plus lint.
 ```bash
 cd app
 npm install
-npm run dev            # local dev server (0.0.0.0), serves app/public/ sample lab
+npm run dev            # local dev server (0.0.0.0), serves app/public/lab/ sample lab
 npm run build          # static build → app/dist
 npm run preview        # serve the production build
 npm run lint           # ESLint
@@ -78,8 +80,11 @@ Vite; `app/src/engine/index.ts` is its public surface for embedding or testing.
   free of React/DOM dependencies — it is a pure state machine.
 - The engine must stay **deterministic**: no time, randomness, network, or LLM
   calls in scenario evaluation (streaming/pacing in `settings` is cosmetic only).
+- The lab lives in its own directory (`app/public/lab/`) and is loaded from
+  `lab/labspace.yaml` by default (overridable with `?lab=<path>`). Keeping it
+  self-contained lets a Docker dev environment mount just that directory.
 - Paths referenced from `labspace.yaml` (`simulator:`, `contentPath`) resolve
-  relative to the `labspace.yaml` file itself.
+  relative to the `labspace.yaml` file itself, so they stay simple within `lab/`.
 
 ## Gotchas
 
@@ -91,8 +96,8 @@ Vite; `app/src/engine/index.ts` is its public surface for embedding or testing.
   virtual filesystem. A command in one terminal is visible in the others.
   Scenarios scope to a terminal with `when.terminal: <id>`; ids come from
   `labspace.yaml`'s `terminals:`.
-- **`app/dist/` and `app/public/*.yaml` copies** are build/sample artifacts —
-  edit the sources under `app/public/`, not `app/dist/`.
+- **`app/dist/` is generated** by `npm run build` — never edit it. Edit the lab
+  sources under `app/public/lab/`.
 
 ## Deploying
 
