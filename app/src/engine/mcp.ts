@@ -1,6 +1,6 @@
-// Renders mocked MCP tool calls as sbx-style terminal output. No external
+// Renders mocked MCP tool calls as terminal output. No external
 // service is ever contacted. Ported from the Go mcp package.
-// See sbx-simulator/docs/scenario-spec.md §9.
+// See spec/simulator.md §9.
 
 import { MCPCall, StateValue } from "./types";
 

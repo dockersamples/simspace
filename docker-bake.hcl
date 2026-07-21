@@ -5,11 +5,11 @@
 #   docker buildx bake app-local    # single-platform, loaded into local daemon
 #
 # Common override:
-#   IMAGE=docker.io/dockersamples/sbxlab docker buildx bake --push
+#   IMAGE=docker.io/dockersamples/labspace docker buildx bake --push
 
 # Fully-qualified image name (without tag).
 variable "IMAGE" {
-  default = "michaelirwin244/sbxlab"
+  default = "michaelirwin244/labspace"
 }
 
 # Tags applied to the built image.

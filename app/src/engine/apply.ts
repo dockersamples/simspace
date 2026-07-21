@@ -1,6 +1,6 @@
 // Applies a scenario's effects in the fixed order files -> state ->
 // output/stderr -> mcp, returning the collected stdout/stderr lines. Ported
-// from engine/apply.go. See sbx-simulator/docs/scenario-spec.md §7.
+// from engine/apply.go. See spec/simulator.md §7.
 
 import { FS } from "./filesystem";
 import { Store } from "./state";

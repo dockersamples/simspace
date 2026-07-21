@@ -40,7 +40,7 @@ app/                 THE PRODUCT — the consolidated static React app
                      — manifest.ts (parse), match.ts, run.ts, apply.ts,
                        state.ts, filesystem.ts, template.ts, simulator.ts (facade)
     labspace/        fetch + parse labspace.yaml; slug + $$variable$$ substitution
-    terminal/        <SbxTerminal> mock terminal component
+    terminal/        <MockTerminal> mock terminal component
     components/       WorkshopPanel (instructions + markdown), TerminalPanel, ExportView
     context/          React contexts (Workshop, Tab, Terminal, PrintMode)
   public/

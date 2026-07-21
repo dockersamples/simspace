@@ -18,7 +18,7 @@ import {
 export class ManifestError extends Error {}
 
 /**
- * Parse decodes sbx-simulator.yaml text into a Lab, normalizing the flexible
+ * Parse decodes simulator.yaml text into a Lab, normalizing the flexible
  * matcher forms. It throws ManifestError on structural problems.
  */
 export function parseManifest(text: string): Lab {

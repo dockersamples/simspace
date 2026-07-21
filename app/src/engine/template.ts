@@ -1,6 +1,6 @@
 // Minimal {{ }} template substitution for output, file content, and `with`.
 // Ported from the Go engine/template.go. Only simple substitution is supported
-// (no logic or expressions). See sbx-simulator/docs/scenario-spec.md §7.4.
+// (no logic or expressions). See spec/simulator.md §7.4.
 
 import { Store } from "./state";
 import { StateValue } from "./types";

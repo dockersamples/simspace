@@ -1,4 +1,4 @@
-// SbxTerminal renders an in-browser mock terminal driven by a simulator YAML
+// MockTerminal renders an in-browser mock terminal driven by a simulator YAML
 // spec. Any command defined in the spec can be typed at the shell prompt. A
 // scenario with a `session` effect drops the user into an interactive agent
 // REPL; inside a session, `!cmd` runs a command scenario.
@@ -14,7 +14,7 @@ import {
 } from "react";
 import type { Session } from "../engine/types";
 import { Simulator } from "../engine/simulator";
-import "./SbxTerminal.css";
+import "./MockTerminal.css";
 
 /** A cross-terminal event broadcast so peers can refresh shared UI. */
 export interface TerminalEvent {
@@ -22,14 +22,14 @@ export interface TerminalEvent {
 }
 
 /** Imperative API for driving the terminal from outside (Run / Save buttons). */
-export interface SbxTerminalHandle {
+export interface MockTerminalHandle {
   /** Runs a command line as if it were typed at the prompt. */
   runCommand: (text: string) => void;
   /** Writes content to a path in the virtual filesystem. */
   saveFile: (path: string, content: string) => void;
 }
 
-export interface SbxTerminalProps {
+export interface MockTerminalProps {
   /** The shared simulator instance backing every terminal. */
   simulator: Simulator | null;
   /** A build/parse error for the shared simulator, if any. */
@@ -91,8 +91,8 @@ const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", 
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
-  function SbxTerminal(
+export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
+  function MockTerminal(
     {
       simulator,
       error,
@@ -273,7 +273,7 @@ export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
       notify();
 
       if (outcome.session) {
-        // `sbx run -p "…"` runs a single prompt, then exits (no REPL).
+        // A one-shot prompt (e.g. `run -p "…"`) runs a single prompt, then exits (no REPL).
         const oneShot = simulator.oneShotPrompt(line);
         if (oneShot !== null) {
           await think();
@@ -480,8 +480,8 @@ export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
 
   if (error) {
     return (
-      <div className={`sbx-term sbx-term-error ${className ?? ""}`} style={style}>
-        <div className="sbx-term-body">
+      <div className={`mock-term mock-term-error ${className ?? ""}`} style={style}>
+        <div className="mock-term-body">
           <div className="term-line term-stderr">
             Failed to load lab: {error}
           </div>
@@ -495,11 +495,11 @@ export const SbxTerminal = forwardRef<SbxTerminalHandle, SbxTerminalProps>(
 
   return (
     <div
-      className={`sbx-term ${className ?? ""}`}
+      className={`mock-term ${className ?? ""}`}
       style={style}
       onClick={() => inputRef.current?.focus()}
     >
-      <div className="sbx-term-body" ref={scrollRef}>
+      <div className="mock-term-body" ref={scrollRef}>
         {lines.map((l) => (
           <div key={l.id} className={`term-line term-${l.kind}`}>
             {l.text === "" ? " " : l.text}

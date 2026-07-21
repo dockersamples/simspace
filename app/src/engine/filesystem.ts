@@ -5,7 +5,7 @@
 // the deterministic state machine (e.g. a `replace` whose `find` is missing is
 // a hard error that fails the lab). Modelling them faithfully keeps web and CLI
 // behavior identical. Host commands (ls, cat, …) are intentionally NOT mocked.
-// See sbx-simulator/docs/scenario-spec.md §7.1.
+// See spec/simulator.md §7.1.
 
 export class FSError extends Error {}
 

@@ -31,7 +31,7 @@ app/                  the consolidated static app (build + deploy this)
   src/
     labspace/         fetches + parses labspace.yaml, variable substitution
     engine/           in-browser scenario engine (TypeScript)
-    terminal/         <SbxTerminal> mock terminal component
+    terminal/         <MockTerminal> mock terminal component
     components/       instructions panel, terminal panel, markdown renderer
   public/
     lab/              a sample lab (labspace.yaml + simulator.yaml + *.md)

@@ -1,9 +1,9 @@
 // In-memory, dot-path runtime state store, ported from the Go state package.
 //
-// In the CLI, `sbx` is a fresh process per command so state is persisted to
+// The original CLI ran a fresh process per command, so state was persisted to
 // state.json between invocations. In the browser the terminal component keeps a
 // single Store alive across commands; "reset" re-seeds from the manifest, just
-// like deleting $SBX_SIM_HOME. See sbx-simulator/docs/scenario-spec.md §2.
+// like clearing that on-disk state. See spec/simulator.md §2.
 
 import { StateValue } from "./types";
 

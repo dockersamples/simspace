@@ -58,7 +58,7 @@ export interface FileOp {
   to?: string; // for copy
 }
 
-/** A mocked MCP tool invocation rendered as sbx-style output. */
+/** A mocked MCP tool invocation rendered as terminal output. */
 export interface MCPCall {
   tool: string;
   arguments?: Record<string, StateValue>;

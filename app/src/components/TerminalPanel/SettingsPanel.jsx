@@ -80,13 +80,13 @@ export function SettingsPanel() {
                       </span>
                     )}
                   </div>
-                  <label className="sbx-toggle">
+                  <label className="settings-toggle">
                     <input
                       type="checkbox"
                       checked={values[control.id] ?? false}
                       onChange={(e) => toggle(control, e.target.checked)}
                     />
-                    <span className="sbx-toggle-track" />
+                    <span className="settings-toggle-track" />
                   </label>
                 </li>
               ))}

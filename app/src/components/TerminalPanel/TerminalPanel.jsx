@@ -1,12 +1,12 @@
 import { useCallback, useRef } from "react";
-import { SbxTerminal } from "../../terminal/SbxTerminal";
+import { MockTerminal } from "../../terminal/MockTerminal";
 import { SettingsPanel } from "./SettingsPanel";
 import { useWorkshop } from "../../WorkshopContext";
 import { useTabs } from "../../TabContext";
 import { useTerminal } from "../../context/TerminalContext";
 import "./TerminalPanel.scss";
 
-// The pane owns the framing (tab bar + border). It hosts one <SbxTerminal> per
+// The pane owns the framing (tab bar + border). It hosts one <MockTerminal> per
 // declared terminal plus, when the lab defines controls, a Settings "page".
 // Terminals stay mounted (their transcripts persist) even when another tab is
 // focused, so an agent session and a host shell can run side by side.
@@ -94,7 +94,7 @@ export function TerminalPanel() {
           className="flex-fill"
           style={{ display: activeTab === terminal.id ? "flex" : "none" }}
         >
-          <SbxTerminal
+          <MockTerminal
             ref={getRefCallback(terminal.id)}
             simulator={simulator}
             error={error}

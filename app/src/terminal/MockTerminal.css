@@ -1,9 +1,9 @@
-/* SbxTerminal styling. A dark, monospaced terminal surface. The surrounding
+/* MockTerminal styling. A dark, monospaced terminal surface. The surrounding
    frame (tab bar, border, rounding) is owned by the TerminalPanel, so the
    terminal itself fills its container edge-to-edge. Colors are applied per line
    kind (the CLI uses ANSI; here we use classes). */
 
-.sbx-term {
+.mock-term {
   --term-bg: #0d1117;
   --term-fg: #d1d5da;
   --term-dim: #6e7681;
@@ -26,7 +26,7 @@
   line-height: 1.5;
 }
 
-.sbx-term-body {
+.mock-term-body {
   flex: 1;
   overflow-y: auto;
   padding: 12px 14px;
@@ -95,6 +95,6 @@
   caret-color: var(--term-green);
 }
 
-.sbx-term-error .term-stderr {
+.mock-term-error .term-stderr {
   padding: 14px;
 }
