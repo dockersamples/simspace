@@ -1,0 +1,167 @@
+// A Docker-Hub-admin-flavored settings page shown inside the terminal pane:
+// a dark surface with elevated cards, hairline borders, and Docker-blue
+// accents. Sans-serif (not monospace) so it reads like an admin UI, not a
+// terminal.
+
+.settings-panel {
+  --set-bg: #0d1117;
+  --set-card: #161b22;
+  --set-border: #30363d;
+  --set-border-soft: #21262d;
+  --set-text: #e6edf3;
+  --set-muted: #8b949e;
+  --set-accent: #2560ff;
+
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--set-bg);
+  color: var(--set-text);
+  font-family: Inter, Helvetica, Arial, sans-serif;
+}
+
+.settings-scroll {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 28px 24px 40px;
+}
+
+.settings-head {
+  margin-bottom: 20px;
+}
+
+.settings-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  border: none;
+  padding: 0;
+}
+
+.settings-subtitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--set-muted);
+}
+
+.settings-card {
+  background: var(--set-card);
+  border: 1px solid var(--set-border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.settings-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--set-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.settings-card-icon {
+  font-size: 18px;
+  color: var(--set-accent);
+}
+
+.settings-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--set-text);
+}
+
+.settings-empty {
+  padding: 18px 16px;
+  font-size: 13px;
+  color: var(--set-muted);
+}
+
+.settings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  margin: 0;
+  border-bottom: 1px solid var(--set-border-soft);
+}
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-row-text {
+  min-width: 0;
+}
+
+.settings-row-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--set-text);
+}
+
+.settings-row-desc {
+  display: block;
+  margin-top: 3px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--set-muted);
+}
+
+// ── Toggle switch (Docker-blue when on) ──────────────────────────────────────
+.settings-panel .sbx-toggle {
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  height: 22px;
+  display: inline-block;
+}
+.settings-panel .sbx-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.settings-panel .sbx-toggle-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  background: #30363d;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.settings-panel .sbx-toggle-track::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #c9d1d9;
+  top: 3px;
+  left: 3px;
+  transition:
+    transform 0.18s,
+    background 0.18s;
+}
+.settings-panel .sbx-toggle input:checked + .sbx-toggle-track {
+  background: var(--set-accent);
+}
+.settings-panel .sbx-toggle input:checked + .sbx-toggle-track::after {
+  transform: translateX(16px);
+  background: #fff;
+}
+.settings-panel .sbx-toggle input:focus-visible + .sbx-toggle-track {
+  outline: 2px solid #4f7cff;
+  outline-offset: 2px;
+}

@@ -14,7 +14,7 @@ docker ps
 ```
 
 Now try reaching it with `curl`. By default the network is blocked — open the
-**Settings** panel in the terminal header and enable *network access*, then run:
+**Settings** tab and enable *network access*, then run:
 
 ```bash
 curl http://localhost:8080

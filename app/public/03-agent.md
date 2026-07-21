@@ -29,9 +29,9 @@ the agent's changes, because the filesystem is shared:
 cat app/server.js
 ```
 
-State is shared too. Open the **Settings** panel on either terminal and enable
-*network access*, then run `curl` from the **Host** — the toggle you flipped in
-one terminal unblocks it everywhere:
+State is shared too. Open the **Settings** tab and enable *network access*,
+then run `curl` from the **Host** — the setting applies to the whole shared
+machine, so it's unblocked in every terminal:
 
 ```bash
 curl http://localhost:8080

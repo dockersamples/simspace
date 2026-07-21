@@ -51,6 +51,7 @@
   background: var(--wp-bg-elevated);
   border-bottom: 1px solid var(--wp-border);
   z-index: 10;
+  position: relative;
 
   .workshop-header-bar {
     display: flex;
@@ -71,6 +72,54 @@
     width: 30px;
     height: 30px;
     flex: 0 0 auto;
+    cursor: context-menu;
+  }
+
+  // Hidden right-click menu on the logo (Reset lab, for authors/testers).
+  .workshop-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+  }
+
+  .workshop-context-menu {
+    position: fixed;
+    z-index: 1001;
+    min-width: 170px;
+    padding: 4px;
+    background: var(--wp-bg-elevated);
+    border: 1px solid var(--wp-border);
+    border-radius: 8px;
+    box-shadow: var(--wp-shadow);
+  }
+
+  .workshop-context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 10px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--wp-text);
+    text-align: left;
+    cursor: pointer;
+
+    .material-symbols-outlined {
+      font-size: 18px;
+      color: var(--wp-text-muted);
+    }
+
+    &:hover {
+      background: var(--wp-accent-soft);
+      color: var(--wp-accent);
+
+      .material-symbols-outlined {
+        color: var(--wp-accent);
+      }
+    }
   }
 
   [data-bs-theme="dark"] & .workshop-brand-logo {

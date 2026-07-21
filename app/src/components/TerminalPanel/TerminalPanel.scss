@@ -1,20 +1,38 @@
 .terminal-panel {
   min-width: 0;
   overflow: hidden;
+  // Full-bleed dark surface. The terminal and settings pages fill it edge to
+  // edge (no inner rounding), so no pane background peeks through at the
+  // corners.
+  background: #0d1117;
 
-  // Let SbxTerminal fill the available height of the pane.
+  // Let SbxTerminal / settings page fill the available height of the pane.
   .sbx-term {
     height: 100%;
     width: 100%;
+  }
+
+  .terminal-tabbar {
+    flex: 0 0 auto;
+    padding: 0.4rem 0.5rem 0;
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
   }
 
   .terminal-tab {
     background: transparent;
     border: none;
     color: #fff;
-    font-size: 0.7rem;
-    padding: 0.15rem 0.75rem;
-    opacity: 0.7;
+    font-size: 0.72rem;
+    padding: 0.3rem 0.75rem;
+    opacity: 0.65;
+    transition:
+      opacity 0.15s ease,
+      background 0.15s ease;
+
+    &:hover {
+      opacity: 0.9;
+    }
 
     &.active {
       background: var(--bs-primary);
@@ -23,6 +41,15 @@
 
     .material-symbols-outlined {
       font-size: 0.9rem;
+    }
+  }
+
+  .terminal-tab-settings {
+    color: #adbac7;
+
+    &.active {
+      background: #21262d;
+      color: #fff;
     }
   }
 
