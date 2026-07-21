@@ -34,17 +34,18 @@ app/                  the consolidated static app (build + deploy this)
     terminal/         <SbxTerminal> mock terminal component
     components/       instructions panel, terminal panel, markdown renderer
   public/             a sample lab (labspace.yaml + simulator.yaml + *.md)
+spec/                 specifications for the two YAML formats
+AGENTS.md             onboarding guide for agentic coding sessions
 Dockerfile            builds app/ and serves it with nginx (optional)
 docker-bake.hcl       bake targets for the static-app image
 .github/workflows/    GitHub Pages deploy workflow
-interface/client/     original Labspace React client (superseded by app/)
-sbx-simulator-web/    original standalone simulator package (superseded by app/)
-kit/                  legacy sandbox kit definition (obsolete for static hosting)
 ```
 
-`app/` is the product. `interface/client/` and `sbx-simulator-web/` are the two
-efforts it was assembled from and are kept for reference; they can be removed
-once `app/` is fully adopted.
+`app/` is the product — a single, self-contained static app. The two YAML
+formats it consumes are specified under [`spec/`](spec):
+
+- [`spec/labspace.md`](spec/labspace.md) — the `labspace.yaml` lab config.
+- [`spec/simulator.md`](spec/simulator.md) — the `simulator.yaml` scenario spec.
 
 ## The `app/`
 
@@ -87,8 +88,8 @@ services:                        # optional external-URL tabs (iframes)
 ```
 
 - **`simulator.yaml`** declares scenarios for each command a learner runs. See
-  [`sbx-simulator-web/README.md`](sbx-simulator-web/README.md) for the engine
-  and the scenario reference.
+  [`spec/simulator.md`](spec/simulator.md) for the full scenario reference, and
+  [`spec/labspace.md`](spec/labspace.md) for every `labspace.yaml` field.
 - **Markdown sections** use `$$variable$$` substitution and support runnable
   code blocks (a Run button), `save-as=<path>` blocks (a Save button), file
   links, variable prompts, and OS-conditional content.
