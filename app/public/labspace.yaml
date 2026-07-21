@@ -1,0 +1,26 @@
+title: "Getting Started (Simulated)"
+description: "A fully in-browser lab — every command is scripted and runs locally."
+
+# Path to the simulator scenario spec (relative to this file).
+simulator: simulator.yaml
+
+# Seed files for the virtual filesystem. Built-in `ls`/`cat` reflect these.
+files:
+  app/server.js: |
+    const express = require("express");
+    const app = express();
+
+    app.get("/", (_, res) => res.send("Hello from the lab!"));
+
+    app.listen(3000, () => console.log("listening on :3000"));
+
+sections:
+  - title: Introduction
+    contentPath: 00-intro.md
+  - title: Run a container
+    contentPath: 01-run.md
+  - title: Edit and save a file
+    contentPath: 02-edit.md
+
+variables:
+  containerName: web

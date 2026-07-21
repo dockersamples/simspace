@@ -1,0 +1,33 @@
+.terminal-panel {
+  min-width: 0;
+  overflow: hidden;
+
+  // Let SbxTerminal fill the available height of the pane.
+  .sbx-term {
+    height: 100%;
+    width: 100%;
+  }
+
+  .terminal-tab {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.75rem;
+    opacity: 0.7;
+
+    &.active {
+      background: var(--bs-primary);
+      opacity: 1;
+    }
+
+    .material-symbols-outlined {
+      font-size: 0.9rem;
+    }
+  }
+
+  .terminal-tab-close {
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+}

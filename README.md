@@ -4,8 +4,11 @@ A reusable platform for building deterministic, interactive learning experiences
 — without requiring production infrastructure, AI API keys, or organizational
 permissions.
 
-Authors write a scenario file and instructional content; learners get a browser-
-based mock terminal that responds to any command predictably, every time.
+Authors write a scenario file and instructional content; learners get a
+browser-based mock terminal that responds to any command predictably, every
+time. The whole experience is **static**: a React app that fetches its lab
+config at startup and simulates every command in the browser, so it can be
+deployed to any static host (GitHub Pages, S3, Netlify, …) with no backend.
 
 ## Why a simulator?
 
@@ -24,75 +27,82 @@ authors control exactly what happens.
 ## Repository layout
 
 ```
-Dockerfile          multi-stage build for the sandbox template image
-go.work             Go workspace linking both modules
-kit/
-  spec.yaml         sandbox kit definition (image + entrypoint)
-interface/
-  api/              Go API server — serves the labspace UI and terminal
-  client/           React/Vite frontend
-sbx-simulator/
-  cmd/sbx/          entrypoint for the simulated sbx CLI
-  manifest/         sbx-simulator.yaml schema and command matchers
-  engine/           scenario matching, effect application, templating
-  state/            filesystem-backed state store
-  docs/             scenario authoring spec
-  testdata/labs/    example labs
-sbx-simulator-web/
-  src/engine/       TypeScript port of the simulator scenario engine
-  src/react/        <SbxTerminal> component
-  src/demo/         Vite demo playground
+app/                  the consolidated static app (build + deploy this)
+  src/
+    labspace/         fetches + parses labspace.yaml, variable substitution
+    engine/           in-browser scenario engine (TypeScript)
+    terminal/         <SbxTerminal> mock terminal component
+    components/       instructions panel, terminal panel, markdown renderer
+  public/             a sample lab (labspace.yaml + simulator.yaml + *.md)
+Dockerfile            builds app/ and serves it with nginx (optional)
+docker-bake.hcl       bake targets for the static-app image
+.github/workflows/    GitHub Pages deploy workflow
+interface/client/     original Labspace React client (superseded by app/)
+sbx-simulator-web/    original standalone simulator package (superseded by app/)
+kit/                  legacy sandbox kit definition (obsolete for static hosting)
 ```
 
-## Components
+`app/` is the product. `interface/client/` and `sbx-simulator-web/` are the two
+efforts it was assembled from and are kept for reference; they can be removed
+once `app/` is fully adopted.
 
-### `interface`
+## The `app/`
 
-A Go API server and React frontend that together serve the Labspace UI: rendered
-instructional content, a browser-based terminal (xterm.js over WebSocket), and
-HTTP endpoints for running commands and saving files. It reads a
-`labspace.yaml` from the sandbox at `/home/agent/labspace/instructions/`.
-
-### `sbx-simulator-web`
-
-A browser-based React terminal that runs labs from a `simulator.yaml` spec —
-no binary, no server, no network. Authors define scenarios for any command;
-learners type them in an in-browser terminal powered by a first-match-wins
-scenario engine. Built-in `ls` and `cat` automatically reflect the virtual
-filesystem. A Vite demo playground (`npm run dev`) lets authors edit a spec
-and watch state update live.
-
-See [`sbx-simulator-web/README.md`](sbx-simulator-web/README.md) for usage,
-props, and the exported headless engine.
-
-See [`sbx-simulator/docs/scenario-spec.md`](sbx-simulator/docs/scenario-spec.md)
-for the full `simulator.yaml` authoring reference.
-
-## Building
-
-Both Go modules can be tested together from the workspace root:
+A static React app with two panes: rendered instructional content on the left
+and an in-browser simulated terminal on the right. At startup it fetches a
+`labspace.yaml` describing the lab, then loads the referenced simulator spec and
+markdown files as static assets. "Run" buttons feed commands into the terminal
+and "Save" buttons write files into the terminal's virtual filesystem — all
+client-side, no server.
 
 ```bash
-go test ./...
-go vet ./...
+cd app
+npm install
+npm run dev        # local dev server, serves the sample lab in app/public/
+npm run build      # static build → app/dist
+npm run preview    # serve the production build
 ```
-
-Build the sandbox template image (builds both binaries and the React client):
-
-```bash
-docker build .
-```
-
-The `sbx-build` stage compiles the simulator, the `api-build` stage compiles
-the interface server, and the final sandbox stage assembles them into the
-`docker/sandbox-templates:shell-docker` base image.
 
 ## Authoring a lab
 
-1. Write a `simulator.yaml` with scenarios for each command the learner will
-   run. See [`sbx-simulator/docs/scenario-spec.md`](sbx-simulator/docs/scenario-spec.md)
-   for the full schema reference.
-2. Write a `labspace.yaml` describing the lab sections and instructions.
-3. Embed the spec in your lab's React/HTML page via `<SbxTerminal spec={...} />`.
+A lab is a `labspace.yaml` plus the files it references. Deploy one lab per
+site (or host several and select with `?lab=<path>`):
 
-See [`interface/README.md`](interface/README.md) for the Labspace UI details.
+```yaml
+title: "My Lab"
+description: "One-line summary shown in the header."
+simulator: simulator.yaml        # scenario spec (relative path)
+files:                           # optional seed for the virtual filesystem
+  app/server.js: "// starter code\n"
+sections:
+  - title: Introduction
+    contentPath: 00-intro.md
+  - title: Run something
+    contentPath: 01-run.md
+variables:
+  containerName: web
+services:                        # optional external-URL tabs (iframes)
+  - title: Docs
+    url: https://example.com
+```
+
+- **`simulator.yaml`** declares scenarios for each command a learner runs. See
+  [`sbx-simulator-web/README.md`](sbx-simulator-web/README.md) for the engine
+  and the scenario reference.
+- **Markdown sections** use `$$variable$$` substitution and support runnable
+  code blocks (a Run button), `save-as=<path>` blocks (a Save button), file
+  links, variable prompts, and OS-conditional content.
+
+The sample lab under [`app/public/`](app/public) is a complete, working
+example — copy it as a starting point.
+
+## Deploying
+
+- **GitHub Pages** — push to `main`; the workflow in
+  [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) builds `app/`
+  and publishes `app/dist`. Enable Pages with source "GitHub Actions". The app
+  uses relative asset paths (`base: "./"`) and hash-based routing, so it works
+  from a project subpath.
+- **Any static host** — run `npm run build` in `app/` and upload `app/dist`.
+- **Container** — `docker buildx bake app-local` builds an nginx image serving
+  the static site.

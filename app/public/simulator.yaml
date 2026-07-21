@@ -1,0 +1,93 @@
+version: "2.0"
+
+metadata:
+  id: getting-started
+  title: "Getting Started"
+  summary: "Run a simulated container and edit a file — no Docker required."
+  authors: ["Docker Samples"]
+
+state:
+  container:
+    running: false
+  network:
+    enabled: false
+  phase: start
+
+controls:
+  - id: network-access
+    label: "Enable network access"
+    description: "Allow the simulated container to answer curl requests."
+    state: network.enabled
+    enabled: true
+    disabled: false
+
+defaults:
+  unmatched:
+    stderr: ["Error: that command isn't part of this lab yet."]
+    exit: 1
+
+scenarios:
+  - id: run-start
+    when:
+      command: [docker, run]
+      state: { container.running: false }
+    then:
+      state:
+        container.running: true
+        phase: running
+      output:
+        - "Unable to find image 'nginx:latest' locally"
+        - "latest: Pulling from library/nginx"
+        - "Status: Downloaded newer image for nginx:latest"
+        - "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+
+  - id: run-already
+    when:
+      command: [docker, run]
+      state: { container.running: true }
+    then:
+      stderr: ["docker: a container named web is already running."]
+      exit: 1
+
+  - id: ps-running
+    when:
+      command: [docker, ps]
+      state: { container.running: true }
+    then:
+      output:
+        - "CONTAINER ID   IMAGE     STATUS         PORTS                NAMES"
+        - "a1b2c3d4e5f6   nginx     Up 3 seconds   0.0.0.0:8080->80/tcp web"
+
+  - id: ps-empty
+    when:
+      command: [docker, ps]
+    then:
+      output:
+        - "CONTAINER ID   IMAGE     STATUS    PORTS     NAMES"
+
+  - id: stop
+    when:
+      command: [docker, stop]
+      state: { container.running: true }
+    then:
+      state:
+        container.running: false
+        phase: stopped
+      output:
+        - "web"
+
+  # curl is gated by the network-access toggle (set via the Settings button).
+  - id: curl-allowed
+    when:
+      command: curl
+      state: { network.enabled: true }
+    then:
+      output:
+        - "<title>Welcome to nginx!</title>"
+
+  - id: curl-blocked
+    when:
+      command: curl
+    then:
+      stderr: ["curl: (7) Failed to connect: blocked by network policy."]
+      exit: 7
