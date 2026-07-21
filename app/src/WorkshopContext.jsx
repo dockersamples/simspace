@@ -79,6 +79,7 @@ export const WorkshopContextProvider = ({ children, printMode = false }) => {
     return {
       id: section.id,
       title: section.title,
+      baseUrl: section.baseUrl,
       content: substituteVariables(section.contentRaw, variables || {}),
     };
   }, [workshop, activeSectionId, variables]);

@@ -62,13 +62,22 @@ export async function loadLabspace(labUrl = resolveLabUrl()) {
 
   const resolve = (relPath) => new URL(relPath, labUrl).toString();
 
+  const labBaseUrl = new URL(".", labUrl).toString();
+
   const sectionDefs = Array.isArray(raw.sections) ? raw.sections : [];
   const sections = await Promise.all(
-    sectionDefs.map(async (sec) => ({
-      id: slugify(sec.title),
-      title: sec.title,
-      contentRaw: sec.contentPath ? await fetchText(resolve(sec.contentPath)) : "",
-    })),
+    sectionDefs.map(async (sec) => {
+      const contentUrl = sec.contentPath ? resolve(sec.contentPath) : null;
+      return {
+        id: slugify(sec.title),
+        title: sec.title,
+        // Directory the section's markdown lives in. Relative asset paths in
+        // that file (`images/diagram.png`, `../shared/logo.svg`, …) resolve
+        // against this, so images load no matter how sections are nested.
+        baseUrl: contentUrl ? new URL(".", contentUrl).toString() : labBaseUrl,
+        contentRaw: contentUrl ? await fetchText(contentUrl) : "",
+      };
+    }),
   );
 
   const services = (Array.isArray(raw.services) ? raw.services : []).map(
@@ -103,6 +112,10 @@ export async function loadLabspace(labUrl = resolveLabUrl()) {
   }));
 
   return {
+    // Directory the lab is served from (the parent of labspace.yaml). Used as
+    // the fallback base for resolving relative asset paths; individual sections
+    // carry their own `baseUrl` for markdown that lives in subdirectories.
+    baseUrl: labBaseUrl,
     title: raw.title || "Labspace",
     subtitle: raw.description || "",
     sections,

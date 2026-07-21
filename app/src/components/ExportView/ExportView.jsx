@@ -22,7 +22,7 @@ export function ExportView() {
       </header>
       {workshop.sections.map((section) => (
         <section key={section.id} id={section.id} className="export-section mb-5">
-          <MarkdownRenderer>
+          <MarkdownRenderer baseUrl={section.baseUrl}>
             {substituteVariables(section.contentRaw, variables)}
           </MarkdownRenderer>
         </section>

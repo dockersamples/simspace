@@ -15,9 +15,11 @@ import { FileLink } from "./FileLink";
 import { VariableDefinition } from "./VariableDefinition";
 import { VariableSetButton } from "./VariableSetButton";
 import { ConditionalDisplay } from "./ConditionalDisplay";
+import { MarkdownBaseUrlContext } from "./markdownBaseUrl";
 
-export function MarkdownRenderer({ children }) {
+export function MarkdownRenderer({ children, baseUrl }) {
   return (
+    <MarkdownBaseUrlContext.Provider value={baseUrl}>
     <MarkdownHooks
       remarkPlugins={[
         remarkGfm,
@@ -46,5 +48,6 @@ export function MarkdownRenderer({ children }) {
     >
       {children}
     </MarkdownHooks>
+    </MarkdownBaseUrlContext.Provider>
   );
 }

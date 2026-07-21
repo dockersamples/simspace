@@ -13,7 +13,10 @@ export function WorkshopPanel() {
 
       <div className="workshop-scroll flex-grow-1 overflow-auto">
         <div className="workshop-body">
-          <MarkdownRenderer key={`section-${activeSection.id}`}>
+          <MarkdownRenderer
+            key={`section-${activeSection.id}`}
+            baseUrl={activeSection.baseUrl}
+          >
             {activeSection.content}
           </MarkdownRenderer>
         </div>
