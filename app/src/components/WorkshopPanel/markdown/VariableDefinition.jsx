@@ -29,7 +29,7 @@ export function VariableDefinition({ children, prompt, ...rest }) {
   const valueChanged = value !== (variables[children] || "");
 
   return (
-    <Card className="mb-3" border={hasValue ? "" : "warning"}>
+    <Card className="wp-variable-card" border={hasValue ? "" : "warning"}>
       <Form
         onSubmit={(e) => {
           e.preventDefault();
@@ -37,11 +37,14 @@ export function VariableDefinition({ children, prompt, ...rest }) {
         }}
       >
         <Card.Body>
-          <Form.Group className="mb-3" controlId="exampleForm.ControlInput1">
-            <Form.Label>
+          <Form.Group controlId="exampleForm.ControlInput1">
+            <Form.Label className="wp-variable-label">
+              <span className="material-symbols-outlined wp-variable-icon">
+                tune
+              </span>
               {prompt || `WARNING: NO PROMPT DEFINED FOR ${children}`}
             </Form.Label>
-            <InputGroup className="mb-3">
+            <InputGroup>
               <Form.Control
                 value={value}
                 onChange={(e) => setValue(e.target.value)}

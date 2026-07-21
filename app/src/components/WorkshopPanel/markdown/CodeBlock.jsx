@@ -65,60 +65,74 @@ export function CodeBlock({ node, inline, className, children, ...props }) {
     );
   }
 
+  const hasActions = canCopy || canRun || canSaveAsFile;
+
   return (
-    <div
-      className="position-relative rounded code-block d-flex align-items-center"
-      style={{ background: "rgb(43, 43, 43)" }}
-    >
-      <SyntaxHighlighter
-        style={darcula}
-        language={language}
-        PreTag="div"
-        className="flex-grow-1 bg-none"
-        wrapLines={highlightLines.length > 0 || printMode}
-        wrapLongLines={printMode}
-        showLineNumbers={highlightLines.length > 0}
-        lineNumberStyle={{ display: "none" }}
-        lineProps={(lineNumber) => {
-          const lineProps = {
-            className: "d-block",
-          };
-          if (printMode) lineProps.className += " print-line";
-
-          if (highlightLines.includes(lineNumber))
-            lineProps.className += " highlight-line"; // Highlight the first line (lineNumber is 1-indexed)
-
-          return lineProps;
-        }}
-        {...props}
-      >
-        {String(children).replace(/\n$/, "")}
-      </SyntaxHighlighter>
-      <div className="button-container align-self-stretch d-flex align-items-center">
-        {canCopy && (
-          <CodeBlockAction
-            icon="content_copy"
-            onClick={onCopyClick}
-            completedText="Copied!"
-            tooltip="Copy to clipboard"
-          />
+    <div className="code-block">
+      <div className="code-block-header">
+        <span className="code-block-label">
+          <span className="material-symbols-outlined code-block-label-icon">
+            {saveAsPath ? "draft" : "terminal"}
+          </span>
+          {saveAsPath ? (
+            <span title={saveAsPath}>{saveAsPath}</span>
+          ) : (
+            <span>{language}</span>
+          )}
+        </span>
+        {hasActions && (
+          <div className="button-container d-flex align-items-center">
+            {canCopy && (
+              <CodeBlockAction
+                icon="content_copy"
+                onClick={onCopyClick}
+                completedText="Copied!"
+                tooltip="Copy to clipboard"
+              />
+            )}
+            {canRun && (
+              <CodeBlockAction
+                icon="play_arrow"
+                onClick={onRunClick}
+                tooltip="Run in terminal"
+              />
+            )}
+            {canSaveAsFile && (
+              <CodeBlockAction
+                icon="save"
+                onClick={onSaveAsClick}
+                completedText="Saved!"
+                tooltip="Save file"
+              />
+            )}
+          </div>
         )}
-        {canRun && (
-          <CodeBlockAction
-            icon="play_circle"
-            onClick={onRunClick}
-            tooltip="Run code"
-          />
-        )}
+      </div>
+      <div className="code-block-body">
+        <SyntaxHighlighter
+          style={darcula}
+          language={language}
+          PreTag="div"
+          className="bg-none"
+          wrapLines={highlightLines.length > 0 || printMode}
+          wrapLongLines={printMode}
+          showLineNumbers={highlightLines.length > 0}
+          lineNumberStyle={{ display: "none" }}
+          lineProps={(lineNumber) => {
+            const lineProps = {
+              className: "d-block",
+            };
+            if (printMode) lineProps.className += " print-line";
 
-        {canSaveAsFile && (
-          <CodeBlockAction
-            icon="save"
-            onClick={onSaveAsClick}
-            completedText="Saved!"
-            tooltip="Save file"
-          />
-        )}
+            if (highlightLines.includes(lineNumber))
+              lineProps.className += " highlight-line"; // Highlight the first line (lineNumber is 1-indexed)
+
+            return lineProps;
+          }}
+          {...props}
+        >
+          {String(children).replace(/\n$/, "")}
+        </SyntaxHighlighter>
       </div>
     </div>
   );

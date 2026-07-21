@@ -28,8 +28,8 @@ export function CodeBlockAction({ icon, onClick, completedText, tooltip }) {
       }
     >
       <Button
-        className="m-2"
-        variant="outline-light"
+        className="code-action-btn"
+        variant="link"
         size="sm"
         onClick={() => {
           setRunning(true);

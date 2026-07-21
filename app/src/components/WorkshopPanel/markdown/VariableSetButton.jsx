@@ -48,13 +48,18 @@ export function VariableSetButton({
   );
 
   return (
-    <>
-      <Button
-        variant={allSet ? "outline-secondary" : "primary"}
-        onClick={onClick}
-      >
-        {children}
-      </Button>
-    </>
+    <Button
+      variant="link"
+      className={"wp-set-btn" + (allSet ? " is-active" : "")}
+      onClick={onClick}
+      aria-pressed={allSet}
+    >
+      {allSet && (
+        <span className="material-symbols-outlined wp-set-btn-check">
+          check
+        </span>
+      )}
+      <span>{children}</span>
+    </Button>
   );
 }
