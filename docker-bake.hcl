@@ -1,18 +1,29 @@
-# Bake definition for building the static Labspace app image.
+# Bake definition for the Labspace images.
 #
-#   docker buildx bake              # multi-platform build (default)
-#   docker buildx bake --push       # build and push to the registry
-#   docker buildx bake app-local    # single-platform, loaded into local daemon
+#   docker buildx bake                    # build both images, multi-platform
+#   docker buildx bake --push             # build and push to the registry
+#   docker buildx bake app-local          # runtime image, single-arch, local daemon
+#   docker buildx bake authoring-local    # authoring image, single-arch, local daemon
 #
-# Common override:
-#   IMAGE=docker.io/dockersamples/labspace docker buildx bake --push
+# Release both images together under the same tags so a lab pinned to a version
+# gets a matching runtime + authoring pair:
+#   TAGS=1.0.0,1,latest docker buildx bake --push
+#
+# Common override (publish to the public org):
+#   IMAGE=docker.io/dockersamples/labspace \
+#   AUTHORING_IMAGE=docker.io/dockersamples/labspace-authoring \
+#   docker buildx bake --push
 
-# Fully-qualified image name (without tag).
+# Fully-qualified image names (without tag).
 variable "IMAGE" {
   default = "michaelirwin244/labspace"
 }
 
-# Tags applied to the built image.
+variable "AUTHORING_IMAGE" {
+  default = "michaelirwin244/labspace-authoring"
+}
+
+# Tags applied to the built images.
 variable "TAGS" {
   default = ["latest"]
 }
@@ -22,12 +33,13 @@ variable "PLATFORMS" {
   default = ["linux/amd64", "linux/arm64"]
 }
 
+# Build both images by default so releases stay in lock-step.
 group "default" {
-  targets = ["app"]
+  targets = ["app", "authoring"]
 }
 
-# Multi-platform static-app image. Use --push to publish, since a multi-arch
-# manifest cannot be loaded into the local daemon.
+# Multi-platform static-app (runtime) image. Use --push to publish, since a
+# multi-arch manifest cannot be loaded into the local daemon.
 target "app" {
   context    = "."
   dockerfile = "Dockerfile"
@@ -36,9 +48,25 @@ target "app" {
   tags       = [for t in TAGS : "${IMAGE}:${t}"]
 }
 
-# Single-platform build for local development, loaded into the Docker daemon.
+# Single-platform runtime build for local development, loaded into the daemon.
 target "app-local" {
   inherits  = ["app"]
+  platforms = ["local"]
+  output    = ["type=docker"]
+}
+
+# Multi-platform authoring image (Node + app source + validate-lab).
+target "authoring" {
+  context    = "."
+  dockerfile = "Dockerfile"
+  target     = "authoring"
+  platforms  = PLATFORMS
+  tags       = [for t in TAGS : "${AUTHORING_IMAGE}:${t}"]
+}
+
+# Single-platform authoring build for local use, loaded into the daemon.
+target "authoring-local" {
+  inherits  = ["authoring"]
   platforms = ["local"]
   output    = ["type=docker"]
 }

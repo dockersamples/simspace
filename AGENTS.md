@@ -47,28 +47,61 @@ app/                 THE PRODUCT — the consolidated static React app
   public/
     lab/             a complete SAMPLE LAB (labspace.yaml + simulator.yaml + *.md)
                      — the default lab, loaded from lab/labspace.yaml
+  scripts/           Node tooling: validate-lab.ts (lab linter) + run-ts.mjs
+                     (esbuild TS runner so scripts can import the engine)
   dist/              build output — generated, do not edit
 spec/                the two format specifications (see above)
-.github/workflows/   GitHub Pages deploy workflow
-Dockerfile           builds app/ and serves it with nginx (optional container path)
-docker-bake.hcl      bake targets for the static-app image
+template/            starter files for an author's OWN lab repo (lab/ + compose +
+                     Dockerfile + AGENTS.md + a caller deploy workflow)
+.github/workflows/   deploy.yml (Pages for THIS repo) + deploy-lab.yml (reusable
+                     workflow author repos call to validate + deploy their lab)
+Dockerfile           two images: `production` (nginx runtime) + `authoring`
+                     (Node + validate-lab, for author dev/CI)
+docker-bake.hcl      bake targets: app / app-local, authoring / authoring-local
 ```
+
+## Two images, one lab-as-data model
+
+The app is **lab-agnostic**: it fetches `lab/labspace.yaml` at runtime, so a lab
+is swappable data, not baked-in code. That shapes the authoring/deploy story:
+
+- **Runtime image** (`Dockerfile` `production` target) — nginx + built `dist`.
+  Authors base their deploy on it and swap in their `lab/`; no app rebuild. Its
+  static payload can also be extracted for GitHub Pages (see `deploy-lab.yml`).
+- **Authoring image** (`authoring` target) — Node + app source + `validate-lab`,
+  for `npm run dev` (live preview) and linting. Authors mount only their `lab/`.
+
+Release both under the **same tags** so a version-pinned lab gets a matching
+pair: `TAGS=1.0.0,1 docker buildx bake --push`. An author's repo is just the
+`template/` contents with their own `lab/`.
 
 ## Commands
 
 This is a **JavaScript/React (Vite) project** — all work happens in `app/`.
-There is currently **no test suite** (no `test` script); verify changes by
-running the app and exercising the lab, plus lint.
+There is currently **no unit-test suite** (no `test` script); verify engine/UI
+changes by running the app and exercising the lab, plus lint. Verify **lab
+content** (the `labspace.yaml` / `simulator.yaml` / markdown) with
+`npm run validate-lab` — always run it after editing a lab.
 
 ```bash
 cd app
 npm install
-npm run dev            # local dev server (0.0.0.0), serves app/public/lab/ sample lab
-npm run build          # static build → app/dist
-npm run preview        # serve the production build
-npm run lint           # ESLint
-npm run prettier-check # Prettier (use `npm run prettier` to auto-format)
+npm run dev             # local dev server (0.0.0.0), serves app/public/lab/ sample lab
+npm run build           # static build → app/dist
+npm run preview         # serve the production build
+npm run lint            # ESLint
+npm run prettier-check  # Prettier (use `npm run prettier` to auto-format)
+npm run validate-lab -- public/lab   # static lint of a lab directory (default: public/lab)
 ```
+
+`validate-lab` (`scripts/validate-lab.ts`) parses a lab with the **real engine
+parser** and reports authoring mistakes without any hand-written assertions:
+dangling `contentPath` / `simulator` / `terminal-id` / `when.terminal` /
+`then.ci.workflow` references, `{{ args.X }}` placeholders with no matching
+capture, and markdown Run-button commands that no scenario, built-in, or agent
+prompt can handle. Errors exit non-zero (CI-gating); warnings don't. It runs via
+`scripts/run-ts.mjs`, which esbuild-bundles a TS entry so Node scripts can import
+the engine directly (no `tsx`/`ts-node` needed).
 
 The engine (`app/src/engine/`) is written in TypeScript and consumed directly by
 Vite; `app/src/engine/index.ts` is its public surface for embedding or testing.
@@ -102,8 +135,24 @@ Vite; `app/src/engine/index.ts` is its public surface for embedding or testing.
 
 ## Deploying
 
+### This repo (the platform + sample lab)
+
 - **GitHub Pages** — pushing to `main` triggers `.github/workflows/deploy.yml`,
   which builds `app/` and publishes `app/dist`. The app uses relative asset
   paths (`base: "./"`) and hash routing, so it works from a project subpath.
 - **Any static host** — `npm run build` in `app/`, upload `app/dist`.
-- **Container** — `docker buildx bake app-local` builds an nginx image.
+- **Images** — `docker buildx bake` builds both the runtime (`app`) and
+  authoring (`authoring`) images; `--push` publishes. Use `*-local` targets to
+  load a single-arch build into the daemon.
+
+### An author's lab repo (uses `template/`)
+
+The lab is runtime data, so an author repo never rebuilds the app:
+
+- **Dev** — `docker compose up dev` (authoring image + mounted `lab/`); lint with
+  `docker compose run --rm validate`.
+- **GitHub Pages** — the caller `deploy.yml` invokes this repo's reusable
+  `deploy-lab.yml@<ref>`, which validates the lab, overlays it onto the runtime
+  image's static payload, and publishes.
+- **Container** — `template/Dockerfile` is `FROM <runtime> + COPY lab/` (two
+  lines); `docker run -p 8080:80` serves it.

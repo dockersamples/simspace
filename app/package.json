@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview --host=0.0.0.0",
     "lint": "eslint .",
+    "validate-lab": "node scripts/run-ts.mjs scripts/validate-lab.ts",
     "prettier": "prettier --write .",
     "prettier-check": "prettier --check ."
   },

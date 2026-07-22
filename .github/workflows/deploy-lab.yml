@@ -1,0 +1,91 @@
+name: Deploy Labspace lab
+
+# Reusable workflow that validates a lab, assembles a static site by overlaying
+# the lab onto the prebuilt runtime image's payload, and publishes it to GitHub
+# Pages. A lab author's repo calls it in one step:
+#
+#   jobs:
+#     deploy:
+#       uses: dockersamples/sbxlab/.github/workflows/deploy-lab.yml@main
+#       with:
+#         runtime-tag: "1"        # pin to a released version
+#       permissions:
+#         contents: read
+#         pages: write
+#         id-token: write
+#
+# The lab is loaded at runtime, so no app rebuild is needed — the site is just
+# the runtime image's static files with the author's lab/ swapped in.
+
+on:
+  workflow_call:
+    inputs:
+      lab-dir:
+        description: "Path to the lab directory (contains labspace.yaml)."
+        type: string
+        default: "lab"
+      runtime-image:
+        description: "Runtime image the site is based on."
+        type: string
+        default: "dockersamples/labspace"
+      authoring-image:
+        description: "Authoring image used to validate the lab."
+        type: string
+        default: "dockersamples/labspace-authoring"
+      runtime-tag:
+        description: "Image tag for BOTH images. Pin to a version for stable labs."
+        type: string
+        default: "latest"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate lab
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/${{ inputs.lab-dir }}:/lab:ro" \
+            "${{ inputs.authoring-image }}:${{ inputs.runtime-tag }}" \
+            npm run validate-lab -- /lab
+
+  build:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble static site (runtime payload + this lab)
+        run: |
+          set -euo pipefail
+          image="${{ inputs.runtime-image }}:${{ inputs.runtime-tag }}"
+          docker pull "$image"
+          cid="$(docker create "$image")"
+          mkdir -p site
+          docker cp "$cid":/usr/share/nginx/html/. site/
+          docker rm "$cid"
+          # Replace the runtime image's sample lab with this repo's lab.
+          rm -rf site/lab
+          mkdir -p site/lab
+          cp -R "${{ inputs.lab-dir }}/." site/lab/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
