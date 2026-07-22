@@ -1,0 +1,26 @@
+title: "My Lab"
+description: "A starter Labspace lab — edit these files, preview locally, and push to deploy."
+
+# Command behaviour lives in simulator.yaml (relative to this file).
+simulator: simulator.yaml
+
+# One terminal tab. Add more (each with a unique id) for multi-shell labs.
+terminals:
+  - id: host
+    title: Terminal
+    icon: terminal
+
+# Seed the virtual filesystem. Built-in `ls`/`cat` reflect these immediately.
+files:
+  README.txt: |
+    Welcome to your lab's virtual filesystem.
+    Files created by scenarios and save-as blocks appear here too.
+
+# Ordered instruction pages (markdown), rendered in the left-hand panel.
+sections:
+  - title: Introduction
+    contentPath: 00-intro.md
+
+# $$name$$ in markdown is replaced with these values at render time.
+variables:
+  name: world

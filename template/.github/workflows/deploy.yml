@@ -1,0 +1,25 @@
+name: Deploy lab to GitHub Pages
+
+# Validates this lab and publishes it to GitHub Pages on every push to main.
+# All the work lives in the reusable workflow in dockersamples/sbxlab, so this
+# file stays a one-liner. Enable Pages first: Settings → Pages → Source:
+# "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    uses: dockersamples/sbxlab/.github/workflows/deploy-lab.yml@main
+    with:
+      lab-dir: lab
+      # Pin to a released version for stable labs, e.g. "1". "latest" tracks the
+      # newest runtime — convenient, but the app can change under you.
+      runtime-tag: "latest"

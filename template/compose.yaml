@@ -1,0 +1,29 @@
+# Authoring environment for this lab. Both services use the prebuilt Labspace
+# authoring image and mount only your ./lab directory — you never need Node or
+# the app source locally.
+#
+#   docker compose up dev                 # live preview at http://localhost:5173
+#   docker compose run --rm validate      # lint the lab (nonzero exit on errors)
+#
+# Pin LABSPACE_AUTHORING_IMAGE to a released version for reproducible authoring,
+# e.g. export LABSPACE_AUTHORING_IMAGE=dockersamples/labspace-authoring:1
+
+name: my-labspace
+
+services:
+  # Live preview. Edits to ./lab show on browser refresh.
+  dev:
+    image: ${LABSPACE_AUTHORING_IMAGE:-dockersamples/labspace-authoring:latest}
+    command: npm run dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./lab:/usr/local/app/public/lab
+
+  # One-shot validator. Run with `docker compose run --rm validate`.
+  validate:
+    image: ${LABSPACE_AUTHORING_IMAGE:-dockersamples/labspace-authoring:latest}
+    profiles: ["tools"]
+    command: npm run validate-lab -- /lab
+    volumes:
+      - ./lab:/lab:ro
