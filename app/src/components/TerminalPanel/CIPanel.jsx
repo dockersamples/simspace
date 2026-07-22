@@ -171,7 +171,7 @@ export function CIPanel() {
         <header className="ci-head">
           <h2 className="ci-title">Continuous integration</h2>
           <p className="ci-subtitle">
-            Simulated workflow runs. Triggered by pipeline events like a push.
+            Simulated workflow runs. Note that logs are incomplete and simulated.
           </p>
         </header>
 
