@@ -11,7 +11,7 @@ scoped to the Agent terminal in the scenario file, so it only starts a session
 there:
 
 ```bash terminal-id=agent
-claude
+sbx run claude
 ```
 
 Now ask the agent to scaffold the app. This runs in the **Agent** session and
@@ -33,8 +33,8 @@ State is shared too. Open the **Settings** tab and enable *network access*,
 then run `curl` from the **Host** — the setting applies to the whole shared
 machine, so it's unblocked in every terminal:
 
-```bash
-curl http://localhost:8080
+```bash terminal-id=agent
+!curl http://localhost:8080
 ```
 
 When you're done with the agent, leave the session:
