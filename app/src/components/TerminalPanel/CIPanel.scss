@@ -1,0 +1,288 @@
+// A GitHub-Actions-flavored CI page shown inside the terminal pane: a dark
+// surface with elevated run cards, status icons, and condensed step logs. Reads
+// like a pipeline UI, not a terminal — sans-serif chrome with monospace logs.
+
+.ci-panel {
+  --ci-bg: #0d1117;
+  --ci-card: #161b22;
+  --ci-border: #30363d;
+  --ci-border-soft: #21262d;
+  --ci-text: #e6edf3;
+  --ci-muted: #8b949e;
+  --ci-accent: #2560ff;
+  --ci-green: #3fb950;
+  --ci-red: #f85149;
+  --ci-grey: #6e7681;
+  --ci-log-bg: #010409;
+
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--ci-bg);
+  color: var(--ci-text);
+  font-family: Inter, Helvetica, Arial, sans-serif;
+}
+
+.ci-scroll {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 28px 24px 40px;
+}
+
+.ci-head {
+  margin-bottom: 20px;
+}
+
+.ci-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  border: none;
+  padding: 0;
+}
+
+.ci-subtitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ci-muted);
+}
+
+// ── Empty state ──────────────────────────────────────────────────────────────
+.ci-empty {
+  text-align: center;
+  padding: 48px 24px;
+  border: 1px dashed var(--ci-border);
+  border-radius: 10px;
+  color: var(--ci-muted);
+}
+.ci-empty-icon {
+  font-size: 40px;
+  color: var(--ci-grey);
+}
+.ci-empty-text {
+  margin: 12px 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ci-text);
+}
+.ci-empty-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.ci-empty-hint code {
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ci-text);
+}
+
+// ── Run list ─────────────────────────────────────────────────────────────────
+.ci-runs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ci-run {
+  background: var(--ci-card);
+  border: 1px solid var(--ci-border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+// A thin status stripe down the left edge of each run card.
+.ci-run-success {
+  border-left: 3px solid var(--ci-green);
+}
+.ci-run-failure {
+  border-left: 3px solid var(--ci-red);
+}
+.ci-run-running,
+.ci-run-queued {
+  border-left: 3px solid var(--ci-accent);
+}
+
+.ci-run-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.ci-run-head:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ci-run-text {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ci-run-workflow {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ci-text);
+}
+.ci-run-commit {
+  font-size: 12.5px;
+  color: var(--ci-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ci-run-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ci-run-event {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  color: var(--ci-muted);
+  border: 1px solid var(--ci-border);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.ci-run-number {
+  font-size: 12px;
+  color: var(--ci-grey);
+}
+.ci-run-chevron {
+  font-size: 20px;
+  color: var(--ci-muted);
+  flex-shrink: 0;
+}
+
+// ── Run body / steps ─────────────────────────────────────────────────────────
+.ci-run-body {
+  border-top: 1px solid var(--ci-border-soft);
+  padding: 8px 14px 14px;
+}
+
+.ci-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ci-step {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ci-border-soft);
+}
+.ci-step:last-child {
+  border-bottom: none;
+}
+.ci-step-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ci-step-name {
+  font-size: 13.5px;
+  color: var(--ci-text);
+}
+.ci-step-skipped .ci-step-name {
+  color: var(--ci-muted);
+}
+
+.ci-step-logs {
+  margin: 8px 0 2px;
+  margin-left: 26px;
+  padding: 10px 12px;
+  background: var(--ci-log-bg);
+  border: 1px solid var(--ci-border-soft);
+  border-radius: 6px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #c9d1d9;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
+// ── Status icons ─────────────────────────────────────────────────────────────
+.ci-status-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.ci-status-success {
+  color: var(--ci-green);
+}
+.ci-status-failure {
+  color: var(--ci-red);
+}
+.ci-status-skipped {
+  color: var(--ci-grey);
+}
+.ci-status-queued {
+  color: var(--ci-grey);
+}
+.ci-status-running {
+  color: var(--ci-accent);
+  animation: ci-spin 1s linear infinite;
+}
+
+@keyframes ci-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ci-status-running {
+    animation: none;
+  }
+}
+
+// ── Error banner ─────────────────────────────────────────────────────────────
+.ci-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(248, 81, 73, 0.4);
+  background: rgba(248, 81, 73, 0.08);
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #ffb3ae;
+}
+.ci-error .material-symbols-outlined {
+  font-size: 18px;
+  // Match the text's first-line box (13px × 1.5) so the icon's optical centre
+  // lines up with the first line, while `flex-start` keeps multi-line errors
+  // top-aligned.
+  line-height: 19.5px;
+  color: var(--ci-red);
+  flex-shrink: 0;
+}
+
+.ci-run-footer {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--ci-muted);
+  text-align: right;
+}

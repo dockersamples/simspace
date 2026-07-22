@@ -9,4 +9,5 @@ export * from "./filesystem";
 export * from "./match";
 export * from "./run";
 export * from "./mcp";
+export * from "./ci";
 export * from "./simulator";

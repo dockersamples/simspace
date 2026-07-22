@@ -93,6 +93,8 @@ defaults: { ... }         # OPTIONAL. Cross-scenario defaults. See §8.
 
 controls: [ ... ]         # OPTIONAL. Learner-facing toggle panel. See §11.
 
+workflows: [ ... ]        # OPTIONAL. CI workflow catalog. See §15.
+
 scenarios: [ ... ]        # REQUIRED. Ordered list. See §5–7.
 ```
 
@@ -108,6 +110,7 @@ Field summary:
 | `settings`   | no       | Output streaming/pacing (§13)                    |
 | `defaults`   | no       | Fallbacks applied when no scenario matches (§8)  |
 | `controls`   | no       | Toggle panel wired to state variables (§11)      |
+| `workflows`  | no       | Reusable CI workflow definitions (§15)           |
 | `scenarios`  | yes      | The ordered match rules                          |
 
 ---
@@ -283,6 +286,7 @@ then:
   exit: 0            # optional exit code (default 0)
   mcp: [ ... ]       # optional mocked MCP call blocks, §9
   session: { ... }   # optional: enter an interactive agent session, §14
+  ci: { ... }        # optional: trigger a mock CI workflow run, §15
 ```
 
 ### 7.1 `files` — filesystem operations
@@ -732,7 +736,117 @@ This scenario fires whether the learner types `docker ps` at the top level or
 
 ---
 
-## 15. Open questions / deferred
+## 15. CI workflows (`workflows` + `then.ci`)
+
+Labs that teach CI concepts (image signing, policy enforcement, scanning) can
+mock a pipeline. When a labspace enables the CI feature (see `labspace.md`), a
+**CI tab** appears in the right-hand pane and shows workflow runs. A scenario
+fires a run with a `then.ci` effect — typically on a `git push`.
+
+The model has two parts: a reusable **workflow catalog** (`workflows:`) and a
+per-scenario **trigger** (`then.ci`) that references a workflow and overrides
+the outcome for that run. This keeps the common "push fails → fix → push
+succeeds" flow easy: the steps are defined once, and each push only states its
+conclusion.
+
+### 15.1 `workflows` — the catalog
+
+A top-level list of reusable workflow definitions.
+
+```yaml
+workflows:
+  - id: build-and-sign          # REQUIRED, unique. Referenced by `then.ci.workflow`.
+    name: "Build and Sign"      # OPTIONAL display name (defaults to `id`).
+    on: push                    # OPTIONAL cosmetic trigger label (default "push").
+    steps:                      # Ordered steps, each with condensed default logs.
+      - id: build
+        name: "Build image"
+        logs:
+          - "$ docker build -t app ."
+          - "=> exporting to image ... done"
+      - id: sign
+        name: "Sign image with cosign"
+        logs:
+          - "$ cosign sign app@sha256:9f8e7d6c"
+          - "Pushed signature to registry"
+```
+
+| Field         | Required | Purpose                                             |
+| ------------- | -------- | --------------------------------------------------- |
+| `id`          | yes      | Unique id, referenced by `then.ci.workflow`         |
+| `name`        | no       | Display name (defaults to `id`)                     |
+| `on`          | no       | Cosmetic trigger label shown in the run header      |
+| `steps`       | no       | Ordered steps; each has `id`, `name`, and `logs`    |
+
+Step `logs` are the **condensed, teaching-focused** output — not a full build
+log. Keep them short and highlight the concept the lab is about.
+
+### 15.2 `then.ci` — triggering a run
+
+A scenario triggers a run by referencing a workflow and declaring its outcome:
+
+```yaml
+scenarios:
+  - id: push-unsigned
+    when:
+      command: git push
+      state: { signing.configured: false }
+    then:
+      output: ["To github.com:acme/app.git", "   a1b2c3d..e4f5a6b  main -> main"]
+      ci:
+        workflow: build-and-sign     # REQUIRED. A workflow id from the catalog.
+        commit: "Add signing workflow" # OPTIONAL. Commit label in the run header.
+        conclusion: failure          # OPTIONAL. success | failure (default success).
+        failedStep: sign             # OPTIONAL. Which step fails (default: last step).
+        steps:                       # OPTIONAL. Per-run log overrides, matched by step id.
+          - id: sign
+            logs:
+              - "$ cosign sign app@sha256:9f8e7d6c"
+              - "Error: no signing key configured"
+        error: "Image signing failed — no signing key is configured."
+```
+
+| Field         | Required | Purpose                                                    |
+| ------------- | -------- | ---------------------------------------------------------- |
+| `workflow`    | yes      | The `id` of a workflow in the `workflows:` catalog         |
+| `commit`      | no       | Commit label shown in the run header                       |
+| `conclusion`  | no       | `success` or `failure` (default `success`)                 |
+| `failedStep`  | no       | Step id that fails when `conclusion: failure` (default: last step) |
+| `steps`       | no       | Per-run step overrides (`logs`, `name`), matched by step id |
+| `error`       | no       | Error message surfaced on the run when it fails            |
+
+Failure model: steps **before** the failed step succeed, the failed step fails,
+and steps **after** it are skipped — the natural CI failure model. On success,
+every step succeeds. An unknown `workflow` id is a hard error, surfaced to the
+learner as the command's output.
+
+### 15.3 Where runs are stored — `state.ci.runs`
+
+The engine resolves each `then.ci` into a **fully-determined run record** and
+appends it to the reserved-by-convention list `state.ci.runs`. A run record has:
+
+```yaml
+id: 1                    # 1-based run number (the list length at trigger time)
+workflow: "Build and Sign"
+event: push
+commit: "Add signing workflow"   # or null
+conclusion: failure              # success | failure
+error: "…"                       # or null
+steps:
+  - { id: build, name: "Build image", status: success, logs: [ ... ] }
+  - { id: sign,  name: "Sign image",  status: failure, logs: [ ... ] }
+  - { id: verify, name: "Verify",     status: skipped, logs: [ ... ] }
+```
+
+Because a run is just state, it is deterministic (no time, no randomness) and it
+is **cleared by Reset** along with the rest of the state. The CI panel *replays*
+the newest run cosmetically (queued → in-progress → per-step → conclusion); the
+timeline is presentation only, exactly like output streaming (§13), and never
+changes what is shown.
+
+---
+
+## 16. Open questions / deferred
 
 - Regex/range arg matchers and `state` operators (`>`, `exists`, `contains`).
 - Cross-file scenario includes / reusable scenario libraries.

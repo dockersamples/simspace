@@ -72,6 +72,56 @@ export interface Session {
   outro?: string[];
 }
 
+/** One step in a CI workflow definition (§CI). */
+export interface WorkflowStep {
+  id: string;
+  name: string;
+  /** Condensed default log lines shown when the step runs. */
+  logs?: string[];
+}
+
+/**
+ * A reusable CI workflow definition, declared once in the top-level
+ * `workflows:` catalog and referenced by a scenario's `then.ci`.
+ */
+export interface Workflow {
+  id: string;
+  name: string;
+  /** Cosmetic trigger label (e.g. "push"); shown in the run header. */
+  on?: string;
+  steps: WorkflowStep[];
+}
+
+/** A per-run override/addition for a single workflow step. */
+export interface CIStepOverride {
+  /** The workflow step id this override applies to. */
+  id: string;
+  name?: string;
+  /** Replaces the step's default logs for this run. */
+  logs?: string[];
+}
+
+/**
+ * A CI trigger effect. When a scenario fires, it resolves the referenced
+ * workflow into a fully-determined run record and appends it to
+ * `state.ci.runs`. The engine adds no time or randomness — the run is complete
+ * and deterministic; the CI panel plays it back cosmetically.
+ */
+export interface CITrigger {
+  /** The id of a workflow in the top-level `workflows:` catalog. */
+  workflow: string;
+  /** Commit label shown in the run header (optional). */
+  commit?: string;
+  /** Overall outcome. Defaults to "success". */
+  conclusion?: "success" | "failure";
+  /** The step id that fails (default: the last step) when conclusion is failure. */
+  failedStep?: string;
+  /** Per-run step log overrides/additions, matched by step id. */
+  steps?: CIStepOverride[];
+  /** Error message surfaced on the run when conclusion is failure. */
+  error?: string;
+}
+
 /** Then holds the effects applied when a scenario fires. */
 export interface Then {
   files?: FileOp[];
@@ -81,6 +131,7 @@ export interface Then {
   exit?: number;
   mcp?: MCPCall[];
   session?: Session;
+  ci?: CITrigger;
 }
 
 /** Scenario is one ordered match rule. */
@@ -135,6 +186,7 @@ export interface Lab {
   settings?: Settings;
   defaults?: Defaults;
   controls?: Control[];
+  workflows?: Workflow[];
   scenarios: Scenario[];
 }
 

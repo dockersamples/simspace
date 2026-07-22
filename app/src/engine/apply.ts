@@ -2,11 +2,15 @@
 // output/stderr -> mcp, returning the collected stdout/stderr lines. Ported
 // from engine/apply.go. See spec/simulator.md §7.
 
+import { ciRunToState, resolveCIRun } from "./ci";
 import { FS } from "./filesystem";
 import { Store } from "./state";
 import { render, renderLines } from "./template";
 import { renderMCP } from "./mcp";
-import { FileOp, StateValue, Then } from "./types";
+import { FileOp, StateValue, Then, Workflow } from "./types";
+
+/** The state path holding the append-only list of CI run records. */
+const CI_RUNS_KEY = "ci.runs";
 
 /** Marks a state delta key as a list append (§7.2). */
 const APPEND_SUFFIX = "+=";
@@ -25,6 +29,7 @@ export function applyThen(
   fs: FS,
   st: Store,
   args: Record<string, string>,
+  workflows?: Workflow[],
 ): ApplyOutput {
   // 1. Files (before state, so file content sees captured args).
   for (const op of then.files ?? []) {
@@ -41,6 +46,16 @@ export function applyThen(
     } else {
       st.set(key, value);
     }
+  }
+
+  // 2b. CI trigger: resolve the referenced workflow into a complete run record
+  //     and append it to the shared run list. The run id is the new length, so
+  //     runs number 1, 2, 3, … deterministically.
+  if (then.ci) {
+    const existing = st.get(CI_RUNS_KEY).value;
+    const count = Array.isArray(existing) ? existing.length : 0;
+    const run = resolveCIRun(then.ci, workflows, count + 1);
+    st.append(CI_RUNS_KEY, ciRunToState(run));
   }
 
   // 3. Output / stderr (rendered against args + post-delta state).

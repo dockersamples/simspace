@@ -11,6 +11,8 @@ state:
     running: false
   network:
     enabled: false
+  signing:
+    configured: false
   phase: start
 
 controls:
@@ -20,6 +22,42 @@ controls:
     state: network.enabled
     enabled: true
     disabled: false
+  - id: signing-key
+    label: "Configure image signing key"
+    description: "Provide the CI pipeline with a cosign key so it can sign images."
+    state: signing.configured
+    enabled: true
+    disabled: false
+
+# Reusable CI workflow definitions. A scenario triggers one with `then.ci`,
+# which resolves the workflow into a run shown in the CI tab. Each step's `logs`
+# are the condensed, teaching-focused output (not a full build log).
+workflows:
+  - id: build-and-sign
+    name: "Build and Sign"
+    on: push
+    steps:
+      - id: checkout
+        name: "Check out repository"
+        logs:
+          - "$ git checkout $GITHUB_SHA"
+          - "HEAD is now at a1b2c3d Add signing workflow"
+      - id: build
+        name: "Build image"
+        logs:
+          - "$ docker build -t registry.example.com/app:latest ."
+          - "=> exporting to image ... done"
+          - "=> => writing image sha256:9f8e7d6c ... done"
+      - id: sign
+        name: "Sign image with cosign"
+        logs:
+          - "$ cosign sign registry.example.com/app@sha256:9f8e7d6c"
+          - "Pushed signature to registry.example.com/app"
+      - id: verify
+        name: "Verify signature policy"
+        logs:
+          - "$ cosign verify registry.example.com/app@sha256:9f8e7d6c"
+          - "Verified OK — signature matches the expected identity."
 
 defaults:
   unmatched:
@@ -124,6 +162,54 @@ scenarios:
     then:
       stderr: ["curl: (7) Failed to connect: blocked by network policy."]
       exit: 7
+
+  # ── Git + CI ────────────────────────────────────────────────────────────────
+  # A commit, for flavor, so the push has something to send.
+  - id: git-commit
+    when:
+      command: [git, commit]
+    then:
+      output:
+        - "[main a1b2c3d] Add signing workflow"
+        - " 1 file changed, 24 insertions(+)"
+
+  # First push: the signing key isn't configured, so the pipeline fails at the
+  # sign step. `then.ci` triggers the Build and Sign workflow with a failure.
+  - id: git-push-unsigned
+    when:
+      command: [git, push]
+      state: { signing.configured: false }
+    then:
+      output:
+        - "Enumerating objects: 5, done."
+        - "To github.com:acme/app.git"
+        - "   a1b2c3d..e4f5a6b  main -> main"
+      ci:
+        workflow: build-and-sign
+        commit: "Add signing workflow"
+        conclusion: failure
+        failedStep: sign
+        steps:
+          - id: sign
+            logs:
+              - "$ cosign sign registry.example.com/app@sha256:9f8e7d6c"
+              - "Error: no signing key configured (COSIGN_KEY is unset)"
+        error: "Image signing failed — no signing key is configured. Add a cosign key and push again."
+
+  # Second push: with the key configured, the same workflow runs green.
+  - id: git-push-signed
+    when:
+      command: [git, push]
+      state: { signing.configured: true }
+    then:
+      output:
+        - "Enumerating objects: 5, done."
+        - "To github.com:acme/app.git"
+        - "   e4f5a6b..c7d8e9f  main -> main"
+      ci:
+        workflow: build-and-sign
+        commit: "Configure cosign signing key"
+        conclusion: success
 
   # The agent session only starts in the Agent terminal (`when.terminal`). Run
   # `sbx run claude` in the Host terminal and it falls through to the unmatched default.

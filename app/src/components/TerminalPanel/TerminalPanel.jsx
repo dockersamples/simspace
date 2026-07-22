@@ -1,8 +1,9 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { MockTerminal } from "../../terminal/MockTerminal";
 import { SettingsPanel } from "./SettingsPanel";
+import { CIPanel } from "./CIPanel";
 import { useWorkshop } from "../../WorkshopContext";
-import { useTabs } from "../../TabContext";
+import { useTabs, CI_TAB_ID } from "../../TabContext";
 import { useTerminal } from "../../context/TerminalContext";
 import "./TerminalPanel.scss";
 
@@ -37,7 +38,32 @@ export function TerminalPanel() {
   const terminals = workshop.terminals || [];
   const serviceTabs = tabs.filter((t) => t.kind === "service");
   const hasSettings = (simulator?.lab.controls?.length ?? 0) > 0;
+  const ciEnabled = Boolean(workshop.features?.ci);
   const showTabBar = tabs.length > 1 || hasSettings;
+
+  // When a new CI run appears (from a `git push` in any terminal), bring the CI
+  // tab forward so the learner sees the pipeline fire. Compares the run count on
+  // each shared-state event; a reset zeroes the baseline.
+  const prevRunCountRef = useRef(0);
+  useEffect(() => {
+    if (!ciEnabled || !subscribe || !simulator) return;
+    const readCount = () => {
+      const runs = simulator.getState("ci.runs");
+      return Array.isArray(runs) ? runs.length : 0;
+    };
+    prevRunCountRef.current = readCount();
+    return subscribe((event) => {
+      if (event.type === "reset") {
+        prevRunCountRef.current = 0;
+        return;
+      }
+      const count = readCount();
+      if (count > prevRunCountRef.current) {
+        setActiveTab(CI_TAB_ID);
+      }
+      prevRunCountRef.current = count;
+    });
+  }, [ciEnabled, subscribe, simulator, setActiveTab]);
 
   return (
     <div className="terminal-panel d-flex flex-fill flex-column">
@@ -105,6 +131,15 @@ export function TerminalPanel() {
           />
         </div>
       ))}
+
+      {ciEnabled && (
+        <div
+          className="flex-fill"
+          style={{ display: activeTab === CI_TAB_ID ? "flex" : "none" }}
+        >
+          <CIPanel />
+        </div>
+      )}
 
       {hasSettings && (
         <div

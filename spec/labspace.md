@@ -95,6 +95,11 @@ variables:                                   # OPTIONAL. Substitution values. §
 services:                                    # OPTIONAL. External-URL tabs. §9
   - title: Docs
     url: https://docs.example.com
+
+features:                                    # OPTIONAL. Feature flags (e.g. CI tab). §10
+  ci:
+    title: CI
+    icon: rocket_launch
 ```
 
 Field summary:
@@ -109,6 +114,7 @@ Field summary:
 | `sections`    | no       | Ordered instruction pages rendered in the left-hand panel      |
 | `variables`   | no       | Initial values for `$$variable$$` substitution in content      |
 | `services`    | no       | External-URL tabs (iframes) in the right-hand pane             |
+| `features`    | no       | Feature flags that add built-in tabs (e.g. `ci`) (§10)        |
 
 A `labspace.yaml` that does not parse to a mapping, or that omits `simulator`,
 is a hard load error surfaced to the learner.
@@ -312,7 +318,45 @@ Behaviour:
 
 ---
 
-## 10. Worked example
+## 10. `features` — optional built-in tabs
+
+`features` is an optional map that turns on built-in, engine-backed tabs in the
+right-hand pane. Unlike `services` (arbitrary external URLs), a feature tab is a
+first-class component that reads the shared simulator state.
+
+### 10.1 `features.ci` — the mock CI tab
+
+Adds a **CI tab** that renders mock CI workflow runs, GitHub-Actions style. Runs
+are triggered by scenarios via `then.ci` and defined by the `workflows:` catalog
+— both owned by `simulator.yaml` (see `simulator.md` §15). The labspace only
+declares that the tab exists and how it is labelled.
+
+```yaml
+features:
+  ci:
+    title: CI              # OPTIONAL tab label (default "CI")
+    icon: rocket_launch    # OPTIONAL Material Symbols name (default "rocket_launch")
+```
+
+| Field   | Required | Purpose                                                     |
+| ------- | -------- | ----------------------------------------------------------- |
+| `title` | no       | Tab label (default `"CI"`)                                  |
+| `icon`  | no       | Material Symbols name (default `"rocket_launch"`)           |
+
+Behaviour:
+
+- The CI tab appears immediately after the terminal tabs. It is **permanent**
+  (not closeable), like a terminal tab.
+- When a `git push` (or any scenario with `then.ci`) triggers a run, the CI tab
+  is brought forward automatically so the learner sees the pipeline fire.
+- Runs live in `state.ci.runs`, so they are deterministic and are cleared by
+  **Reset** along with the rest of the state.
+- With no `features.ci` block, no CI tab is shown and `then.ci` effects still
+  write `state.ci.runs` but have no visible surface.
+
+---
+
+## 11. Worked example
 
 ```yaml
 title: "Getting Started (Simulated)"
@@ -359,7 +403,7 @@ variables:
 
 ---
 
-## 11. Relationship to `simulator.yaml`
+## 12. Relationship to `simulator.yaml`
 
 | Concern                         | Owned by         |
 | ------------------------------- | ---------------- |
@@ -368,10 +412,12 @@ variables:
 | Terminal tabs (ids, labels)     | `labspace.yaml`  |
 | Initial virtual filesystem      | `labspace.yaml` `files:` |
 | External-URL (service) tabs     | `labspace.yaml`  |
+| Built-in feature tabs (CI)      | `labspace.yaml` `features:` |
 | Content variables               | `labspace.yaml` `variables:` |
 | Command matching + effects      | `simulator.yaml` (`scenarios`) |
 | Runtime state tree              | `simulator.yaml` `state:` |
 | Command-facing controls/toggles | `simulator.yaml` `controls:` |
+| CI workflow catalog + triggers  | `simulator.yaml` `workflows:` / `then.ci` |
 | Streaming/pacing                | `simulator.yaml` `settings:` |
 
 The two files meet at three points: `labspace.yaml`'s `simulator:` selects the
@@ -381,7 +427,7 @@ commands operate on.
 
 ---
 
-## 12. Open questions / deferred
+## 13. Open questions / deferred
 
 - Per-terminal (non-shared) simulator instances or isolated filesystems.
 - Declaring initial state / variable overrides per section.

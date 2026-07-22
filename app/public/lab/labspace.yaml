@@ -16,6 +16,13 @@ terminals:
     title: Agent
     icon: smart_toy
 
+# Enable the mock CI tab in the right-hand pane. Scenarios trigger workflow runs
+# with `then.ci` (see simulator.yaml); runs render in this tab.
+features:
+  ci:
+    title: CI
+    icon: rocket_launch
+
 # Seed files for the virtual filesystem. Built-in `ls`/`cat` reflect these.
 files:
   app/server.js: |
@@ -35,6 +42,8 @@ sections:
     contentPath: 02-edit.md
   - title: Work with the agent
     contentPath: 03-agent.md
+  - title: Sign images in CI
+    contentPath: 04-ci.md
 
 variables:
   containerName: web

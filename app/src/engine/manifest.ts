@@ -12,6 +12,8 @@ import {
   Scenario,
   StateValue,
   When,
+  Workflow,
+  WorkflowStep,
 } from "./types";
 
 /** Raised for malformed manifests, analogous to the Go parse/validate errors. */
@@ -50,7 +52,10 @@ export function parseManifest(text: string): Lab {
     state: doc.state as Record<string, StateValue> | undefined,
     settings: doc.settings as Lab["settings"],
     defaults: doc.defaults as Lab["defaults"],
-    controls: doc.controls !== undefined ? parseControls(doc.controls) : undefined,
+    controls:
+      doc.controls !== undefined ? parseControls(doc.controls) : undefined,
+    workflows:
+      doc.workflows !== undefined ? parseWorkflows(doc.workflows) : undefined,
     scenarios,
   };
 }
@@ -195,10 +200,7 @@ function parseControl(raw: unknown, index: number): Control {
     throw new ManifestError(`control #${index} must be a mapping`);
   }
   const c = raw as Record<string, unknown>;
-  const id =
-    typeof c.id === "string" && c.id
-      ? c.id
-      : `control-${index}`;
+  const id = typeof c.id === "string" && c.id ? c.id : `control-${index}`;
   const label = typeof c.label === "string" ? c.label : "";
   if (!label) {
     throw new ManifestError(`control "${id}": \`label\` is required`);
@@ -215,4 +217,52 @@ function parseControl(raw: unknown, index: number): Control {
     enabled: c.enabled !== undefined ? (c.enabled as StateValue) : true,
     disabled: c.disabled !== undefined ? (c.disabled as StateValue) : false,
   };
+}
+
+function parseWorkflows(raw: unknown): Workflow[] {
+  if (!Array.isArray(raw)) {
+    throw new ManifestError("`workflows` must be a list");
+  }
+  return raw.map((w, i) => parseWorkflow(w, i));
+}
+
+function parseWorkflow(raw: unknown, index: number): Workflow {
+  if (raw === null || typeof raw !== "object") {
+    throw new ManifestError(`workflow #${index} must be a mapping`);
+  }
+  const w = raw as Record<string, unknown>;
+  const id = typeof w.id === "string" && w.id ? w.id : "";
+  if (!id) {
+    throw new ManifestError(`workflow #${index}: \`id\` is required`);
+  }
+  const name = typeof w.name === "string" && w.name ? w.name : id;
+  if (w.steps !== undefined && !Array.isArray(w.steps)) {
+    throw new ManifestError(`workflow "${id}": \`steps\` must be a list`);
+  }
+  const steps = Array.isArray(w.steps)
+    ? w.steps.map((s, i) => parseWorkflowStep(s, id, i))
+    : [];
+  return {
+    id,
+    name,
+    on: typeof w.on === "string" ? w.on : undefined,
+    steps,
+  };
+}
+
+function parseWorkflowStep(
+  raw: unknown,
+  workflowId: string,
+  index: number,
+): WorkflowStep {
+  if (raw === null || typeof raw !== "object") {
+    throw new ManifestError(
+      `workflow "${workflowId}" step #${index} must be a mapping`,
+    );
+  }
+  const s = raw as Record<string, unknown>;
+  const id = typeof s.id === "string" && s.id ? s.id : `step-${index}`;
+  const name = typeof s.name === "string" && s.name ? s.name : id;
+  const logs = Array.isArray(s.logs) ? s.logs.map(String) : undefined;
+  return { id, name, logs };
 }

@@ -8,11 +8,16 @@ import {
 import { useWorkshop } from "./WorkshopContext";
 
 // Tabs shown in the right-hand pane. Every declared terminal becomes a tab
-// (rendered as a component, not an iframe) — `kind: "terminal"`. Any `services`
+// (rendered as a component, not an iframe) — `kind: "terminal"`. When the lab
+// enables `features.ci`, a mock CI tab is added — `kind: "ci"`. Any `services`
 // declared in labspace.yaml become external-URL iframe tabs, and authors can
 // open more via the `tablink` markdown directive — `kind: "service"`.
 
 const TabContext = createContext([]);
+
+// Stable id for the mock CI tab (double-underscored so it can't collide with a
+// learner-declared terminal or service id).
+export const CI_TAB_ID = "__ci__";
 
 export function TabContextProvider({ children }) {
   const workshop = useWorkshop();
@@ -42,7 +47,10 @@ export function TabContextProvider({ children }) {
   const addTab = useCallback((url, title, id) => {
     if (!title) title = url;
     if (!id) id = title;
-    setCustomTabs((prevTabs) => [...prevTabs, { url, title, id, kind: "service" }]);
+    setCustomTabs((prevTabs) => [
+      ...prevTabs,
+      { url, title, id, kind: "service" },
+    ]);
     setActiveTab(id);
   }, []);
 
@@ -106,8 +114,27 @@ export function TabContextProvider({ children }) {
     [workshop.services, isTerminalId],
   );
 
+  // The CI tab is a lab feature (like a service) but rendered as a component,
+  // not an iframe. Enabled by `features.ci` in labspace.yaml; title/icon are
+  // configurable there.
+  const ciFeature = workshop.features?.ci;
+  const ciTab = useMemo(
+    () =>
+      ciFeature
+        ? {
+            id: CI_TAB_ID,
+            title: ciFeature.title || "CI",
+            icon: ciFeature.icon || "rocket_launch",
+            kind: "ci",
+          }
+        : null,
+    [ciFeature],
+  );
+
   const tabs = useMemo(() => {
     const tabs = [...terminalTabs];
+
+    if (ciTab) tabs.push(ciTab);
 
     (workshop.services || []).forEach((service) => {
       tabs.push({
@@ -121,7 +148,13 @@ export function TabContextProvider({ children }) {
 
     tabs.push(...customTabs);
     return tabs;
-  }, [terminalTabs, workshop.services, customTabs, labspaceTabOverrides]);
+  }, [
+    terminalTabs,
+    ciTab,
+    workshop.services,
+    customTabs,
+    labspaceTabOverrides,
+  ]);
 
   return (
     <TabContext.Provider

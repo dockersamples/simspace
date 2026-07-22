@@ -123,6 +123,9 @@ export async function loadLabspace(labUrl = resolveLabUrl()) {
     variables: raw.variables || {},
     files: raw.files || {},
     terminals,
+    // Optional feature flags (e.g. `features.ci` enables the mock CI tab). Kept
+    // as-is so presentation code can read per-feature config (title, icon).
+    features: raw.features || {},
     simulatorSpec,
   };
 }

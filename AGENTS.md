@@ -38,7 +38,8 @@ app/                 THE PRODUCT — the consolidated static React app
   src/
     engine/          in-browser scenario engine (TypeScript). Entry: index.ts
                      — manifest.ts (parse), match.ts, run.ts, apply.ts,
-                       state.ts, filesystem.ts, template.ts, simulator.ts (facade)
+                       state.ts, filesystem.ts, template.ts, ci.ts (mock CI
+                       runs), simulator.ts (facade)
     labspace/        fetch + parse labspace.yaml; slug + $$variable$$ substitution
     terminal/        <MockTerminal> mock terminal component
     components/       WorkshopPanel (instructions + markdown), TerminalPanel, ExportView

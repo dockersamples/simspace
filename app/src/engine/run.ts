@@ -29,7 +29,7 @@ export function run(
   const m = match(lab, cmd, st, terminalId);
   if (m) {
     const then = m.scenario.then;
-    const { stdout, stderr } = applyThen(then, fs, st, m.args);
+    const { stdout, stderr } = applyThen(then, fs, st, m.args, lab.workflows);
     return {
       stdout,
       stderr,
@@ -45,7 +45,7 @@ export function run(
   if (builtin) return builtin;
 
   const then = unmatchedThen(lab);
-  const { stdout, stderr } = applyThen(then, fs, st, {});
+  const { stdout, stderr } = applyThen(then, fs, st, {}, lab.workflows);
   return {
     stdout,
     stderr,
@@ -72,7 +72,7 @@ export function runAgent(
   const m = matchAgent(lab, prompt, st, terminalId);
   const then = m ? m.scenario.then : unmatchedAgentThen(lab);
 
-  const { stdout, stderr } = applyThen(then, fs, st, {});
+  const { stdout, stderr } = applyThen(then, fs, st, {}, lab.workflows);
 
   return {
     stdout,
