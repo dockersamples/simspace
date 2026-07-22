@@ -432,4 +432,7 @@ commands operate on.
 - Per-terminal (non-shared) simulator instances or isolated filesystems.
 - Declaring initial state / variable overrides per section.
 - Schema `version` field for `labspace.yaml` itself (currently unversioned).
-- Validation/lint for dangling `contentPath`, `terminal-id`, and service ids.
+- ~~Validation/lint for dangling `contentPath`, `terminal-id`, and service ids.~~
+  Implemented by `app/scripts/validate-lab.ts` (`npm run validate-lab`), which
+  checks `contentPath`, `simulator`, code-fence `terminal-id`, `:filelink`
+  targets, and duplicate terminal/service ids.

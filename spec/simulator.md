@@ -350,7 +350,11 @@ output:
 Output, `content`, and `with` support `{{ }}` interpolation:
 
 - `{{ args.<name> }}` — a captured argument value (captured when matched by
-  scalar equality, `any`, or `oneOf`).
+  scalar equality, `any`, or `oneOf`). **Flag captures are referenced by their
+  name with any leading dashes stripped** — a `--name` matcher is read as
+  `{{ args.name }}`, a `-t` matcher as `{{ args.t }}`. (The template grammar has
+  no dashes, and flags are stored dash-stripped, so the two stay consistent.)
+  Positional captures keep their numeric index: `{{ args.0 }}`.
 - `{{ state.<dot.path> }}` — a value from the **post-delta** state.
 
 ```yaml
@@ -360,9 +364,9 @@ when:
     --name: { any: true }
 then:
   output:
-    - "Starting container '{{ args.--name }}'..."
+    - "Starting container '{{ args.name }}'..."   # note: no dashes
   state:
-    container.name: "{{ args.--name }}"
+    container.name: "{{ args.name }}"
 ```
 
 No logic, loops, or expressions — substitution only.
@@ -851,4 +855,7 @@ changes what is shown.
 - Regex/range arg matchers and `state` operators (`>`, `exists`, `contains`).
 - Cross-file scenario includes / reusable scenario libraries.
 - Conditional/branching output within a single scenario.
-- Template-reference lint (flagging `{{ args.X }}` with no capture).
+- ~~Template-reference lint (flagging `{{ args.X }}` with no capture).~~
+  Implemented by `app/scripts/validate-lab.ts` (`npm run validate-lab`), which
+  also flags `{{ state.X }}` references nothing writes and unreachable markdown
+  commands. A full state-threaded playthrough lint is still deferred.

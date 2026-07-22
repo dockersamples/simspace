@@ -123,7 +123,10 @@ function matchWhen(
       return fail;
     }
     if (capture) {
-      captures[name] = value;
+      // Key captures by the normalized (dash-stripped) name so templates can
+      // reference them as {{ args.name }} — the template grammar has no dashes.
+      const key = /^\d+$/.test(name) ? name : name.replace(/^-+/, "");
+      captures[key] = value;
     }
   }
 
@@ -151,8 +154,11 @@ function resolveArg(
     }
     return { value: "", present: false };
   }
-  if (name in cmd.flags) {
-    return { value: cmd.flags[name], present: true };
+  // Flag matcher names may be written with or without leading dashes (spec
+  // §6.2); parseCommand stores flags with dashes stripped, so normalize here.
+  const flag = name.replace(/^-+/, "");
+  if (flag in cmd.flags) {
+    return { value: cmd.flags[flag], present: true };
   }
   return { value: "", present: false };
 }

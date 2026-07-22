@@ -1,19 +1,19 @@
-title: "Getting Started (Simulated)"
-description: "A fully in-browser lab — every command is scripted and runs locally."
+title: "A Tour of Docker (Simulated)"
+description: "The Docker CLI, Docker Scout, Docker Sandboxes, and CI — every command scripted and run in your browser."
 
 # Path to the simulator scenario spec (relative to this file). All terminals
 # below share this one spec, and one shared state + filesystem.
 simulator: simulator.yaml
 
-# Multiple terminal tabs, all backed by the shared simulator above. Code blocks
-# can target a specific one with `terminal-id=<id>` in the fence info string;
-# the first terminal is the default when a code block omits `terminal-id`.
+# Two terminal tabs, both backed by the shared simulator above. The Sandbox tab
+# is where the agent session runs (scenarios scope to it with `when.terminal`).
+# Code blocks target a tab with `terminal-id=<id>`; the first is the default.
 terminals:
   - id: host
     title: Host
     icon: dns
-  - id: agent
-    title: Agent
+  - id: sandbox
+    title: Sandbox
     icon: smart_toy
 
 # Enable the mock CI tab in the right-hand pane. Scenarios trigger workflow runs
@@ -23,26 +23,52 @@ features:
     title: CI
     icon: rocket_launch
 
-# Seed files for the virtual filesystem. Built-in `ls`/`cat` reflect these.
+# Seed files for the virtual filesystem — a tiny Node/Express project used by
+# the Scout, Sandbox, and CI sections. Built-in `ls`/`cat` reflect these.
 files:
-  app/server.js: |
+  Dockerfile: |
+    FROM node:20-alpine
+    WORKDIR /app
+    COPY package.json package-lock.json ./
+    RUN npm ci --omit=dev
+    COPY . .
+    EXPOSE 3000
+    CMD ["node", "server.js"]
+  package.json: |
+    {
+      "name": "scout-demo",
+      "version": "1.0.0",
+      "private": true,
+      "dependencies": {
+        "express": "^4.17.1"
+      }
+    }
+  server.js: |
     const express = require("express");
     const app = express();
 
     app.get("/", (_, res) => res.send("Hello from the lab!"));
 
     app.listen(3000, () => console.log("listening on :3000"));
+  compose.yaml: |
+    services:
+      web:
+        build: .
+        ports:
+          - "3000:3000"
+      redis:
+        image: redis:7-alpine
 
 sections:
   - title: Introduction
     contentPath: 00-intro.md
-  - title: Run a container
-    contentPath: 01-run.md
-  - title: Edit and save a file
-    contentPath: 02-edit.md
-  - title: Work with the agent
-    contentPath: 03-agent.md
-  - title: Sign images in CI
+  - title: The Docker CLI
+    contentPath: 01-docker.md
+  - title: Find and fix a CVE with Scout
+    contentPath: 02-scout.md
+  - title: Run an agent in a Sandbox
+    contentPath: 03-sandbox.md
+  - title: Build and sign in CI
     contentPath: 04-ci.md
 
 variables:

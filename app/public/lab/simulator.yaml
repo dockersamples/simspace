@@ -1,63 +1,89 @@
 version: "2.0"
 
 metadata:
-  id: getting-started
-  title: "Getting Started"
-  summary: "Run a simulated container and edit a file — no Docker required."
+  id: docker-tour
+  title: "A Tour of Docker"
+  summary: "The Docker CLI, Docker Scout, Docker Sandboxes, and CI — all simulated."
   authors: ["Docker Samples"]
 
+objectives:
+  - "Run, inspect, and remove a container with the `docker` CLI"
+  - "Find and fix a CVE with Docker Scout"
+  - "Run an agent in a Docker Sandbox and control its network access"
+  - "Build, push, and sign an image from a CI pipeline"
+
+# ── State ─────────────────────────────────────────────────────────────────────
+# Every scenario reads and writes this in-memory tree. Reset restores it.
 state:
   container:
+    created: false
     running: false
+    name: web
+  compose:
+    running: false
+  source:
+    patched: false # has the express dependency been upgraded?
+  image:
+    built: false # does a local image exist?
+    patched: false # was the image rebuilt after the fix?
   network:
-    enabled: false
-  signing:
-    configured: false
-  phase: start
+    exampleAllowed: false # sandbox network policy for example.com
+  sandbox:
+    running: false
+  hub:
+    configured: false # are Docker Hub credentials set in CI?
 
+# ── Controls ──────────────────────────────────────────────────────────────────
+# Toggles in the Settings dialog that flip state without typing a command.
 controls:
-  - id: network-access
-    label: "Enable network access"
-    description: "Allow the simulated container to answer curl requests."
-    state: network.enabled
+  - id: network-example
+    label: "Allow sandbox access to example.com"
+    description: "Adds a network policy so the sandboxed agent can reach example.com."
+    state: network.exampleAllowed
     enabled: true
     disabled: false
-  - id: signing-key
-    label: "Configure image signing key"
-    description: "Provide the CI pipeline with a cosign key so it can sign images."
-    state: signing.configured
+  - id: hub-credentials
+    label: "Configure Docker Hub credentials"
+    description: "Sets the DOCKER_USER / DOCKER_PAT secrets the CI pipeline needs to push."
+    state: hub.configured
     enabled: true
     disabled: false
 
-# Reusable CI workflow definitions. A scenario triggers one with `then.ci`,
-# which resolves the workflow into a run shown in the CI tab. Each step's `logs`
-# are the condensed, teaching-focused output (not a full build log).
+# ── CI workflow catalog ───────────────────────────────────────────────────────
+# A scenario triggers one of these with `then.ci`. Each step's `logs` are the
+# condensed, teaching-focused output — not a full build log.
 workflows:
-  - id: build-and-sign
-    name: "Build and Sign"
+  - id: build-push-sign
+    name: "Build, Push & Sign"
     on: push
     steps:
       - id: checkout
         name: "Check out repository"
         logs:
           - "$ git checkout $GITHUB_SHA"
-          - "HEAD is now at a1b2c3d Add signing workflow"
+          - "HEAD is now at c0ffee1 Add build, push and sign workflow"
       - id: build
         name: "Build image"
         logs:
-          - "$ docker build -t registry.example.com/app:latest ."
-          - "=> exporting to image ... done"
+          - "$ docker build -t docker.io/acme/scout-demo:latest ."
+          - "=> exporting to image"
           - "=> => writing image sha256:9f8e7d6c ... done"
+      - id: login
+        name: "Log in to Docker Hub"
+        logs:
+          - '$ echo "$DOCKER_PAT" | docker login -u "$DOCKER_USER" --password-stdin'
+          - "Login Succeeded"
+      - id: push
+        name: "Push image to Docker Hub"
+        logs:
+          - "$ docker push docker.io/acme/scout-demo:latest"
+          - "latest: digest: sha256:9f8e7d6c size: 1994"
       - id: sign
         name: "Sign image with cosign"
         logs:
-          - "$ cosign sign registry.example.com/app@sha256:9f8e7d6c"
-          - "Pushed signature to registry.example.com/app"
-      - id: verify
-        name: "Verify signature policy"
-        logs:
-          - "$ cosign verify registry.example.com/app@sha256:9f8e7d6c"
-          - "Verified OK — signature matches the expected identity."
+          - "$ cosign sign --yes docker.io/acme/scout-demo@sha256:9f8e7d6c"
+          - "tlog entry created with index: 148300114"
+          - "Pushed signature to docker.io/acme/scout-demo"
 
 defaults:
   unmatched:
@@ -65,184 +91,436 @@ defaults:
     exit: 1
   unmatchedAgent:
     output:
-      - "I can only respond to the prompts this lab has scripted. Try asking me"
-      - 'to "scaffold the app".'
+      - "I can only respond to the prompts this lab has scripted. Try asking me to"
+      - '"fetch example.com".'
 
 scenarios:
-  - id: run-start
+  # ══════════════════════════════════════════════════════════════════════════
+  # SECTION 1 — The Docker CLI: run, inspect, and remove a container
+  # ══════════════════════════════════════════════════════════════════════════
+
+  - id: docker-run
+    description: "Start a container. Captures --name so later output matches it."
     when:
       command: [docker, run]
+      args: { --name: { any: true } }
       state: { container.running: false }
     then:
       state:
+        container.created: true
         container.running: true
-        phase: running
+        container.name: "{{ args.name }}"
       output:
         - "Unable to find image 'nginx:latest' locally"
         - "latest: Pulling from library/nginx"
+        - "a480a496 ... : Pull complete"
+        - "Digest: sha256:0d17b565c37bcbd895e9d92315a05c1c3c9a29f762b011a10c54a66cd53c9b31"
         - "Status: Downloaded newer image for nginx:latest"
-        - "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+        - "3f8a9c2b1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1"
 
-  - id: run-already
+  - id: docker-run-conflict
     when:
       command: [docker, run]
       state: { container.running: true }
     then:
-      stderr: ["docker: a container named web is already running."]
+      stderr:
+        - 'docker: Error response from daemon: Conflict. The container name "/{{ state.container.name }}" is already in use.'
       exit: 1
 
-  - id: ps-running
+  - id: docker-ps-running
     when:
       command: [docker, ps]
       state: { container.running: true }
     then:
       output:
-        - "CONTAINER ID   IMAGE     STATUS         PORTS                NAMES"
-        - "a1b2c3d4e5f6   nginx     Up 3 seconds   0.0.0.0:8080->80/tcp web"
+        - "CONTAINER ID   IMAGE     COMMAND                  STATUS         PORTS                  NAMES"
+        - '3f8a9c2b1d4e   nginx     "/docker-entrypoint.…"   Up 4 seconds   0.0.0.0:8080->80/tcp   {{ state.container.name }}'
 
-  - id: ps-empty
+  - id: docker-ps-empty
     when:
       command: [docker, ps]
     then:
       output:
-        - "CONTAINER ID   IMAGE     STATUS    PORTS     NAMES"
+        - "CONTAINER ID   IMAGE     COMMAND   STATUS    PORTS     NAMES"
 
-  - id: stop
+  - id: docker-logs
+    when:
+      command: [docker, logs]
+      state: { container.created: true }
+    then:
+      output:
+        - "/docker-entrypoint.sh: Configuration complete; ready for start up"
+        - "2026/07/22 14:03:02 [notice] 1#1: start worker processes"
+        - '172.17.0.1 - - [22/Jul/2026:14:03:11 +0000] "GET / HTTP/1.1" 200 615 "-" "curl/8.5.0"'
+        - '172.17.0.1 - - [22/Jul/2026:14:03:12 +0000] "GET /favicon.ico HTTP/1.1" 404 153 "-" "curl/8.5.0"'
+
+  - id: docker-logs-none
+    when:
+      command: [docker, logs]
+    then:
+      stderr:
+        [
+          "Error response from daemon: No such container: {{ state.container.name }}",
+        ]
+      exit: 1
+
+  - id: docker-stop
     when:
       command: [docker, stop]
       state: { container.running: true }
     then:
-      state:
-        container.running: false
-        phase: stopped
-      output:
-        - "web"
+      state: { container.running: false }
+      output: ["{{ state.container.name }}"]
 
-  # curl is gated by the network-access toggle (set via the Settings button).
-  # The toggle writes shared state, so enabling it in one terminal unblocks
-  # curl in every terminal.
-  - id: curl-allowed
+  - id: docker-rm-running
     when:
-      command: curl
-      state: { network.enabled: true }
+      command: [docker, rm]
+      state: { container.running: true }
+    then:
+      stderr:
+        - "Error response from daemon: You cannot remove a running container. Stop the container before attempting removal or force remove"
+      exit: 1
+
+  - id: docker-rm
+    when:
+      command: [docker, rm]
+      state: { container.created: true }
+    then:
+      state: { container.created: false }
+      output: ["{{ state.container.name }}"]
+
+  # ── Compose ──────────────────────────────────────────────────────────────
+  - id: compose-up
+    when:
+      command: [docker, compose, up]
+      state: { compose.running: false }
+    then:
+      state: { compose.running: true }
+      output:
+        - "[+] Running 3/3"
+        - " ✔ Network scout-demo_default    Created"
+        - " ✔ Container scout-demo-redis-1  Started"
+        - " ✔ Container scout-demo-web-1    Started"
+
+  - id: compose-ps
+    when:
+      command: [docker, compose, ps]
+      state: { compose.running: true }
+    then:
+      output:
+        - "NAME                  IMAGE            COMMAND                  SERVICE   STATUS         PORTS"
+        - 'scout-demo-redis-1    redis:7-alpine   "docker-entrypoint.s…"   redis     Up 6 seconds   6379/tcp'
+        - 'scout-demo-web-1      scout-demo-web   "node server.js"         web       Up 6 seconds   0.0.0.0:3000->3000/tcp'
+
+  - id: compose-ps-empty
+    when:
+      command: [docker, compose, ps]
+    then:
+      output:
+        - "NAME      IMAGE     COMMAND   SERVICE   STATUS    PORTS"
+
+  - id: compose-down
+    when:
+      command: [docker, compose, down]
+      state: { compose.running: true }
+    then:
+      state: { compose.running: false }
+      output:
+        - "[+] Running 3/3"
+        - " ✔ Container scout-demo-web-1    Removed"
+        - " ✔ Container scout-demo-redis-1  Removed"
+        - " ✔ Network scout-demo_default    Removed"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # SECTION 2 — Docker Scout: find a CVE, fix it, confirm it's resolved
+  # ══════════════════════════════════════════════════════════════════════════
+
+  # A rebuild AFTER the fix produces a patched image. Must precede docker-build.
+  - id: docker-build-patched
+    when:
+      command: [docker, build]
+      state: { source.patched: true }
+    then:
+      state:
+        image.built: true
+        image.patched: true
+      output:
+        - "[+] Building 9.4s (10/10) FINISHED"
+        - " => [internal] load build definition from Dockerfile"
+        - " => [1/4] FROM docker.io/library/node:20-alpine"
+        - " => [2/4] COPY package.json package-lock.json ./"
+        - " => [3/4] RUN npm ci --omit=dev"
+        - " => [4/4] COPY . ."
+        - " => exporting to image"
+        - " => => naming to docker.io/library/scout-demo:latest"
+
+  - id: docker-build
+    when:
+      command: [docker, build]
+    then:
+      state: { image.built: true }
+      output:
+        - "[+] Building 12.7s (10/10) FINISHED"
+        - " => [internal] load build definition from Dockerfile"
+        - " => => transferring dockerfile: 214B"
+        - " => [1/4] FROM docker.io/library/node:20-alpine"
+        - " => [2/4] COPY package.json package-lock.json ./"
+        - " => [3/4] RUN npm ci --omit=dev"
+        - " => [4/4] COPY . ."
+        - " => exporting to image"
+        - " => => naming to docker.io/library/scout-demo:latest"
+
+  - id: scout-no-image
+    when:
+      command: [docker, scout, cves]
+      state: { image.built: false }
+    then:
+      stderr:
+        - "ERROR  No such image: scout-demo:latest. Build it first with `docker build -t scout-demo .`"
+      exit: 1
+
+  - id: scout-clean
+    when:
+      command: [docker, scout, cves]
+      state: { image.patched: true }
     then:
       output:
         - |
-          <!DOCTYPE html>
-          <html>
-          <head>
-          <title>Welcome to nginx!</title>
-          <style>
-          html { color-scheme: light dark; }
-          body { width: 35em; margin: 0 auto;
-          font-family: Tahoma, Verdana, Arial, sans-serif; }
-          </style>
-          </head>
-          <body>
-          <h1>Welcome to nginx!</h1>
-          <p>If you see this page, nginx is successfully installed and working.
-          Further configuration is required for the web server, reverse proxy, 
-          API gateway, load balancer, content cache, or other features.</p>
+          WARN Failed to load default registry credentials, continuing anonymously
+              ✓ Image stored for indexing
+              ✓ Indexed 142 packages
 
-          <p>For online documentation and support please refer to
-          <a href="https://nginx.org/">nginx.org</a>.<br/>
-          To engage with the community please visit
-          <a href="https://community.nginx.org/">community.nginx.org</a>.<br/>
-          For enterprise grade support, professional services, additional 
-          security features and capabilities please refer to
-          <a href="https://f5.com/nginx">f5.com/nginx</a>.</p>
+          ## Overview
 
-          <p><em>Thank you for using nginx.</em></p>
-          </body>
-          </html>
+                            │       Analyzed Image
+          ──────────────────┼──────────────────────────────
+            Target          │  scout-demo:latest
+              digest        │  4b1d7f0aa9c2
+            platform        │ linux/arm64
+            vulnerabilities │    0C     0H     0M     0L
+            size            │ 68 MB
+            packages        │ 142
 
-  - id: curl-blocked
+          ## Packages and Vulnerabilities
+
+            No vulnerable packages detected
+
+  - id: scout-vulnerable
     when:
-      command: curl
+      command: [docker, scout, cves]
     then:
-      stderr: ["curl: (7) Failed to connect: blocked by network policy."]
-      exit: 7
+      output:
+        - |
+          WARN Failed to load default registry credentials, continuing anonymously
+              ✓ Image stored for indexing
+              ✓ Indexed 142 packages
 
-  # ── Git + CI ────────────────────────────────────────────────────────────────
-  # A commit, for flavor, so the push has something to send.
+          ## Overview
+
+                            │       Analyzed Image
+          ──────────────────┼──────────────────────────────
+            Target          │  scout-demo:latest
+              digest        │  9f8e7d6c1a2b
+            platform        │ linux/arm64
+            vulnerabilities │    0C     0H     1M     0L
+            size            │ 68 MB
+            packages        │ 142
+
+          ## Packages and Vulnerabilities
+
+             0C     0H     1M     0L  express 4.17.1
+          pkg:npm/express@4.17.1
+
+            ✗ MEDIUM CVE-2024-29041 [Improper Handling of URL Encoding]
+              https://scout.docker.com/v/CVE-2024-29041
+              Affected range : <4.19.2
+              Fixed version  : 4.19.2
+              CVSS Score     : 6.1
+              CVSS Vector    : CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N
+
+
+          1 vulnerability found in 1 package
+            MEDIUM   1
+
+  - id: scout-recommendations
+    when:
+      command: [docker, scout, recommendations]
+    then:
+      output:
+        - |
+          ## Recommended fixes for package express
+
+            Name            │ express
+            Current version │ 4.17.1
+          ──────────────────┼──────────────────────────────────────────
+            Recommendation  │ Upgrade to 4.19.2
+            Resolves        │ CVE-2024-29041 (MEDIUM)
+
+            Run:  npm install express@4.19.2
+
+  # Applying the fix: bump express in package.json and flag the source patched.
+  - id: npm-install-express
+    when:
+      command: [npm, install]
+      prompt: "express@4.19.2"
+    then:
+      state: { source.patched: true }
+      files:
+        - replace: package.json
+          find: '"express": "^4.17.1"'
+          with: '"express": "^4.19.2"'
+      output:
+        - "changed 1 package, and audited 58 packages in 1s"
+        - "found 0 vulnerabilities"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # SECTION 3 — Docker Sandbox (sbx): run an agent, gate its network access
+  # ══════════════════════════════════════════════════════════════════════════
+
+  - id: sbx-run
+    description: "Start a sandboxed agent session in the Sandbox terminal."
+    when:
+      command: [sbx, run, claude]
+      terminal: sandbox
+    then:
+      state: { sandbox.running: true }
+      output:
+        - "Creating sandbox 'gifted_turing' (image: docker/sandbox-claude)…"
+        - "Sandbox ready. Starting Claude in an isolated, ephemeral environment."
+      session:
+        prompt: "claude> "
+        intro:
+          - "I'm Claude, running inside a Docker Sandbox — isolated from your host,"
+          - "with no outbound network access unless a policy allows it."
+          - 'Try: "fetch example.com and tell me what you get". Type /exit to leave.'
+        outro:
+          - "Detaching from the sandbox. It keeps running — see `sbx ls`."
+
+  - id: sbx-run-host
+    description: "sbx run in the Host terminal is a no-op hint (sandboxes live in the Sandbox tab)."
+    when:
+      command: [sbx, run, claude]
+    then:
+      stderr:
+        - "Run this in the Sandbox terminal tab to start an agent session."
+      exit: 1
+
+  - id: agent-fetch-allowed
+    when:
+      agent: true
+      terminal: sandbox
+      promptContains: ["example.com"]
+      state: { network.exampleAllowed: true }
+    then:
+      output:
+        - "Fetching https://example.com …"
+        - ""
+        - "  $ curl -sS -o /dev/null -w '%{http_code}' https://example.com"
+        - "  200"
+        - ""
+        - "It works now — example.com returned HTTP 200. The network policy you"
+        - "enabled lets this sandbox reach that host (and only that host)."
+
+  - id: agent-fetch-blocked
+    when:
+      agent: true
+      terminal: sandbox
+      promptContains: ["example.com"]
+    then:
+      output:
+        - "Fetching https://example.com …"
+        - ""
+        - "  $ curl -sS https://example.com"
+        - "  curl: (6) Could not resolve host: example.com"
+        - ""
+        - "I can't reach example.com — this sandbox has no outbound network access"
+        - "by default. Enable a network policy for example.com, then ask me again."
+
+  - id: sbx-ls-allowed
+    when:
+      command: [sbx, ls]
+      state: { sandbox.running: true, network.exampleAllowed: true }
+    then:
+      output:
+        - "SANDBOX         AGENT    STATUS    NETWORK POLICY   CREATED"
+        - "gifted_turing   claude   running   example.com      about a minute ago"
+
+  - id: sbx-ls-running
+    when:
+      command: [sbx, ls]
+      state: { sandbox.running: true }
+    then:
+      output:
+        - "SANDBOX         AGENT    STATUS    NETWORK POLICY   CREATED"
+        - "gifted_turing   claude   running   none (deny all)  about a minute ago"
+
+  - id: sbx-ls-empty
+    when:
+      command: [sbx, ls]
+    then:
+      output:
+        - "SANDBOX   AGENT   STATUS   NETWORK POLICY   CREATED"
+
+  - id: sbx-rm
+    when:
+      command: [sbx, rm]
+      state: { sandbox.running: true }
+    then:
+      state: { sandbox.running: false }
+      output: ["gifted_turing"]
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # SECTION 4 — CI: build, push, and sign an image (gated on Hub credentials)
+  # ══════════════════════════════════════════════════════════════════════════
+
+  - id: git-add
+    when:
+      command: [git, add]
+    then:
+      output: []
+
   - id: git-commit
     when:
       command: [git, commit]
     then:
       output:
-        - "[main a1b2c3d] Add signing workflow"
-        - " 1 file changed, 24 insertions(+)"
+        - "[main c0ffee1] Add build, push and sign workflow"
+        - " 1 file changed, 32 insertions(+)"
 
-  # First push: the signing key isn't configured, so the pipeline fails at the
-  # sign step. `then.ci` triggers the Build and Sign workflow with a failure.
-  - id: git-push-unsigned
+  # First push: Docker Hub credentials aren't configured, so the pipeline fails
+  # at the login step and the push/sign steps are skipped.
+  - id: git-push-no-creds
     when:
       command: [git, push]
-      state: { signing.configured: false }
+      state: { hub.configured: false }
     then:
       output:
-        - "Enumerating objects: 5, done."
-        - "To github.com:acme/app.git"
-        - "   a1b2c3d..e4f5a6b  main -> main"
+        - "Enumerating objects: 8, done."
+        - "To github.com:acme/scout-demo.git"
+        - "   a1b2c3d..c0ffee1  main -> main"
       ci:
-        workflow: build-and-sign
-        commit: "Add signing workflow"
+        workflow: build-push-sign
+        commit: "Add build, push and sign workflow"
         conclusion: failure
-        failedStep: sign
+        failedStep: login
         steps:
-          - id: sign
+          - id: login
             logs:
-              - "$ cosign sign registry.example.com/app@sha256:9f8e7d6c"
-              - "Error: no signing key configured (COSIGN_KEY is unset)"
-        error: "Image signing failed — no signing key is configured. Add a cosign key and push again."
+              - '$ echo "$DOCKER_PAT" | docker login -u "$DOCKER_USER" --password-stdin'
+              - "Error: Cannot log in: the DOCKER_USER and DOCKER_PAT secrets are not set."
+        error: "Docker Hub login failed — the DOCKER_USER / DOCKER_PAT repository secrets are not configured."
 
-  # Second push: with the key configured, the same workflow runs green.
-  - id: git-push-signed
+  # Second push: with credentials configured, the same workflow runs green.
+  - id: git-push-creds
     when:
       command: [git, push]
-      state: { signing.configured: true }
+      state: { hub.configured: true }
     then:
       output:
-        - "Enumerating objects: 5, done."
-        - "To github.com:acme/app.git"
-        - "   e4f5a6b..c7d8e9f  main -> main"
+        - "Enumerating objects: 3, done."
+        - "To github.com:acme/scout-demo.git"
+        - "   c0ffee1..d4d4d4d  main -> main"
       ci:
-        workflow: build-and-sign
-        commit: "Configure cosign signing key"
+        workflow: build-push-sign
+        commit: "Re-run signed build with Hub credentials"
         conclusion: success
-
-  # The agent session only starts in the Agent terminal (`when.terminal`). Run
-  # `sbx run claude` in the Host terminal and it falls through to the unmatched default.
-  - id: start-agent
-    when:
-      command: [sbx, run, claude]
-      terminal: agent
-    then:
-      output:
-        - "Launching agent (simulated)…"
-      session:
-        intro:
-          - "Ask me to scaffold the app, then type /exit to leave."
-        prompt: "agent> "
-        outro:
-          - "Leaving the agent session."
-
-  # A scripted agent turn that writes into the SHARED filesystem — so the Host
-  # terminal can immediately `cat` the file the agent just created.
-  - id: scaffold
-    when:
-      agent: true
-      terminal: agent
-      promptContains: ["scaffold"]
-    then:
-      output:
-        - "Created app/server.js — a minimal Express server listening on :3000."
-      files:
-        - create: app/server.js
-          content: |
-            const express = require("express");
-            const app = express();
-
-            app.get("/", (_, res) => res.send("Hello from the agent!"));
-
-            app.listen(3000, () => console.log("listening on :3000"));
