@@ -54,7 +54,10 @@ export function applyThen(
   if (then.ci) {
     const existing = st.get(CI_RUNS_KEY).value;
     const count = Array.isArray(existing) ? existing.length : 0;
-    const run = resolveCIRun(then.ci, workflows, count + 1);
+    const run = resolveCIRun(then.ci, workflows, count + 1, (path) => {
+      const { value, present } = st.get(path);
+      return present ? (value ?? null) : null;
+    });
     st.append(CI_RUNS_KEY, ciRunToState(run));
   }
 

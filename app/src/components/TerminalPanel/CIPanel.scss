@@ -281,8 +281,39 @@
 }
 
 .ci-run-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
   margin-top: 12px;
   font-size: 12px;
   color: var(--ci-muted);
-  text-align: right;
+}
+
+.ci-rerun-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ci-text);
+  background: var(--ci-card);
+  border: 1px solid var(--ci-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.ci-rerun-btn:hover:not(:disabled) {
+  background: #21262d;
+  border-color: var(--ci-grey);
+}
+.ci-rerun-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ci-rerun-btn .material-symbols-outlined {
+  font-size: 16px;
 }

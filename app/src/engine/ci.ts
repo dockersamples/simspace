@@ -20,6 +20,8 @@ export interface CIRunStep {
 export interface CIRun {
   /** 1-based run number, assigned from the current run count. */
   id: number;
+  /** Catalog id of the workflow (used to re-run it from the CI panel). */
+  workflowId: string;
   /** Display name of the workflow. */
   workflow: string;
   /** Cosmetic trigger event label (e.g. "push"). */
@@ -32,45 +34,70 @@ export interface CIRun {
   steps: CIRunStep[];
 }
 
+/** truthy is the falsy-set a step's `requires` condition is tested against. */
+function truthy(v: StateValue | undefined): boolean {
+  return v !== undefined && v !== null && v !== false && v !== 0 && v !== "";
+}
+
 /**
  * resolveCIRun turns a trigger + the workflow catalog into a complete run
  * record. Steps before the failed step succeed, the failed step fails, and any
  * steps after it are skipped — the natural CI failure model. On success, every
  * step succeeds. Throws when the referenced workflow is unknown so authoring
  * mistakes surface immediately.
+ *
+ * The failing step is chosen one of two ways. If the trigger states a
+ * `conclusion` explicitly, the run is fully scripted (failure at `failedStep`
+ * or the last step). If it omits `conclusion`, the outcome is derived from
+ * live state via `getState`: the first step whose `requires` path is falsy
+ * fails the run. This lets a single scenario — and the CI panel's Re-run
+ * button — reflect the current configuration (e.g. whether secrets are set).
  */
 export function resolveCIRun(
   trigger: CITrigger,
   workflows: Workflow[] | undefined,
   runId: number,
+  getState?: (path: string) => StateValue,
 ): CIRun {
   const wf = (workflows ?? []).find((w) => w.id === trigger.workflow);
   if (!wf) {
     throw new Error(`ci: unknown workflow "${trigger.workflow}"`);
   }
 
-  const conclusion = trigger.conclusion === "failure" ? "failure" : "success";
   const overrides = new Map((trigger.steps ?? []).map((o) => [o.id, o]));
 
-  // On failure, pick the failing step: the named one, else the last step.
-  const failedStepId =
-    conclusion === "failure"
-      ? (trigger.failedStep ?? wf.steps[wf.steps.length - 1]?.id)
-      : undefined;
-  const failedIndex =
-    failedStepId !== undefined
-      ? wf.steps.findIndex((s) => s.id === failedStepId)
-      : -1;
+  // Locate the failing step. Explicit `conclusion` scripts it; otherwise it is
+  // the first step whose `requires` condition is unmet in the current state.
+  let failedIndex = -1;
+  if (trigger.conclusion === "failure") {
+    const failedStepId =
+      trigger.failedStep ?? wf.steps[wf.steps.length - 1]?.id;
+    failedIndex =
+      failedStepId !== undefined
+        ? wf.steps.findIndex((s) => s.id === failedStepId)
+        : -1;
+  } else if (trigger.conclusion === undefined) {
+    failedIndex = wf.steps.findIndex(
+      (s) => s.requires !== undefined && !truthy(getState?.(s.requires)),
+    );
+  }
+  const conclusion = failedIndex >= 0 ? "failure" : "success";
 
   const steps: CIRunStep[] = wf.steps.map((step, i) => {
     const override = overrides.get(step.id);
-    const logs = override?.logs ?? step.logs ?? [];
     let status: CIStepStatus = "success";
     if (failedIndex >= 0) {
       if (i < failedIndex) status = "success";
       else if (i === failedIndex) status = "failure";
       else status = "skipped";
     }
+    // Log precedence: per-run override, then the step's failure logs when it is
+    // the failing step, then its default (success) logs.
+    const logs =
+      override?.logs ??
+      (status === "failure" ? step.failure?.logs : undefined) ??
+      step.logs ??
+      [];
     return {
       id: step.id,
       name: override?.name ?? step.name,
@@ -79,13 +106,20 @@ export function resolveCIRun(
     };
   });
 
+  // Error precedence: the trigger's explicit message, else the failing step's.
+  const error =
+    conclusion === "failure"
+      ? (trigger.error ?? wf.steps[failedIndex]?.failure?.error ?? null)
+      : null;
+
   return {
     id: runId,
+    workflowId: wf.id,
     workflow: wf.name,
     event: wf.on ?? "push",
     commit: trigger.commit ?? null,
     conclusion,
-    error: conclusion === "failure" ? (trigger.error ?? null) : null,
+    error,
     steps,
   };
 }
@@ -94,6 +128,7 @@ export function resolveCIRun(
 export function ciRunToState(run: CIRun): StateValue {
   return {
     id: run.id,
+    workflowId: run.workflowId,
     workflow: run.workflow,
     event: run.event,
     commit: run.commit,

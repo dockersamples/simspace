@@ -768,6 +768,17 @@ workflows:
         logs:
           - "$ docker build -t app ."
           - "=> exporting to image ... done"
+      - id: login
+        name: "Log in to the registry"
+        requires: registry.configured   # OPTIONAL. State path that must be truthy.
+        logs:                            # shown when the step succeeds
+          - "$ docker login"
+          - "Login Succeeded"
+        failure:                         # OPTIONAL. Shown when `requires` is unmet.
+          error: "Login failed — no registry credentials configured."
+          logs:
+            - "$ docker login"
+            - "Error: credentials are not set"
       - id: sign
         name: "Sign image with cosign"
         logs:
@@ -775,15 +786,33 @@ workflows:
           - "Pushed signature to registry"
 ```
 
-| Field         | Required | Purpose                                             |
-| ------------- | -------- | --------------------------------------------------- |
-| `id`          | yes      | Unique id, referenced by `then.ci.workflow`         |
-| `name`        | no       | Display name (defaults to `id`)                     |
-| `on`          | no       | Cosmetic trigger label shown in the run header      |
-| `steps`       | no       | Ordered steps; each has `id`, `name`, and `logs`    |
+| Field         | Required | Purpose                                                     |
+| ------------- | -------- | ----------------------------------------------------------- |
+| `id`          | yes      | Unique id, referenced by `then.ci.workflow`                 |
+| `name`        | no       | Display name (defaults to `id`)                             |
+| `on`          | no       | Cosmetic trigger label shown in the run header              |
+| `steps`       | no       | Ordered steps (fields below)                                |
+
+Each step has:
+
+| Step field    | Required | Purpose                                                     |
+| ------------- | -------- | ----------------------------------------------------------- |
+| `id`          | yes      | Unique within the workflow                                  |
+| `name`        | no       | Display name (defaults to `id`)                             |
+| `logs`        | no       | Condensed log lines shown when the step succeeds            |
+| `requires`    | no       | A **state dot-path** that must be truthy for the step to pass |
+| `failure`     | no       | `error` + `logs` surfaced when `requires` is unmet          |
 
 Step `logs` are the **condensed, teaching-focused** output — not a full build
 log. Keep them short and highlight the concept the lab is about.
+
+`requires` makes a step's outcome depend on the environment rather than on which
+command was typed. When a run's conclusion is **not** scripted (a `then.ci` with
+no `conclusion`, §15.2), the engine evaluates each step's `requires` against the
+current state: the first step whose path is falsy fails the run, showing its
+`failure.logs`/`failure.error`; steps with no `requires` always pass. This is
+what lets the CI panel's **Re-run** button (§15.4) reflect a setting the learner
+just changed — no second push needed.
 
 ### 15.2 `then.ci` — triggering a run
 
@@ -800,7 +829,7 @@ scenarios:
       ci:
         workflow: build-and-sign     # REQUIRED. A workflow id from the catalog.
         commit: "Add signing workflow" # OPTIONAL. Commit label in the run header.
-        conclusion: failure          # OPTIONAL. success | failure (default success).
+        conclusion: failure          # OPTIONAL. success | failure. Omit to derive from state (§15.1).
         failedStep: sign             # OPTIONAL. Which step fails (default: last step).
         steps:                       # OPTIONAL. Per-run log overrides, matched by step id.
           - id: sign
@@ -814,10 +843,20 @@ scenarios:
 | ------------- | -------- | ---------------------------------------------------------- |
 | `workflow`    | yes      | The `id` of a workflow in the `workflows:` catalog         |
 | `commit`      | no       | Commit label shown in the run header                       |
-| `conclusion`  | no       | `success` or `failure` (default `success`)                 |
+| `conclusion`  | no       | `success` or `failure`. **Omit** to derive it from state (§15.1) |
 | `failedStep`  | no       | Step id that fails when `conclusion: failure` (default: last step) |
 | `steps`       | no       | Per-run step overrides (`logs`, `name`), matched by step id |
 | `error`       | no       | Error message surfaced on the run when it fails            |
+
+**Two ways to set the outcome:**
+
+- **Scripted** — set `conclusion` explicitly. `failure` fails at `failedStep`
+  (or the last step); `success` passes every step. Use this when the outcome is
+  fixed regardless of state.
+- **State-derived** — omit `conclusion`. The engine evaluates the workflow
+  steps' `requires` conditions (§15.1) against the current state to decide
+  pass/fail. This keeps the "push fails → fix config → re-run succeeds" flow in
+  a **single** scenario, and is what a **Re-run** (§15.4) re-evaluates.
 
 Failure model: steps **before** the failed step succeed, the failed step fails,
 and steps **after** it are skipped — the natural CI failure model. On success,
@@ -831,6 +870,7 @@ appends it to the reserved-by-convention list `state.ci.runs`. A run record has:
 
 ```yaml
 id: 1                    # 1-based run number (the list length at trigger time)
+workflowId: build-and-sign       # catalog id (used to re-run, §15.4)
 workflow: "Build and Sign"
 event: push
 commit: "Add signing workflow"   # or null
@@ -847,6 +887,19 @@ is **cleared by Reset** along with the rest of the state. The CI panel *replays*
 the newest run cosmetically (queued → in-progress → per-step → conclusion); the
 timeline is presentation only, exactly like output streaming (§13), and never
 changes what is shown.
+
+### 15.4 Re-running a run — the CI panel's Re-run button
+
+Each run in the CI panel has a **Re-run jobs** button, mirroring GitHub Actions.
+Pressing it re-triggers the run's `workflowId` with **no scripted conclusion**,
+so the outcome is re-derived from the **current** state (§15.2) and appended as a
+new run (carrying the same `commit` label). No command is executed.
+
+This is the idiomatic way to recover from a config-gated failure: the learner
+flips a control (e.g. enabling secrets), presses **Re-run**, and the same
+pipeline goes green — no artificial "push again with nothing to commit." For it
+to work, the pass/fail must be **state-derived**, so gate the relevant step with
+`requires` (§15.1) rather than scripting `conclusion` on the trigger.
 
 ---
 

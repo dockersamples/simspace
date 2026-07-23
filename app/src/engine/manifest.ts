@@ -264,5 +264,19 @@ function parseWorkflowStep(
   const id = typeof s.id === "string" && s.id ? s.id : `step-${index}`;
   const name = typeof s.name === "string" && s.name ? s.name : id;
   const logs = Array.isArray(s.logs) ? s.logs.map(String) : undefined;
-  return { id, name, logs };
+  const requires =
+    typeof s.requires === "string" && s.requires ? s.requires : undefined;
+  const failure = parseWorkflowStepFailure(s.failure);
+  return { id, name, logs, requires, failure };
+}
+
+function parseWorkflowStepFailure(
+  raw: unknown,
+): WorkflowStep["failure"] | undefined {
+  if (raw === null || typeof raw !== "object") return undefined;
+  const f = raw as Record<string, unknown>;
+  const error = typeof f.error === "string" ? f.error : undefined;
+  const logs = Array.isArray(f.logs) ? f.logs.map(String) : undefined;
+  if (error === undefined && logs === undefined) return undefined;
+  return { error, logs };
 }

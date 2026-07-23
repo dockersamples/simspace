@@ -72,12 +72,29 @@ export interface Session {
   outro?: string[];
 }
 
+/** The logs/error a step surfaces when its `requires` condition is unmet. */
+export interface WorkflowStepFailure {
+  /** Error message surfaced on the run when this step is the failing one. */
+  error?: string;
+  /** Log lines shown for this step when it fails (instead of `logs`). */
+  logs?: string[];
+}
+
 /** One step in a CI workflow definition (§CI). */
 export interface WorkflowStep {
   id: string;
   name: string;
-  /** Condensed default log lines shown when the step runs. */
+  /** Condensed default log lines shown when the step succeeds. */
   logs?: string[];
+  /**
+   * A state dot-path that must be truthy for this step to succeed. When a run's
+   * conclusion is derived from state (a `then.ci` with no explicit
+   * `conclusion`), the first step whose `requires` is unmet fails the run. Steps
+   * with no `requires` always pass.
+   */
+  requires?: string;
+  /** Logs/error to surface when `requires` is unmet. */
+  failure?: WorkflowStepFailure;
 }
 
 /**

@@ -34,7 +34,7 @@ const RUN_LABEL = {
 };
 
 export function CIPanel() {
-  const { simulator, subscribe } = useTerminal();
+  const { simulator, subscribe, broadcast } = useTerminal();
   const [runs, setRuns] = useState(() => readRuns(simulator));
   // The run currently animating: { runId, phase: "queued"|"in_progress", running }.
   const [anim, setAnim] = useState(null);
@@ -141,6 +141,19 @@ export function CIPanel() {
 
   useEffect(() => clearTimers, [clearTimers]);
 
+  // Re-run a workflow against current state — the mock equivalent of GitHub's
+  // "Re-run jobs". The engine appends a fresh run (its outcome reflects the
+  // latest settings); broadcasting a state event lets this panel animate it and
+  // brings the CI tab forward, exactly as a `git push` would.
+  const rerun = useCallback(
+    (run) => {
+      if (!simulator?.rerunWorkflow || !run.workflowId) return;
+      simulator.rerunWorkflow(run.workflowId, { commit: run.commit });
+      broadcast?.({ type: "state" });
+    },
+    [simulator, broadcast],
+  );
+
   const newestId = runs[runs.length - 1]?.id;
   const isExpanded = (run) => expanded[run.id] ?? run.id === newestId;
   const toggle = (id) =>
@@ -171,7 +184,8 @@ export function CIPanel() {
         <header className="ci-head">
           <h2 className="ci-title">Continuous integration</h2>
           <p className="ci-subtitle">
-            Simulated workflow runs. Note that logs are incomplete and simulated.
+            Simulated workflow runs. Note that logs are incomplete and
+            simulated.
           </p>
         </header>
 
@@ -264,7 +278,23 @@ export function CIPanel() {
                       )}
 
                       <div className="ci-run-footer">
-                        {RUN_LABEL[status] ?? status}
+                        <span className="ci-run-status-label">
+                          {RUN_LABEL[status] ?? status}
+                        </span>
+                        {run.workflowId && (
+                          <button
+                            type="button"
+                            className="ci-rerun-btn"
+                            onClick={() => rerun(run)}
+                            disabled={Boolean(anim)}
+                            title="Re-run this workflow against the current settings"
+                          >
+                            <span className="material-symbols-outlined">
+                              refresh
+                            </span>
+                            Re-run jobs
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}

@@ -83,7 +83,11 @@ Common shapes (see `AGENTS.md` / specs for full detail):
 - **Controls:** top-level `controls:` add Settings toggles that flip a state
   value with no command — good for gating a scenario behind a policy.
 - **CI:** `then.ci` triggers a run from the `workflows:` catalog (needs the CI
-  tab enabled in `labspace.yaml`).
+  tab enabled in `labspace.yaml`). To let a run's outcome follow a setting,
+  gate a step with `requires: <state.path>` (+ a `failure:` block) and omit
+  `conclusion` — the CI panel's **Re-run** button then re-evaluates it, so a
+  learner fixes a failed run by toggling a control and re-running, not by
+  pushing again.
 
 ## Gotchas that cause validation errors
 

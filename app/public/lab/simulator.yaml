@@ -70,9 +70,18 @@ workflows:
           - "=> => writing image sha256:9f8e7d6c ... done"
       - id: login
         name: "Log in to Docker Hub"
+        # Succeeds only once the Docker Hub credentials are configured (Settings
+        # tab). Until then this step fails the run — and a Re-run picks up the
+        # change without another push. See spec/simulator.md §15.
+        requires: hub.configured
         logs:
           - '$ echo "$DOCKER_PAT" | docker login -u "$DOCKER_USER" --password-stdin'
           - "Login Succeeded"
+        failure:
+          error: "Docker Hub login failed — the DOCKER_USER / DOCKER_PAT repository secrets are not configured."
+          logs:
+            - '$ echo "$DOCKER_PAT" | docker login -u "$DOCKER_USER" --password-stdin'
+            - "Error: Cannot log in: the DOCKER_USER and DOCKER_PAT secrets are not set."
       - id: push
         name: "Push image to Docker Hub"
         logs:
@@ -487,12 +496,14 @@ scenarios:
         - "[main c0ffee1] Add build, push and sign workflow"
         - " 1 file changed, 32 insertions(+)"
 
-  # First push: Docker Hub credentials aren't configured, so the pipeline fails
-  # at the login step and the push/sign steps are skipped.
-  - id: git-push-no-creds
+  # Pushing the workflow triggers a run. Its outcome isn't scripted here — the
+  # `login` step's `requires: hub.configured` decides it, so the same push fails
+  # before credentials are set and succeeds after. The learner fixes it not with
+  # another push (there'd be nothing to commit) but by enabling the credentials
+  # and pressing Re-run in the CI tab.
+  - id: git-push
     when:
       command: [git, push]
-      state: { hub.configured: false }
     then:
       output:
         - "Enumerating objects: 8, done."
@@ -501,26 +512,3 @@ scenarios:
       ci:
         workflow: build-push-sign
         commit: "Add build, push and sign workflow"
-        conclusion: failure
-        failedStep: login
-        steps:
-          - id: login
-            logs:
-              - '$ echo "$DOCKER_PAT" | docker login -u "$DOCKER_USER" --password-stdin'
-              - "Error: Cannot log in: the DOCKER_USER and DOCKER_PAT secrets are not set."
-        error: "Docker Hub login failed — the DOCKER_USER / DOCKER_PAT repository secrets are not configured."
-
-  # Second push: with credentials configured, the same workflow runs green.
-  - id: git-push-creds
-    when:
-      command: [git, push]
-      state: { hub.configured: true }
-    then:
-      output:
-        - "Enumerating objects: 3, done."
-        - "To github.com:acme/scout-demo.git"
-        - "   c0ffee1..d4d4d4d  main -> main"
-      ci:
-        workflow: build-push-sign
-        commit: "Re-run signed build with Hub credentials"
-        conclusion: success

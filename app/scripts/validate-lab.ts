@@ -272,6 +272,19 @@ if (lab) {
     (lab.workflows ?? []).map((w) => [w.id, new Set(w.steps.map((s) => s.id))]),
   );
 
+  // A step's `requires` names a state path that decides its pass/fail — flag it
+  // like a {{ state.x }} reference if nothing seeds or writes it.
+  for (const w of lab.workflows ?? []) {
+    for (const s of w.steps) {
+      if (s.requires) {
+        stateRefs.push({
+          path: s.requires,
+          at: `workflow "${w.id}" step "${s.id}" requires`,
+        });
+      }
+    }
+  }
+
   for (const sc of lab.scenarios) {
     const at = `scenario "${sc.id}"`;
 

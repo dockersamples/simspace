@@ -3,12 +3,16 @@
 // command / agent-prompt execution. "reset" re-seeds state and files from the
 // manifest.
 
+import { ciRunToState, resolveCIRun } from "./ci";
 import { parseCommand, tokenize } from "./commands";
 import { FS, FSError } from "./filesystem";
 import { checkSchemaVersion, parseManifest } from "./manifest";
 import { run, runAgent } from "./run";
 import { Store } from "./state";
 import { Lab, Options, resolveOptions, Session, StateValue } from "./types";
+
+/** The state path holding the append-only list of CI run records (§15.3). */
+const CI_RUNS_KEY = "ci.runs";
 
 /** One line of terminal output tagged with the stream it belongs to. */
 export interface OutputLine {
@@ -80,6 +84,25 @@ export class Simulator {
   /** setControl writes a value to the state store (called by control toggles). */
   setControl(path: string, value: StateValue): void {
     this.store.set(path, value);
+  }
+
+  /**
+   * rerunWorkflow re-triggers a catalog workflow without a command — the model
+   * behind the CI panel's Re-run button. The run is re-resolved against the
+   * CURRENT state (no explicit conclusion), so a step gated on `requires` picks
+   * up configuration changed since the last run (e.g. secrets just enabled).
+   * The commit label carries over from the run being re-run.
+   */
+  rerunWorkflow(workflowId: string, opts?: { commit?: string | null }): void {
+    const existing = this.store.get(CI_RUNS_KEY).value;
+    const count = Array.isArray(existing) ? existing.length : 0;
+    const run = resolveCIRun(
+      { workflow: workflowId, commit: opts?.commit ?? undefined },
+      this.lab.workflows,
+      count + 1,
+      (path) => this.getState(path),
+    );
+    this.store.append(CI_RUNS_KEY, ciRunToState(run));
   }
 
   /** writeFile creates or overwrites a file in the virtual filesystem. */
