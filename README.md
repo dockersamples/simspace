@@ -1,4 +1,4 @@
-# Docker Sandboxes Learning Runtime
+# Labspaces, rethinked
 
 A reusable platform for building deterministic, interactive learning experiences
 — without requiring production infrastructure, AI API keys, or organizational
@@ -31,7 +31,7 @@ app/                  the consolidated static app (build + deploy this)
   src/
     labspace/         fetches + parses labspace.yaml, variable substitution
     engine/           in-browser scenario engine (TypeScript)
-    terminal/         <MockTerminal> mock terminal component
+    terminal/         <SbxTerminal> mock terminal component
     components/       instructions panel, terminal panel, markdown renderer
   public/
     lab/              a sample lab (labspace.yaml + simulator.yaml + *.md)
@@ -102,26 +102,6 @@ services:                        # optional external-URL tabs (iframes)
 
 The sample lab under [`app/public/lab/`](app/public/lab) is a complete, working
 example — copy it as a starting point.
-
-### Authoring in a separate repo
-
-Because the app loads its lab at **runtime**, a lab is swappable data — an author
-never needs the app source or a Node toolchain. The [`template/`](template)
-directory is a ready-to-use starter for a lab's own repo: a `lab/`, a
-`compose.yaml`, a two-line `Dockerfile`, an `AGENTS.md` cheat-sheet, and a deploy
-workflow. The whole loop runs on two prebuilt images and Docker alone:
-
-```bash
-docker compose up dev              # live preview at http://localhost:5173
-docker compose run --rm validate   # lint the lab (fails on errors)
-```
-
-Pushing to `main` calls this repo's reusable
-[`deploy-lab.yml`](.github/workflows/deploy-lab.yml), which validates the lab and
-publishes it to GitHub Pages by overlaying it onto the runtime image — no app
-rebuild. Two images back this, released together under matching tags: a
-**runtime** image (nginx + built app) and an **authoring** image (Node +
-`validate-lab`). Build them with `docker buildx bake`.
 
 ## Deploying
 
