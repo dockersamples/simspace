@@ -118,7 +118,14 @@ export function TerminalPanel() {
         <div
           key={terminal.id}
           className="flex-fill"
-          style={{ display: activeTab === terminal.id ? "flex" : "none" }}
+          // min-height: 0 lets this flex child shrink below its content height,
+          // so the terminal's own body becomes the scroll container. Without it
+          // the wrapper grows past the pane and streaming output is clipped
+          // (invisible) until something forces a scroll. See MockTerminal.
+          style={{
+            minHeight: 0,
+            display: activeTab === terminal.id ? "flex" : "none",
+          }}
         >
           <MockTerminal
             ref={getRefCallback(terminal.id)}
@@ -135,7 +142,10 @@ export function TerminalPanel() {
       {ciEnabled && (
         <div
           className="flex-fill"
-          style={{ display: activeTab === CI_TAB_ID ? "flex" : "none" }}
+          style={{
+            minHeight: 0,
+            display: activeTab === CI_TAB_ID ? "flex" : "none",
+          }}
         >
           <CIPanel />
         </div>
@@ -144,7 +154,10 @@ export function TerminalPanel() {
       {hasSettings && (
         <div
           className="flex-fill"
-          style={{ display: activeTab === SETTINGS_TAB_ID ? "flex" : "none" }}
+          style={{
+            minHeight: 0,
+            display: activeTab === SETTINGS_TAB_ID ? "flex" : "none",
+          }}
         >
           <SettingsPanel />
         </div>

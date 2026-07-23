@@ -12,6 +12,19 @@ objectives:
   - "Run an agent in a Docker Sandbox and control its network access"
   - "Build, push, and sign an image from a CI pipeline"
 
+# ── Settings ──────────────────────────────────────────────────────────────────
+# Cosmetic output pacing. An output entry's `delay:` names one of these profiles
+# (or gives a raw millisecond count) so simulated work — pulling a layer,
+# building, scanning — feels like it takes a moment instead of printing all at
+# once. Purely presentational: the delays never change WHAT is printed, so the
+# lab stays deterministic. Built-in profiles (short/medium/long) also exist.
+settings:
+  pace:
+    beat: 300 # a short beat between closely-related lines
+    pull: 900 # a layer downloading
+    build: 1100 # a build step running
+    scan: 1400 # an analysis pass working
+
 # ── State ─────────────────────────────────────────────────────────────────────
 # Every scenario reads and writes this in-memory tree. Reset restores it.
 state:
@@ -121,11 +134,17 @@ scenarios:
         container.name: "{{ args.name }}"
       output:
         - "Unable to find image 'nginx:latest' locally"
-        - "latest: Pulling from library/nginx"
-        - "a480a496 ... : Pull complete"
-        - "Digest: sha256:0d17b565c37bcbd895e9d92315a05c1c3c9a29f762b011a10c54a66cd53c9b31"
+        - { text: "latest: Pulling from library/nginx", delay: beat }
+        - { text: "a480a496 ... : Pull complete", delay: pull }
+        - {
+            text: "Digest: sha256:0d17b565c37bcbd895e9d92315a05c1c3c9a29f762b011a10c54a66cd53c9b31",
+            delay: beat,
+          }
         - "Status: Downloaded newer image for nginx:latest"
-        - "3f8a9c2b1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1"
+        - {
+            text: "3f8a9c2b1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1",
+            delay: beat,
+          }
 
   - id: docker-run-conflict
     when:
@@ -207,9 +226,9 @@ scenarios:
       state: { compose.running: true }
       output:
         - "[+] Running 3/3"
-        - " ✔ Network scout-demo_default    Created"
-        - " ✔ Container scout-demo-redis-1  Started"
-        - " ✔ Container scout-demo-web-1    Started"
+        - { text: " ✔ Network scout-demo_default    Created", delay: beat }
+        - { text: " ✔ Container scout-demo-redis-1  Started", delay: beat }
+        - { text: " ✔ Container scout-demo-web-1    Started", delay: beat }
 
   - id: compose-ps
     when:
@@ -254,14 +273,20 @@ scenarios:
         image.built: true
         image.patched: true
       output:
-        - "[+] Building 9.4s (10/10) FINISHED"
         - " => [internal] load build definition from Dockerfile"
-        - " => [1/4] FROM docker.io/library/node:20-alpine"
-        - " => [2/4] COPY package.json package-lock.json ./"
-        - " => [3/4] RUN npm ci --omit=dev"
-        - " => [4/4] COPY . ."
-        - " => exporting to image"
+        - {
+            text: " => [1/4] FROM docker.io/library/node:20-alpine",
+            delay: beat,
+          }
+        - {
+            text: " => [2/4] COPY package.json package-lock.json ./",
+            delay: beat,
+          }
+        - { text: " => [3/4] RUN npm ci --omit=dev", delay: build }
+        - { text: " => [4/4] COPY . .", delay: beat }
+        - { text: " => exporting to image", delay: beat }
         - " => => naming to docker.io/library/scout-demo:latest"
+        - { text: "[+] Building 9.4s (10/10) FINISHED", delay: beat }
 
   - id: docker-build
     when:
@@ -269,15 +294,21 @@ scenarios:
     then:
       state: { image.built: true }
       output:
-        - "[+] Building 12.7s (10/10) FINISHED"
         - " => [internal] load build definition from Dockerfile"
         - " => => transferring dockerfile: 214B"
-        - " => [1/4] FROM docker.io/library/node:20-alpine"
-        - " => [2/4] COPY package.json package-lock.json ./"
-        - " => [3/4] RUN npm ci --omit=dev"
-        - " => [4/4] COPY . ."
-        - " => exporting to image"
+        - {
+            text: " => [1/4] FROM docker.io/library/node:20-alpine",
+            delay: pull,
+          }
+        - {
+            text: " => [2/4] COPY package.json package-lock.json ./",
+            delay: beat,
+          }
+        - { text: " => [3/4] RUN npm ci --omit=dev", delay: build }
+        - { text: " => [4/4] COPY . .", delay: beat }
+        - { text: " => exporting to image", delay: beat }
         - " => => naming to docker.io/library/scout-demo:latest"
+        - { text: "[+] Building 12.7s (10/10) FINISHED", delay: beat }
 
   - id: scout-no-image
     when:
@@ -294,11 +325,12 @@ scenarios:
       state: { image.patched: true }
     then:
       output:
+        - "WARN Failed to load default registry credentials, continuing anonymously"
+        - { text: "    ✓ Image stored for indexing", delay: scan }
+        - { text: "    ✓ Indexed 142 packages", delay: beat }
+        - { delay: scan } # analysing…
+        - ""
         - |
-          WARN Failed to load default registry credentials, continuing anonymously
-              ✓ Image stored for indexing
-              ✓ Indexed 142 packages
-
           ## Overview
 
                             │       Analyzed Image
@@ -319,11 +351,12 @@ scenarios:
       command: [docker, scout, cves]
     then:
       output:
+        - "WARN Failed to load default registry credentials, continuing anonymously"
+        - { text: "    ✓ Image stored for indexing", delay: scan }
+        - { text: "    ✓ Indexed 142 packages", delay: beat }
+        - { delay: scan } # analysing…
+        - ""
         - |
-          WARN Failed to load default registry credentials, continuing anonymously
-              ✓ Image stored for indexing
-              ✓ Indexed 142 packages
-
           ## Overview
 
                             │       Analyzed Image
@@ -395,7 +428,10 @@ scenarios:
       state: { sandbox.running: true }
       output:
         - "Creating sandbox 'gifted_turing' (image: docker/sandbox-claude)…"
-        - "Sandbox ready. Starting Claude in an isolated, ephemeral environment."
+        - {
+            text: "Sandbox ready. Starting Claude in an isolated, ephemeral environment.",
+            delay: pull,
+          }
       session:
         prompt: "claude> "
         intro:

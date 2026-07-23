@@ -345,6 +345,32 @@ output:
   - "Status: Image is up to date for {{ args.0 }}"
 ```
 
+**Pacing an output entry.** Each entry is normally a bare string, printed at the
+default streaming cadence. To make simulated work (a pull, a build, a scan) feel
+like it takes a moment, an entry can instead be an **object** carrying a cosmetic
+`delay`:
+
+```yaml
+output:
+  - "Unable to find image 'nginx:latest' locally"
+  - { text: "latest: Pulling from library/nginx", delay: short }
+  - { text: "a480a496...: Pull complete", delay: 900 } # raw milliseconds
+  - { delay: long } # a pure pause — waits, prints nothing
+  - "Status: Downloaded newer image for nginx:latest"
+```
+
+- `delay` is the wait **before** this line appears. It is either a raw
+  millisecond count or the **name of a pace profile** declared in
+  `settings.pace` (§13). Built-in profiles `short` / `medium` / `long` are always
+  available.
+- An object with **no `text`** (just a `delay`) is a **pure pause**: the terminal
+  waits, then renders nothing. Use it to hold a beat before a block appears.
+- `text` supports templating (§7.4) exactly like a bare string.
+
+Pacing is **cosmetic only** — like line streaming (§13), it never changes *what*
+is printed, so labs stay deterministic. When `settings.streaming` is `false`, all
+delays collapse to zero. The same applies to `stderr`.
+
 ### 7.4 Templating
 
 Output, `content`, and `with` support `{{ }}` interpolation:
@@ -635,17 +661,37 @@ scenarios:
 
 ---
 
-## 13. Settings (output streaming)
+## 13. Settings (output streaming & pacing)
 
-Optional top-level presentation settings. Streaming is **cosmetic only** — it
-never changes *what* is printed, so labs stay deterministic.
+Optional top-level presentation settings. Streaming and pacing are **cosmetic
+only** — they never change *what* is printed, so labs stay deterministic.
 
 ```yaml
 settings:
   streaming: true       # default true; stream output line-by-line
   streamDelayMs: 20     # per-line delay while streaming (default 20 ms)
   agentThinkMs: 700     # "Evaluating..." spinner before agent replies (default 700 ms; 0 disables)
+  pace:                 # named pace profiles for output-entry `delay:` (§7.3)
+    short: 250          #   (these are the built-in defaults; override or add any)
+    medium: 700
+    long: 1400
 ```
+
+### Pace profiles
+
+`settings.pace` is a map of **profile name → milliseconds**. An output entry's
+`delay` (§7.3) may name one of these instead of a raw number, so a lab tunes its
+"beats" in one place — change `medium` once and every `delay: medium` retunes.
+
+- The built-in profiles `short` (250 ms), `medium` (700 ms), and `long` (1400 ms)
+  are always available, even with no `settings.pace` block.
+- Author-declared names are **merged over** the defaults, so you can retune a
+  built-in (`short: 150`) or add domain profiles (`pull: 900`, `scan: 1400`).
+- A `delay` naming a profile that doesn't exist is an authoring error, flagged by
+  `npm run validate-lab`.
+
+When `streaming` is `false`, every per-line delay and pause collapses to zero —
+the whole transcript renders at once (as it does in the export/print view).
 
 ---
 

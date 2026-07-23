@@ -88,6 +88,25 @@ Common shapes (see `AGENTS.md` / specs for full detail):
   `conclusion` — the CI panel's **Re-run** button then re-evaluates it, so a
   learner fixes a failed run by toggling a control and re-running, not by
   pushing again.
+- **Pace slow-feeling output:** to keep a pull/build/scan from printing
+  instantly, make an `output` entry an object with a `delay:` — the wait before
+  that line appears. `delay` is a raw ms count or a pace-profile name (built-ins
+  `short`/`medium`/`long`, or define your own under `settings.pace`). An entry
+  with a `delay:` but no `text:` is a pure pause. It's cosmetic only — the output
+  is unchanged, so the lab stays deterministic.
+
+  ```yaml
+  settings:
+    pace: { scan: 1400 } # add/retune profiles; short/medium/long are built in
+  scenarios:
+    - id: scout
+      when: { command: [docker, scout, cves] }
+      then:
+        output:
+          - "    ✓ Indexed 142 packages"
+          - { delay: scan } # hold a beat while it "analyses"
+          - "1 vulnerability found in 1 package"
+  ```
 
 ## Gotchas that cause validation errors
 

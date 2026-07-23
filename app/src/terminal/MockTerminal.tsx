@@ -9,6 +9,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -70,6 +71,18 @@ interface TermLine {
   id: number;
   text: string;
   kind: LineKind;
+}
+
+/**
+ * One item queued for streaming by `emit`. `delayMs` overrides the default
+ * per-line cadence (carried from the engine's output pacing); `pause` marks a
+ * wait-only item that renders no line.
+ */
+interface EmitItem {
+  text: string;
+  kind: LineKind;
+  delayMs?: number;
+  pause?: boolean;
 }
 
 type Mode = { kind: "command" } | { kind: "session"; sess: Session };
@@ -156,10 +169,15 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simulator, greetKey]);
 
-  // Keep the newest output in view.
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [lines]);
+  // Keep the newest output in view. A layout effect scrolls synchronously
+  // before the browser paints, so streamed lines never flash in below the fold
+  // and then jump. `busy` is a dependency too: when the input row appears or
+  // disappears the body's height changes, and we want to stay pinned to the
+  // bottom without waiting for the focus() scroll.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines, busy]);
 
   // Re-focus the input after a command completes. The focus() call cannot live
   // in the submit() finally block because setBusy(false) only queues a render —
@@ -174,15 +192,25 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
   }, [busy]);
 
   // Stream a list of lines, pausing between them when streaming is enabled.
+  // A line's own `delayMs` (from the engine's output pacing) overrides the
+  // default per-line cadence; a `pause` line contributes only its wait and
+  // renders nothing. All delays collapse to 0 when streaming is off, so pacing
+  // stays purely cosmetic.
   const emit = useCallback(
-    async (items: { text: string; kind: LineKind }[]) => {
+    async (items: EmitItem[]) => {
       for (let i = 0; i < items.length; i++) {
-        if (stream && delayMs > 0 && i > 0) await sleep(delayMs);
+        const item = items[i];
+        if (stream) {
+          const wait =
+            item.delayMs != null ? item.delayMs : i > 0 ? delayMs : 0;
+          if (wait > 0) await sleep(wait);
+        }
+        if (item.pause) continue; // a pure pause: waited above, render nothing
         // Capture the id now, not inside the updater: without a pause between
         // iterations (non-streaming) the updaters run after the loop, so
         // reading idRef.current lazily would give every line the same id.
         const id = ++idRef.current;
-        const { text, kind } = items[i];
+        const { text, kind } = item;
         setLines((prev) => [...prev, { id, text, kind }]);
       }
     },
@@ -226,6 +254,8 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
         outcome.lines.map((l) => ({
           text: l.text && l.stream === "stdout" ? "  " + l.text : l.text,
           kind: l.stream === "stderr" ? "stderr" : ("agent" as LineKind),
+          delayMs: l.delayMs,
+          pause: l.pause,
         })),
       );
       await emit([{ text: "", kind: "system" }]); // spacing between turns
@@ -268,6 +298,8 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
         outcome.lines.map((l) => ({
           text: l.text,
           kind: (l.stream === "stderr" ? "stderr" : "stdout") as LineKind,
+          delayMs: l.delayMs,
+          pause: l.pause,
         })),
       );
       notify();
@@ -304,6 +336,8 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
           cmdOutcome.lines.map((l) => ({
             text: l.text,
             kind: (l.stream === "stderr" ? "stderr" : "stdout") as LineKind,
+            delayMs: l.delayMs,
+            pause: l.pause,
           })),
         );
         notify();
@@ -506,22 +540,26 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
           </div>
         ))}
 
-        <div className="term-line term-inputrow">
-          <span className="term-prompt">{promptPrefix}</span>
-          <input
-            ref={inputRef}
-            className="term-input"
-            value={input}
-            spellCheck={false}
-            autoComplete="off"
-            autoCapitalize="off"
-            autoCorrect="off"
-            disabled={busy}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            aria-label="terminal input"
-          />
-        </div>
+        {/* Hide the prompt + input row while a command is processing, so the
+            `$` prompt only reappears once output has finished streaming. The
+            busy→false transition re-focuses the input (see the busy effect). */}
+        {!busy && (
+          <div className="term-line term-inputrow">
+            <span className="term-prompt">{promptPrefix}</span>
+            <input
+              ref={inputRef}
+              className="term-input"
+              value={input}
+              spellCheck={false}
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              aria-label="terminal input"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

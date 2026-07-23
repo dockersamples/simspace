@@ -9,14 +9,23 @@ import { FS, FSError } from "./filesystem";
 import { checkSchemaVersion, parseManifest } from "./manifest";
 import { run, runAgent } from "./run";
 import { Store } from "./state";
-import { Lab, Options, resolveOptions, Session, StateValue } from "./types";
+import {
+  Lab,
+  Options,
+  RenderedLine,
+  resolveOptions,
+  Session,
+  StateValue,
+} from "./types";
 
 /** The state path holding the append-only list of CI run records (§15.3). */
 const CI_RUNS_KEY = "ci.runs";
 
-/** One line of terminal output tagged with the stream it belongs to. */
-export interface OutputLine {
-  text: string;
+/**
+ * One line of terminal output tagged with the stream it belongs to. Carries the
+ * cosmetic `delayMs` / `pause` from the engine so the terminal can pace it.
+ */
+export interface OutputLine extends RenderedLine {
   stream: "stdout" | "stderr";
 }
 
@@ -131,7 +140,7 @@ export class Simulator {
     try {
       result = run(this.lab, cmd, this.fs, this.store, terminalId);
     } catch (e) {
-      return { lines: [err(fsMessage(e))], exit: 1, matched: "" };
+      return { lines: [err({ text: fsMessage(e) })], exit: 1, matched: "" };
     }
 
     return {
@@ -163,7 +172,7 @@ export class Simulator {
     try {
       result = runAgent(this.lab, text, this.fs, this.store, terminalId);
     } catch (e) {
-      return { lines: [err(fsMessage(e))], exit: 1, matched: "" };
+      return { lines: [err({ text: fsMessage(e) })], exit: 1, matched: "" };
     }
     return {
       lines: [...result.stdout.map(out), ...result.stderr.map(err)],
@@ -173,12 +182,12 @@ export class Simulator {
   }
 }
 
-function out(text: string): OutputLine {
-  return { text, stream: "stdout" };
+function out(line: RenderedLine): OutputLine {
+  return { ...line, stream: "stdout" };
 }
 
-function err(text: string): OutputLine {
-  return { text, stream: "stderr" };
+function err(line: RenderedLine): OutputLine {
+  return { ...line, stream: "stderr" };
 }
 
 function fsMessage(e: unknown): string {

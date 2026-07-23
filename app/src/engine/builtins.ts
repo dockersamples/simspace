@@ -4,7 +4,7 @@
 
 import { Command } from "./commands";
 import { FS } from "./filesystem";
-import { Result } from "./types";
+import { RenderedLine, Result } from "./types";
 
 /**
  * runBuiltin checks whether cmd is a recognized built-in filesystem command and
@@ -57,23 +57,23 @@ function runCat(cmd: Command, fs: FS): Result {
     return fail(["cat: missing file operand"]);
   }
 
-  const stdout: string[] = [];
-  const stderr: string[] = [];
+  const stdout: RenderedLine[] = [];
+  const stderr: RenderedLine[] = [];
 
   for (const p of paths) {
     if (fs.isDir(p)) {
-      stderr.push(`cat: ${p}: Is a directory`);
+      stderr.push({ text: `cat: ${p}: Is a directory` });
       continue;
     }
     const content = fs.read(p);
     if (content === undefined) {
-      stderr.push(`cat: ${p}: No such file or directory`);
+      stderr.push({ text: `cat: ${p}: No such file or directory` });
       continue;
     }
     // Emit each line of the file; preserve trailing newline by not adding one.
     const lines = content.split("\n");
     if (lines[lines.length - 1] === "") lines.pop();
-    stdout.push(...lines);
+    stdout.push(...lines.map((text) => ({ text })));
   }
 
   return {
@@ -85,9 +85,19 @@ function runCat(cmd: Command, fs: FS): Result {
 }
 
 function ok(lines: string[]): Result {
-  return { stdout: lines, stderr: [], exit: 0, matched: "__builtin__" };
+  return {
+    stdout: lines.map((text) => ({ text })),
+    stderr: [],
+    exit: 0,
+    matched: "__builtin__",
+  };
 }
 
 function fail(lines: string[]): Result {
-  return { stdout: [], stderr: lines, exit: 1, matched: "__builtin__" };
+  return {
+    stdout: [],
+    stderr: lines.map((text) => ({ text })),
+    exit: 1,
+    matched: "__builtin__",
+  };
 }

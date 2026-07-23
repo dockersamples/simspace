@@ -24,6 +24,7 @@ import { parse as parseYaml } from "yaml";
 import {
   parseManifest,
   checkSchemaVersion,
+  resolvePace,
   tokenize,
   Lab,
   Scenario,
@@ -272,6 +273,9 @@ if (lab) {
     (lab.workflows ?? []).map((w) => [w.id, new Set(w.steps.map((s) => s.id))]),
   );
 
+  // Valid names an output `delay` may reference (built-in profiles + settings.pace).
+  const paceNames = new Set(Object.keys(resolvePace(lab.settings)));
+
   // A step's `requires` names a state path that decides its pass/fail — flag it
   // like a {{ state.x }} reference if nothing seeds or writes it.
   for (const w of lab.workflows ?? []) {
@@ -332,6 +336,24 @@ if (lab) {
       }
     }
 
+    // Output pacing: a `delay` is either a non-negative number or the name of a
+    // known pace profile. Catch typo'd profile names and bad values early.
+    for (const stream of ["output", "stderr"] as const) {
+      for (const [i, entry] of (sc.then[stream] ?? []).entries()) {
+        if (typeof entry === "string" || entry.delay === undefined) continue;
+        const delay = entry.delay;
+        if (typeof delay === "number") {
+          if (delay < 0)
+            err(at, `then.${stream}[${i}].delay is negative (${delay})`);
+        } else if (!paceNames.has(delay)) {
+          err(
+            at,
+            `then.${stream}[${i}].delay "${delay}" is not a known pace profile (add it under settings.pace)`,
+          );
+        }
+      }
+    }
+
     // Template capture checks: every {{ args.X }} must be captured by when.args.
     const captures = new Set<string>();
     for (const [name, m] of Object.entries(sc.when.args ?? {})) {
@@ -359,10 +381,14 @@ if (lab) {
 function* thenStrings(
   sc: Scenario,
 ): Generator<{ text: string; field: string }> {
-  for (const [i, l] of (sc.then.output ?? []).entries())
-    yield { text: l, field: `then.output[${i}]` };
-  for (const [i, l] of (sc.then.stderr ?? []).entries())
-    yield { text: l, field: `then.stderr[${i}]` };
+  for (const [i, l] of (sc.then.output ?? []).entries()) {
+    const text = typeof l === "string" ? l : (l.text ?? "");
+    if (text) yield { text, field: `then.output[${i}]` };
+  }
+  for (const [i, l] of (sc.then.stderr ?? []).entries()) {
+    const text = typeof l === "string" ? l : (l.text ?? "");
+    if (text) yield { text, field: `then.stderr[${i}]` };
+  }
   for (const [i, op] of (sc.then.files ?? []).entries()) {
     if (op.content)
       yield { text: op.content, field: `then.files[${i}].content` };

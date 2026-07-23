@@ -77,6 +77,20 @@ Key rules:
   lines typed there match `when.agent: true` scenarios (`prompt` / `promptContains`).
 - **Controls** (top-level `controls:`) add Settings toggles that flip a state
   value without a command — good for gating a scenario behind a policy.
+- **Pace slow-feeling output** so a pull/build/scan doesn't print instantly. An
+  `output` entry can be an object with a `delay:` (a raw ms count, or a pace
+  profile name — built-ins `short`/`medium`/`long`, or your own under
+  `settings.pace`). A `{ delay: long }` with no `text` is a pure pause. Pacing is
+  cosmetic only — it never changes what's printed.
+
+  ```yaml
+  output:
+    - "Unable to find image 'nginx:latest' locally"
+    - { text: "latest: Pulling from library/nginx", delay: short }
+    - { text: "a480a496...: Pull complete", delay: long }
+    - "Status: Downloaded newer image for nginx:latest"
+  ```
+
 - Put specific scenarios **before** general ones; the first match wins.
 
 ## labspace.yaml cheat-sheet

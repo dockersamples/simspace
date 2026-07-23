@@ -8,7 +8,7 @@ import { Command } from "./commands";
 import { FS } from "./filesystem";
 import { match, matchAgent } from "./match";
 import { Store } from "./state";
-import { Lab, Result, Then } from "./types";
+import { Lab, Result, resolvePace, Then } from "./types";
 
 export type { Result };
 
@@ -26,10 +26,18 @@ export function run(
 ): Result {
   st.appendHistory(cmd.line);
 
+  const pace = resolvePace(lab.settings);
   const m = match(lab, cmd, st, terminalId);
   if (m) {
     const then = m.scenario.then;
-    const { stdout, stderr } = applyThen(then, fs, st, m.args, lab.workflows);
+    const { stdout, stderr } = applyThen(
+      then,
+      fs,
+      st,
+      m.args,
+      lab.workflows,
+      pace,
+    );
     return {
       stdout,
       stderr,
@@ -45,7 +53,7 @@ export function run(
   if (builtin) return builtin;
 
   const then = unmatchedThen(lab);
-  const { stdout, stderr } = applyThen(then, fs, st, {}, lab.workflows);
+  const { stdout, stderr } = applyThen(then, fs, st, {}, lab.workflows, pace);
   return {
     stdout,
     stderr,
@@ -69,10 +77,11 @@ export function runAgent(
 ): Result {
   st.appendHistory("agent> " + prompt);
 
+  const pace = resolvePace(lab.settings);
   const m = matchAgent(lab, prompt, st, terminalId);
   const then = m ? m.scenario.then : unmatchedAgentThen(lab);
 
-  const { stdout, stderr } = applyThen(then, fs, st, {}, lab.workflows);
+  const { stdout, stderr } = applyThen(then, fs, st, {}, lab.workflows, pace);
 
   return {
     stdout,

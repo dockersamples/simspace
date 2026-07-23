@@ -3,7 +3,7 @@
 // (no logic or expressions). See spec/simulator.md §7.4.
 
 import { Store } from "./state";
-import { StateValue } from "./types";
+import { OutputEntry, RenderedLine, StateValue } from "./types";
 
 // Matches {{ args.name }} / {{ state.dot.path }} placeholders.
 const TMPL = /\{\{\s*(args|state)\.([A-Za-z0-9_.]+)\s*\}\}/g;
@@ -27,13 +27,46 @@ export function render(
   });
 }
 
-/** renderLines renders each line of a list. */
+/**
+ * renderLines renders each output entry into a RenderedLine: it templates the
+ * text and resolves any cosmetic `delay` (a raw millisecond count or a
+ * `settings.pace` profile name) into a number. A bare string is a plain line at
+ * the default cadence; an object with no `text` becomes a pure pause.
+ */
 export function renderLines(
-  lines: string[] | undefined,
+  entries: OutputEntry[] | undefined,
   args: Record<string, string>,
   st: Store,
-): string[] {
-  return (lines ?? []).map((l) => render(l, args, st));
+  pace: Record<string, number>,
+): RenderedLine[] {
+  return (entries ?? []).map((entry) => {
+    if (typeof entry === "string") {
+      return { text: render(entry, args, st) };
+    }
+    const delayMs = resolveDelay(entry.delay, pace);
+    if (entry.text === undefined || entry.text === null) {
+      // No text → a pure pause. Give it an empty string so downstream code that
+      // reads `.text` is untouched; the `pause` flag tells the UI to skip it.
+      return { text: "", pause: true, delayMs };
+    }
+    const line: RenderedLine = { text: render(entry.text, args, st) };
+    if (delayMs !== undefined) line.delayMs = delayMs;
+    return line;
+  });
+}
+
+/**
+ * resolveDelay turns an entry's `delay` into a non-negative millisecond count.
+ * A number is used verbatim (clamped at 0); a string is looked up in the pace
+ * profile map (unknown names resolve to 0 and are flagged by the validator).
+ */
+function resolveDelay(
+  delay: number | string | undefined,
+  pace: Record<string, number>,
+): number | undefined {
+  if (delay === undefined) return undefined;
+  if (typeof delay === "number") return Math.max(0, delay);
+  return Math.max(0, pace[delay] ?? 0);
 }
 
 /**

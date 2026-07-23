@@ -7,7 +7,7 @@ import { FS } from "./filesystem";
 import { Store } from "./state";
 import { render, renderLines } from "./template";
 import { renderMCP } from "./mcp";
-import { FileOp, StateValue, Then, Workflow } from "./types";
+import { FileOp, RenderedLine, StateValue, Then, Workflow } from "./types";
 
 /** The state path holding the append-only list of CI run records. */
 const CI_RUNS_KEY = "ci.runs";
@@ -16,13 +16,14 @@ const CI_RUNS_KEY = "ci.runs";
 const APPEND_SUFFIX = "+=";
 
 export interface ApplyOutput {
-  stdout: string[];
-  stderr: string[];
+  stdout: RenderedLine[];
+  stderr: RenderedLine[];
 }
 
 /**
  * applyThen applies a scenario's effects and returns the collected output.
- * Exit is resolved by the caller (which layers in defaults).
+ * Exit is resolved by the caller (which layers in defaults). `pace` is the
+ * resolved pace-profile map used to turn output `delay` names into numbers.
  */
 export function applyThen(
   then: Then,
@@ -30,6 +31,7 @@ export function applyThen(
   st: Store,
   args: Record<string, string>,
   workflows?: Workflow[],
+  pace: Record<string, number> = {},
 ): ApplyOutput {
   // 1. Files (before state, so file content sees captured args).
   for (const op of then.files ?? []) {
@@ -62,12 +64,12 @@ export function applyThen(
   }
 
   // 3. Output / stderr (rendered against args + post-delta state).
-  const stdout = renderLines(then.output, args, st);
-  const stderr = renderLines(then.stderr, args, st);
+  const stdout = renderLines(then.output, args, st, pace);
+  const stderr = renderLines(then.stderr, args, st, pace);
 
-  // 4. MCP output appended to stdout.
+  // 4. MCP output appended to stdout (always at the default cadence).
   for (const call of then.mcp ?? []) {
-    stdout.push(...renderMCP(call));
+    stdout.push(...renderMCP(call).map((text) => ({ text })));
   }
 
   return { stdout, stderr };

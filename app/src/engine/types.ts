@@ -58,6 +58,29 @@ export interface FileOp {
   to?: string; // for copy
 }
 
+/**
+ * An output entry. Either a bare string (printed at the default cadence) or an
+ * object that can carry a cosmetic `delay` before the line appears. An object
+ * with no `text` is a pure pause — the terminal waits, but renders nothing.
+ * `delay` is either a literal millisecond count or the name of a pace profile
+ * declared in `settings.pace` (§13). Delays are presentation-only and never
+ * change what is printed, so labs stay deterministic.
+ */
+export type OutputEntry = string | { text?: string; delay?: number | string };
+
+/**
+ * A fully-resolved output line produced by the engine: the templated text plus
+ * an optional cosmetic delay (in ms) and a pure-pause flag. Delay-profile names
+ * are already resolved to numbers here, so the UI needs no knowledge of pace.
+ */
+export interface RenderedLine {
+  text: string;
+  /** Cosmetic delay (ms) to wait before revealing this line. Undefined = default cadence. */
+  delayMs?: number;
+  /** When true this line renders nothing — it exists only to pace the output. */
+  pause?: boolean;
+}
+
 /** A mocked MCP tool invocation rendered as terminal output. */
 export interface MCPCall {
   tool: string;
@@ -143,8 +166,8 @@ export interface CITrigger {
 export interface Then {
   files?: FileOp[];
   state?: Record<string, StateValue>;
-  output?: string[];
-  stderr?: string[];
+  output?: OutputEntry[];
+  stderr?: OutputEntry[];
   exit?: number;
   mcp?: MCPCall[];
   session?: Session;
@@ -164,6 +187,13 @@ export interface Settings {
   streaming?: boolean;
   streamDelayMs?: number;
   agentThinkMs?: number;
+  /**
+   * Named pace profiles: a map of profile name → delay in milliseconds. An
+   * output entry's `delay` can name one of these instead of a raw number, so a
+   * lab tunes its "beats" in one place. Author-declared names override the
+   * built-in defaults (see DEFAULT_PACE).
+   */
+  pace?: Record<string, number>;
 }
 
 /** Cross-scenario defaults. */
@@ -209,8 +239,8 @@ export interface Lab {
 
 /** The outcome of running one command or prompt against a lab. */
 export interface Result {
-  stdout: string[];
-  stderr: string[];
+  stdout: RenderedLine[];
+  stderr: RenderedLine[];
   exit: number;
   /** Matched scenario ID, "__builtin__" for built-ins, or "" for unmatched default. */
   matched: string;
@@ -232,4 +262,25 @@ export function resolveOptions(settings: Settings | undefined): Options {
     delayMs: settings?.streamDelayMs ?? 20,
     thinkMs: settings?.agentThinkMs ?? 700,
   };
+}
+
+/**
+ * Built-in pace profiles, available to every lab without declaration. Authors
+ * reference them by name in an output entry's `delay` (e.g. `delay: medium`)
+ * and can retune or add profiles via `settings.pace`.
+ */
+export const DEFAULT_PACE: Record<string, number> = {
+  short: 250,
+  medium: 700,
+  long: 1400,
+};
+
+/**
+ * resolvePace merges a lab's `settings.pace` over the built-in defaults, giving
+ * the full name → milliseconds map the engine uses to resolve `delay` names.
+ */
+export function resolvePace(
+  settings: Settings | undefined,
+): Record<string, number> {
+  return { ...DEFAULT_PACE, ...(settings?.pace ?? {}) };
 }
