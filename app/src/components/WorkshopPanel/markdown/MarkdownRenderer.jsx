@@ -20,34 +20,34 @@ import { MarkdownBaseUrlContext } from "./markdownBaseUrl";
 export function MarkdownRenderer({ children, baseUrl }) {
   return (
     <MarkdownBaseUrlContext.Provider value={baseUrl}>
-    <MarkdownHooks
-      remarkPlugins={[
-        remarkGfm,
-        remarkCodeIndexer,
-        remarkDirective,
-        tabDirective,
-      ]}
-      rehypePlugins={[rehypeRaw, rehypeMermaid, rehypeGithubAlerts]}
-      components={{
-        code: CodeBlock,
-        a: ExternalLink,
-        img: RenderedImage,
-        svg: RenderedSvg,
-        table: ({ node, ...props }) => (
-          <table className="table table-sm table-striped" {...props} />
-        ),
-        tbody: ({ node, ...props }) => (
-          <tbody className="table-group-divider" {...props} />
-        ),
-        tablink: TabLink,
-        filelink: FileLink,
-        variabledefinition: VariableDefinition,
-        variablesetbutton: VariableSetButton,
-        conditionaldisplay: ConditionalDisplay,
-      }}
-    >
-      {children}
-    </MarkdownHooks>
+      <MarkdownHooks
+        remarkPlugins={[
+          remarkGfm,
+          remarkCodeIndexer,
+          remarkDirective,
+          tabDirective,
+        ]}
+        rehypePlugins={[rehypeRaw, rehypeMermaid, rehypeGithubAlerts]}
+        components={{
+          code: CodeBlock,
+          a: ExternalLink,
+          img: RenderedImage,
+          svg: RenderedSvg,
+          table: ({ node, ...props }) => (
+            <table className="table table-sm table-striped" {...props} />
+          ),
+          tbody: ({ node, ...props }) => (
+            <tbody className="table-group-divider" {...props} />
+          ),
+          tablink: TabLink,
+          filelink: FileLink,
+          variabledefinition: VariableDefinition,
+          variablesetbutton: VariableSetButton,
+          conditionaldisplay: ConditionalDisplay,
+        }}
+      >
+        {children}
+      </MarkdownHooks>
     </MarkdownBaseUrlContext.Provider>
   );
 }

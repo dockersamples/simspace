@@ -64,7 +64,11 @@ export class FS {
     };
 
     for (const path of this.files.keys()) {
-      const rest = prefix ? (path.startsWith(prefix) ? path.slice(prefix.length) : null) : path;
+      const rest = prefix
+        ? path.startsWith(prefix)
+          ? path.slice(prefix.length)
+          : null
+        : path;
       if (rest === null) continue;
       const slash = rest.indexOf("/");
       if (slash < 0) {
@@ -74,7 +78,11 @@ export class FS {
       }
     }
     for (const d of this.dirs) {
-      const rest = prefix ? (d.startsWith(prefix) ? d.slice(prefix.length) : null) : d;
+      const rest = prefix
+        ? d.startsWith(prefix)
+          ? d.slice(prefix.length)
+          : null
+        : d;
       if (rest === null || rest === "") continue;
       if (!rest.includes("/")) {
         addEntry(rest, true);

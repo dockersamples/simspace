@@ -21,7 +21,11 @@ export function ExportView() {
         {workshop.subtitle && <p className="lead">{workshop.subtitle}</p>}
       </header>
       {workshop.sections.map((section) => (
-        <section key={section.id} id={section.id} className="export-section mb-5">
+        <section
+          key={section.id}
+          id={section.id}
+          className="export-section mb-5"
+        >
           <MarkdownRenderer baseUrl={section.baseUrl}>
             {substituteVariables(section.contentRaw, variables)}
           </MarkdownRenderer>
