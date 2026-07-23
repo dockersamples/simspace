@@ -6,14 +6,14 @@
 #   docker compose run --rm validate      # lint the lab (nonzero exit on errors)
 #
 # Pin LABSPACE_AUTHORING_IMAGE to a released version for reproducible authoring,
-# e.g. export LABSPACE_AUTHORING_IMAGE=dockersamples/labspace-authoring:1
+# e.g. export LABSPACE_AUTHORING_IMAGE=dockersamples/labspace-web-authoring:1
 
 name: my-labspace
 
 services:
   # Live preview. Edits to ./lab show on browser refresh.
   dev:
-    image: ${LABSPACE_AUTHORING_IMAGE:-dockersamples/labspace-authoring:latest}
+    image: ${LABSPACE_AUTHORING_IMAGE:-dockersamples/labspace-web-authoring:latest}
     command: npm run dev
     ports:
       - "5173:5173"
@@ -22,7 +22,7 @@ services:
 
   # One-shot validator. Run with `docker compose run --rm validate`.
   validate:
-    image: ${LABSPACE_AUTHORING_IMAGE:-dockersamples/labspace-authoring:latest}
+    image: ${LABSPACE_AUTHORING_IMAGE:-dockersamples/labspace-web-authoring:latest}
     profiles: ["tools"]
     command: npm run validate-lab -- /lab
     volumes:

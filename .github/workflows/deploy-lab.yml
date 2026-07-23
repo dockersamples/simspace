@@ -27,11 +27,11 @@ on:
       runtime-image:
         description: "Runtime image the site is based on."
         type: string
-        default: "dockersamples/labspace"
+        default: "dockersamples/labspace-web"
       authoring-image:
         description: "Authoring image used to validate the lab."
         type: string
-        default: "dockersamples/labspace-authoring"
+        default: "dockersamples/labspace-web-authoring"
       runtime-tag:
         description: "Image tag for BOTH images. Pin to a version for stable labs."
         type: string

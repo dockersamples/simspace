@@ -8,9 +8,9 @@
 #   docker run --rm -p 8080:80 my-lab      # open http://localhost:8080
 #
 # Pin RUNTIME_IMAGE to a released version for reproducible builds:
-#   docker build --build-arg RUNTIME_IMAGE=dockersamples/labspace:1 -t my-lab .
+#   docker build --build-arg RUNTIME_IMAGE=dockersamples/labspace-web:1 -t my-lab .
 
-ARG RUNTIME_IMAGE=dockersamples/labspace:latest
+ARG RUNTIME_IMAGE=dockersamples/labspace-web:latest
 FROM ${RUNTIME_IMAGE}
 
 # Replace the runtime image's sample lab with this repo's lab.

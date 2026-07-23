@@ -26,7 +26,7 @@ Edit the files in `lab/` and refresh the browser to see changes:
 Pin the toolchain to a released version for reproducibility:
 
 ```bash
-export LABSPACE_AUTHORING_IMAGE=dockersamples/labspace-authoring:1
+export LABSPACE_AUTHORING_IMAGE=dockersamples/labspace-web-authoring:1
 ```
 
 ## Deploy

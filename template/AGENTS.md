@@ -5,7 +5,7 @@ Guide for agents authoring this Labspace lab. Read this first.
 ## What this repo is
 
 A **single lab**. You only edit files under `lab/`. The app that runs the lab is
-a prebuilt image (`dockersamples/labspace`); you never touch app source. The lab
+a prebuilt image (`dockersamples/labspace-web`); you never touch app source. The lab
 is plain data — Markdown + two YAML files — loaded at runtime, so there is no
 build step for content.
 

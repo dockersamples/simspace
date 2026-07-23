@@ -21,7 +21,7 @@ jobs:
         run: |
           docker run --rm \
             -v "${{ github.workspace }}/lab:/lab:ro" \
-            "${LABSPACE_AUTHORING_IMAGE:-dockersamples/labspace-authoring:latest}" \
+            "${LABSPACE_AUTHORING_IMAGE:-dockersamples/labspace-web-authoring:latest}" \
             npm run validate-lab -- /lab
         env:
-          LABSPACE_AUTHORING_IMAGE: dockersamples/labspace-authoring:latest
+          LABSPACE_AUTHORING_IMAGE: dockersamples/labspace-web-authoring:latest
