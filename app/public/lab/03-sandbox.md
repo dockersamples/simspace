@@ -46,6 +46,22 @@ fetch example.com and tell me what you get
 
 This time it succeeds with an HTTP 200 — and _only_ example.com is reachable.
 
+## Ask the agent to modify the app
+
+File access works the same way. The sandbox shares the virtual filesystem with the Host terminal, so edits the agent makes are immediately visible outside. Ask it to add a health endpoint:
+
+```bash terminal-id=sandbox
+add a /health endpoint to server.js that returns "ok"
+```
+
+The agent reads the file, edits it, and writes it back. Switch to the **Host** terminal and verify:
+
+```bash terminal-id=sandbox
+!cat server.js
+```
+
+The new route is there — the sandbox and Host share the same filesystem, so changes land immediately.
+
 ## Inspect and clean up
 
 Leave the interactive session (the sandbox keeps running):

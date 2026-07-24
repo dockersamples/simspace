@@ -161,15 +161,34 @@ scenarios:
       state: { container.running: true }
     then:
       output:
-        - "CONTAINER ID   IMAGE     COMMAND                  STATUS         PORTS                  NAMES"
-        - '3f8a9c2b1d4e   nginx     "/docker-entrypoint.…"   Up 4 seconds   0.0.0.0:8080->80/tcp   {{ state.container.name }}'
+        - "CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS                  NAMES"
+        - '3f8a9c2b1d4e   nginx     "/docker-entrypoint.…"   4 seconds ago   Up 4 seconds   0.0.0.0:8080->80/tcp   {{ state.container.name }}'
 
   - id: docker-ps-empty
     when:
       command: [docker, ps]
     then:
       output:
-        - "CONTAINER ID   IMAGE     COMMAND   STATUS    PORTS     NAMES"
+        - "CONTAINER ID   IMAGE     COMMAND   CREATED     STATUS     PORTS     NAMES"
+
+  - id: curl-nginx
+    when:
+      command: [curl]
+      args:
+        0:
+          oneOf: ["localhost:8080", "http://localhost:8080"]
+      state: { container.running: true }
+    then:
+      output:
+        - "<!DOCTYPE html>"
+        - "<html>"
+        - "<head>"
+        - "    <title>Welcome to nginx!</title>"
+        - "</head>"
+        - "<body>"
+        - "    <h1>Welcome to nginx!</h1>"
+        - "</body>"
+        - "</html>"
 
   - id: docker-logs
     when:
@@ -482,14 +501,33 @@ scenarios:
         - "I can't reach example.com — this sandbox has no outbound network access"
         - "by default. Enable a network policy for example.com, then ask me again."
 
-  - id: sbx-ls-allowed
+  - id: agent-edit-server
     when:
-      command: [sbx, ls]
-      state: { sandbox.running: true, network.exampleAllowed: true }
+      agent: true
+      terminal: sandbox
+      promptContains: ["health"]
     then:
       output:
-        - "SANDBOX         AGENT    STATUS    NETWORK POLICY   CREATED"
-        - "gifted_turing   claude   running   example.com      about a minute ago"
+        - "I'll add a /health endpoint to server.js."
+        - ""
+        - "Reading the current file…"
+        - ""
+        - '  const express = require("express");'
+        - "  const app = express();"
+        - "  "
+        - '  app.get("/", (_, res) => res.send("Hello from the lab!"));'
+        - "  "
+        - '  app.listen(3000, () => console.log("listening on :3000"));'
+        - ""
+        - { text: "Adding GET /health and writing the file back.", delay: medium }
+        - ""
+        - 'Done — server.js now has a GET /health that returns "ok".'
+      files:
+        - replace: server.js
+          find: 'app.get("/", (_, res) => res.send("Hello from the lab!"));'
+          with: |
+            app.get("/", (_, res) => res.send("Hello from the lab!"));
+            app.get("/health", (_, res) => res.send("ok"));
 
   - id: sbx-ls-running
     when:
@@ -497,15 +535,15 @@ scenarios:
       state: { sandbox.running: true }
     then:
       output:
-        - "SANDBOX         AGENT    STATUS    NETWORK POLICY   CREATED"
-        - "gifted_turing   claude   running   none (deny all)  about a minute ago"
+        - "SANDBOX         AGENT    STATUS    PORTS   WORKSPACE"
+        - "gifted_turing   claude   running           /Users/sandbox/workspace"
 
   - id: sbx-ls-empty
     when:
       command: [sbx, ls]
     then:
       output:
-        - "SANDBOX   AGENT   STATUS   NETWORK POLICY   CREATED"
+        - "SANDBOX   AGENT   STATUS   PORTS   WORKSPACE"
 
   - id: sbx-rm
     when:
