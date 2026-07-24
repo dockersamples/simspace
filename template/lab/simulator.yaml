@@ -9,6 +9,10 @@ metadata:
 state:
   greeted: false
 
+settings:
+  pace:
+    pull: 900   # simulated layer download
+
 defaults:
   unmatched:
     stderr: ["Error: that command isn't part of this lab yet."]
@@ -34,5 +38,7 @@ scenarios:
     then:
       output:
         - "Unable to find image '{{ args.0 }}' locally"
-        - "Status: Downloaded newer image for {{ args.0 }}"
+        - { text: "latest: Pulling from library/{{ args.0 }}", delay: short }
+        - { text: "a480a496...: Pull complete", delay: pull }
+        - { text: "Status: Downloaded newer image for {{ args.0 }}", delay: short }
         - "Hello from Docker!"
