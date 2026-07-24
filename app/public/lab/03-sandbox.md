@@ -69,6 +69,10 @@ sbx rm gifted_turing
 
 Run `sbx ls` again and it's gone.
 
+```bash terminal-id=sandbox
+sbx ls
+```
+
 > The point of a sandbox is **least privilege for agents**: isolated by default,
 > disposable, and network access granted host-by-host only when you decide it's
 > warranted.
