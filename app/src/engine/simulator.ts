@@ -50,6 +50,10 @@ export interface SimulatorInit {
   spec: string;
   /** Optional seed for the virtual filesystem, keyed by lab-relative path. */
   files?: Record<string, string>;
+  /** Previously persisted state to restore instead of seeding from the manifest. */
+  restoredState?: Record<string, StateValue>;
+  /** Previously persisted filesystem to restore instead of the seed files. */
+  restoredFiles?: Record<string, string>;
 }
 
 export class Simulator {
@@ -64,8 +68,10 @@ export class Simulator {
     checkSchemaVersion(this.lab.version);
     this.options = resolveOptions(this.lab.settings);
     this.seedFiles = init.files ?? {};
-    this.store = Store.seed(this.lab.state);
-    this.fs = new FS(this.seedFiles);
+    this.store = init.restoredState
+      ? Store.restore(init.restoredState)
+      : Store.seed(this.lab.state);
+    this.fs = new FS(init.restoredFiles ?? this.seedFiles);
   }
 
   /** state returns a snapshot of the current runtime state, for inspection. */

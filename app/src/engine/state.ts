@@ -28,6 +28,14 @@ export class Store {
   }
 
   /**
+   * restore creates a store from previously persisted data (e.g. localStorage),
+   * deep-copied so external mutations cannot affect the store.
+   */
+  static restore(data: Record<string, StateValue>): Store {
+    return new Store(deepCopy(data ?? {}) as StateObject);
+  }
+
+  /**
    * Get resolves a dot-path. present is false if any segment is missing or the
    * path traverses through a non-object.
    */

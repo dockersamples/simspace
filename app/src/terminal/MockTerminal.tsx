@@ -10,6 +10,7 @@ import {
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -122,13 +123,32 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     },
     ref,
   ) {
-    const [lines, setLines] = useState<TermLine[]>([]);
+    const storageKey = terminalId ? `simspace:terminal:${terminalId}` : null;
+
+    const savedSession = useMemo(() => {
+      if (!storageKey) return null;
+      try {
+        const raw = localStorage.getItem(storageKey);
+        return raw
+          ? (JSON.parse(raw) as { lines: TermLine[]; mode: Mode; history: string[] })
+          : null;
+      } catch { return null; }
+    }, [storageKey]);
+
+    const [lines, setLines] = useState<TermLine[]>(() =>
+      Array.isArray(savedSession?.lines) ? savedSession.lines : [],
+    );
     const [input, setInput] = useState("");
     const [busy, setBusy] = useState(false);
+    const [mode, setMode] = useState<Mode>(
+      () => (savedSession?.mode as Mode) ?? { kind: "command" },
+    );
 
-    const modeRef = useRef<Mode>({ kind: "command" });
-    const idRef = useRef(0);
-    const history = useRef<string[]>([]);
+    const modeRef = useRef<Mode>(mode);
+    const idRef = useRef(lines.reduce((max, l) => Math.max(max, l.id), 0));
+    const history = useRef<string[]>(
+      Array.isArray(savedSession?.history) ? savedSession.history : [],
+    );
     const historyPos = useRef<number>(-1);
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -150,6 +170,15 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
 
     const nextId = () => ++idRef.current;
 
+    // Tracks the (simulator, greetKey) pair last handled by the greeting effect.
+    // Pre-filled when restoring from storage so the initial mount skips the greeting.
+    // Idempotent: StrictMode's double-invocation sees the same pair both times and
+    // skips; a genuine simulator change presents a new object and triggers a reset.
+    const greetKey = JSON.stringify(greeting ?? null);
+    const greetedRef = useRef<{ sim: typeof simulator; key: string } | null>(
+      savedSession !== null ? { sim: simulator, key: greetKey } : null,
+    );
+
     const append = useCallback((text: string, kind: LineKind) => {
       // Bump the counter first so every line gets a unique React key. Reusing
       // idRef.current here would collide with the last emitted line, and the
@@ -160,9 +189,14 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     }, []);
 
     // Reset terminal + simulator whenever a new simulator is built (spec change).
-    const greetKey = JSON.stringify(greeting ?? null);
+    // Skipped on mount when we restored a saved session (greetedRef pre-filled).
     useEffect(() => {
+      if (greetedRef.current?.sim === simulator && greetedRef.current?.key === greetKey) {
+        return;
+      }
+      greetedRef.current = { sim: simulator, key: greetKey };
       modeRef.current = { kind: "command" };
+      setMode({ kind: "command" });
       setLines([]);
       setBusy(false);
       if (!simulator) return;
@@ -178,6 +212,18 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [simulator, greetKey]);
+
+    // Persist the terminal session (lines, mode, history) to localStorage so a
+    // page refresh restores the exact transcript and prompt state.
+    useEffect(() => {
+      if (!storageKey) return;
+      try {
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({ lines, mode, history: history.current }),
+        );
+      } catch { /* storage full or unavailable */ }
+    }, [storageKey, lines, mode]);
 
     // Keep the newest output in view. A layout effect scrolls synchronously
     // before the browser paints, so streamed lines never flash in below the fold
@@ -301,6 +347,7 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
           })),
         );
         modeRef.current = { kind: "session", sess };
+        setMode({ kind: "session", sess });
       },
       [emit],
     );
@@ -346,6 +393,7 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
             })),
           );
           modeRef.current = { kind: "command" };
+          setMode({ kind: "command" });
           return;
         }
         if (line.startsWith("!")) {
@@ -378,9 +426,9 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
         if (busy || !simulator) return;
         const line = raw.trim();
 
-        const mode = modeRef.current;
+        const currentMode = modeRef.current;
         const promptPrefix =
-          mode.kind === "session" ? sess_prompt(mode.sess) : shellPrompt;
+          currentMode.kind === "session" ? sess_prompt(currentMode.sess) : shellPrompt;
 
         // Echo the typed line with its prompt, always (even when empty).
         append(promptPrefix + raw, "input");
@@ -400,8 +448,8 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
 
         setBusy(true);
         try {
-          if (mode.kind === "session") {
-            await runSessionTurn(line, mode.sess);
+          if (currentMode.kind === "session") {
+            await runSessionTurn(line, currentMode.sess);
           } else {
             await runCommand(line);
           }
@@ -505,7 +553,11 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     // rebuilt without each one re-seeding the shared state.
     const resetView = useCallback(() => {
       if (!simulator) return;
+      if (storageKey) {
+        try { localStorage.removeItem(storageKey); } catch { /* ignore */ }
+      }
       modeRef.current = { kind: "command" };
+      setMode({ kind: "command" });
       idRef.current++;
       const intro =
         greeting ??
@@ -521,7 +573,7 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
         })),
       );
       inputRef.current?.focus();
-    }, [simulator, greeting]);
+    }, [simulator, greeting, storageKey]);
 
     // A "reset" from anywhere (the shared machine was re-seeded) rebuilds this
     // terminal's view. Other change events don't affect the transcript.
@@ -556,7 +608,6 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
       );
     }
 
-    const mode = modeRef.current;
     const promptPrefix =
       mode.kind === "session" ? sess_prompt(mode.sess) : shellPrompt;
 

@@ -18,6 +18,8 @@ import { substituteVariables } from "./labspace/slugify";
 
 const WorkshopContext = createContext();
 
+const VARIABLES_KEY = "simspace:variables";
+
 export const WorkshopContextProvider = ({ children, printMode = false }) => {
   const { sectionId } = useParams();
   const navigate = useNavigate();
@@ -46,7 +48,14 @@ export const WorkshopContextProvider = ({ children, printMode = false }) => {
       .then((data) => {
         if (cancelled) return;
         setWorkshop(data);
-        setVariables(data.variables || {});
+        const defaultVars = data.variables || {};
+        try {
+          const saved = localStorage.getItem(VARIABLES_KEY);
+          const parsed = saved ? JSON.parse(saved) : null;
+          setVariables(parsed ? { ...defaultVars, ...parsed } : defaultVars);
+        } catch {
+          setVariables(defaultVars);
+        }
         toast.dismiss("workshop-load-error");
       })
       .catch((error) => {
@@ -90,11 +99,19 @@ export const WorkshopContextProvider = ({ children, printMode = false }) => {
   }, [workshop, activeSection]);
 
   const setVariable = useCallback((key, value) => {
-    setVariables((vars) => ({
-      ...vars,
-      [key]: value ? value : undefined,
-    }));
+    setVariables((vars) => {
+      const next = { ...vars, [key]: value ? value : undefined };
+      try {
+        localStorage.setItem(VARIABLES_KEY, JSON.stringify(next));
+      } catch { /* ignore storage errors */ }
+      return next;
+    });
   }, []);
+
+  const resetVariables = useCallback(() => {
+    try { localStorage.removeItem(VARIABLES_KEY); } catch { /* ignore */ }
+    setVariables(workshop?.variables || {});
+  }, [workshop]);
 
   if (!workshop || (!printMode && !activeSection) || variables === null) {
     return (
@@ -113,6 +130,7 @@ export const WorkshopContextProvider = ({ children, printMode = false }) => {
         changeActiveSection,
         variables,
         setVariable,
+        resetVariables,
       }}
     >
       {children}
@@ -128,6 +146,6 @@ export const useActiveSection = () => {
 };
 
 export const useVariables = () => {
-  const { variables, setVariable } = useContext(WorkshopContext);
-  return { variables, setVariable };
+  const { variables, setVariable, resetVariables } = useContext(WorkshopContext);
+  return { variables, setVariable, resetVariables };
 };
