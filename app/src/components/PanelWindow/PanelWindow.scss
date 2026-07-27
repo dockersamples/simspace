@@ -1,0 +1,48 @@
+// Empty-state shown in the docked slot while the pane is in a child window.
+// Matches the terminal panel's dark surface so the split doesn't visually jump.
+.panel-window-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+  background: #0d1117;
+  color: #adbac7;
+
+  .panel-window-placeholder-icon {
+    font-size: 2.75rem;
+    color: #6c7e9d;
+  }
+
+  .panel-window-placeholder-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .panel-window-placeholder-hint {
+    margin: 0;
+    max-width: 22rem;
+    font-size: 0.8rem;
+    color: #8b99b2;
+  }
+
+  .panel-window-placeholder-btn {
+    margin-top: 0.75rem;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
+    color: #fff;
+    background: var(--bs-primary);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+
+    &:hover {
+      filter: brightness(1.1);
+    }
+  }
+}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useActiveSection, useWorkshop } from "../../WorkshopContext";
 import { useTerminal } from "../../context/TerminalContext";
+import { usePanelWindow } from "../../context/PanelWindowContext";
 
 // Must match the cache names in public/sw.js.
 const APP_CACHE = "labspace-app";
@@ -18,6 +19,7 @@ export function WorkshopHeader() {
   const { title, sections } = workshop;
   const { activeSection } = useActiveSection();
   const terminal = useTerminal();
+  const panelWindow = usePanelWindow();
   const [menu, setMenu] = useState(null);
   const [isOfflineCached, setIsOfflineCached] = useState(false);
 
@@ -87,6 +89,11 @@ export function WorkshopHeader() {
       terminal.resetAll();
     }
   }, [terminal, closeMenu]);
+
+  const togglePanelWindow = useCallback(() => {
+    closeMenu();
+    panelWindow?.toggle();
+  }, [panelWindow, closeMenu]);
 
   const makeAvailableOffline = useCallback(async () => {
     closeMenu();
@@ -159,9 +166,12 @@ export function WorkshopHeader() {
     await Promise.all([caches.delete(APP_CACHE), caches.delete(LAB_CACHE)]);
     setIsOfflineCached(false);
     toast.dismiss("lab-updated");
-    toast.info("Offline mode disabled. Refresh to load the latest lab content.", {
-      autoClose: 5000,
-    });
+    toast.info(
+      "Offline mode disabled. Refresh to load the latest lab content.",
+      {
+        autoClose: 5000,
+      },
+    );
   }, [closeMenu]);
 
   // Close the menu on Escape while it's open.
@@ -232,6 +242,21 @@ export function WorkshopHeader() {
               <span className="material-symbols-outlined">restart_alt</span>
               Reset lab
             </button>
+            {panelWindow && (
+              <button
+                type="button"
+                className="workshop-context-menu-item"
+                role="menuitem"
+                onClick={togglePanelWindow}
+              >
+                <span className="material-symbols-outlined">
+                  {panelWindow.poppedOut ? "dock_to_left" : "open_in_new"}
+                </span>
+                {panelWindow.poppedOut
+                  ? "Dock terminal back"
+                  : "Open terminal in new window"}
+              </button>
+            )}
             {"serviceWorker" in navigator && (
               <button
                 type="button"
