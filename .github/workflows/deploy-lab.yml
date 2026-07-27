@@ -6,7 +6,7 @@ name: Deploy Labspace lab
 #
 #   jobs:
 #     deploy:
-#       uses: dockersamples/labspace-web/.github/workflows/deploy-lab.yml@main
+#       uses: dockersamples/simspace/.github/workflows/deploy-lab.yml@main
 #       with:
 #         runtime-tag: "1"        # pin to a released version
 #       permissions:
@@ -27,11 +27,11 @@ on:
       runtime-image:
         description: "Runtime image the site is based on."
         type: string
-        default: "dockersamples/labspace-web"
+        default: "dockersamples/simspace"
       authoring-image:
         description: "Authoring image used to validate the lab."
         type: string
-        default: "dockersamples/labspace-web-authoring"
+        default: "dockersamples/simspace-authoring"
       runtime-tag:
         description: "Image tag for BOTH images. Pin to a version for stable labs."
         type: string

@@ -10,8 +10,8 @@
 #   TAGS=1.0.0,1,latest docker buildx bake --push
 #
 # Common override (publish to the public org):
-#   IMAGE=docker.io/dockersamples/labspace-web \
-#   AUTHORING_IMAGE=docker.io/dockersamples/labspace-web-authoring \
+#   IMAGE=docker.io/dockersamples/simspace \
+#   AUTHORING_IMAGE=docker.io/dockersamples/simspace-authoring \
 #   docker buildx bake --push
 
 # Fully-qualified image names (without tag).

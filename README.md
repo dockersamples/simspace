@@ -1,4 +1,4 @@
-# Labspaces, rethinked
+# Simspaces - Labspaces, rethinked
 
 A reusable platform for building deterministic, interactive learning experiences
 — without requiring production infrastructure, AI API keys, or organizational
