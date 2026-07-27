@@ -65,9 +65,12 @@ export async function loadLabspace(labUrl = resolveLabUrl()) {
   const labBaseUrl = new URL(".", labUrl).toString();
 
   const sectionDefs = Array.isArray(raw.sections) ? raw.sections : [];
+  const sectionContentUrls = sectionDefs.map((sec) =>
+    sec.contentPath ? resolve(sec.contentPath) : null,
+  );
   const sections = await Promise.all(
-    sectionDefs.map(async (sec) => {
-      const contentUrl = sec.contentPath ? resolve(sec.contentPath) : null;
+    sectionDefs.map(async (sec, i) => {
+      const contentUrl = sectionContentUrls[i];
       return {
         id: slugify(sec.title),
         title: sec.title,
@@ -116,6 +119,13 @@ export async function loadLabspace(labUrl = resolveLabUrl()) {
     // the fallback base for resolving relative asset paths; individual sections
     // carry their own `baseUrl` for markdown that lives in subdirectories.
     baseUrl: labBaseUrl,
+    // All URLs fetched during load — used by the offline cache action to
+    // pre-populate the service worker cache with all lab content.
+    offlineUrls: [
+      labUrl,
+      resolve(raw.simulator),
+      ...sectionContentUrls.filter(Boolean),
+    ],
     title: raw.title || "Labspace",
     subtitle: raw.description || "",
     sections,

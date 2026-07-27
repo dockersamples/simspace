@@ -1,3 +1,6 @@
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/roboto-mono";
+
 // Colors defined by brand guidelines
 // Beyond blue, each is the 700 variant of the color
 $blue: #2560ff;
@@ -19,8 +22,8 @@ $gray-800: #2c333f !default;
 $gray-900: #1e2129 !default;
 $black: #0f121b !default;
 
-$font-family-sans-serif: Inter, Helvetica, Arial, sans-serif;
-$font-family-monospace: "Roboto Mono", "Courier New", Courier, monospace;
+$font-family-sans-serif: "Inter Variable", Inter, Helvetica, Arial, sans-serif;
+$font-family-monospace: "Roboto Mono Variable", "Roboto Mono", "Courier New", Courier, monospace;
 $font-size-base: 0.875rem;
 
 $light-bg-subtle-dark: $gray-800;
