@@ -16,11 +16,11 @@
 
 # Fully-qualified image names (without tag).
 variable "IMAGE" {
-  default = "dockersamples/labspace-web"
+  default = "dockersamples/simspace"
 }
 
 variable "AUTHORING_IMAGE" {
-  default = "dockersamples/labspace-web-authoring"
+  default = "dockersamples/simspace-authoring"
 }
 
 # Tags applied to the built images.
