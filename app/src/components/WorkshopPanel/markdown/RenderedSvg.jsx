@@ -1,3 +1,3 @@
-export function RenderedSvg({ node, children, ...rest }) {
+export function RenderedSvg({ children, ...rest }) {
   return <svg {...rest}>{children}</svg>;
 }

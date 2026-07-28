@@ -51,8 +51,6 @@ app/                 THE PRODUCT — the consolidated static React app
                      (esbuild TS runner so scripts can import the engine)
   dist/              build output — generated, do not edit
 spec/                the two format specifications (see above)
-template/            starter files for an author's OWN lab repo (lab/ + compose +
-                     Dockerfile + AGENTS.md + a caller deploy workflow)
 .github/workflows/   deploy.yml (Pages for THIS repo) + deploy-lab.yml (reusable
                      workflow author repos call to validate + deploy their lab)
 Dockerfile           two images: `production` (nginx runtime) + `authoring`
@@ -72,8 +70,9 @@ is swappable data, not baked-in code. That shapes the authoring/deploy story:
   for `npm run dev` (live preview) and linting. Authors mount only their `lab/`.
 
 Release both under the **same tags** so a version-pinned lab gets a matching
-pair: `TAGS=1.0.0,1 docker buildx bake --push`. An author's repo is just the
-`template/` contents with their own `lab/`.
+pair: `TAGS=1.0.0,1 docker buildx bake --push`. Author repos should start from
+[`dockersamples/simspace-starter`](https://github.com/dockersamples/simspace-starter)
+and replace the starter `lab/` with their own content.
 
 ## Commands
 
@@ -145,7 +144,7 @@ Vite; `app/src/engine/index.ts` is its public surface for embedding or testing.
   authoring (`authoring`) images; `--push` publishes. Use `*-local` targets to
   load a single-arch build into the daemon.
 
-### An author's lab repo (uses `template/`)
+### An author's lab repo (uses `dockersamples/simspace-starter`)
 
 The lab is runtime data, so an author repo never rebuilds the app:
 
@@ -154,5 +153,5 @@ The lab is runtime data, so an author repo never rebuilds the app:
 - **GitHub Pages** — the caller `deploy.yml` invokes this repo's reusable
   `deploy-lab.yml@<ref>`, which validates the lab, overlays it onto the runtime
   image's static payload, and publishes.
-- **Container** — `template/Dockerfile` is `FROM <runtime> + COPY lab/` (two
-  lines); `docker run -p 8080:80` serves it.
+- **Container** — the starter repo's `Dockerfile` is `FROM <runtime> + COPY lab/`
+  (two lines); `docker run -p 8080:80` serves it.

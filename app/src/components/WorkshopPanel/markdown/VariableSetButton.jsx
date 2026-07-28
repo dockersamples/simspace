@@ -16,7 +16,6 @@ import { useCallback, useMemo } from "react";
 export function VariableSetButton({
   children,
   variables: variablesToSetString,
-  ...rest
 }) {
   const { variables, setVariable } = useVariables();
 

@@ -20,7 +20,7 @@ import { useState } from "react";
  *
  * @returns
  */
-export function VariableDefinition({ children, prompt, ...rest }) {
+export function VariableDefinition({ children, prompt }) {
   const { variables, setVariable } = useVariables();
   const [value, setValue] = useState(variables[children] || "");
 
