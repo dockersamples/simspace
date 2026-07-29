@@ -132,6 +132,7 @@ export function TerminalPanel() {
             simulator={simulator}
             error={error}
             terminalId={terminal.id}
+            labKey={workshop.labKey}
             onChange={handleChange}
             subscribe={subscribe}
             className="flex-fill"

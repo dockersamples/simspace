@@ -47,6 +47,8 @@ formats it consumes are specified under [`spec/`](spec):
 
 - [`spec/labspace.md`](spec/labspace.md) — the `labspace.yaml` lab config.
 - [`spec/simulator.md`](spec/simulator.md) — the `simulator.yaml` scenario spec.
+- [`spec/catalog.md`](spec/catalog.md) — the optional `labs.json` for hosting
+  several labs behind a selection page.
 
 ## The `app/`
 
@@ -72,8 +74,11 @@ A lab is a `labspace.yaml` plus the files it references, kept together in a
 it are resolved relative to the `labspace.yaml`, so they stay simple
 (`simulator.yaml`, `00-intro.md`). Keeping the lab in its own directory means a
 Docker dev environment can mount just that directory without clobbering the
-app's own assets. Deploy one lab per site (or host several and select with
-`?lab=<path>`):
+app's own assets. Deploy one lab per site, force a specific one with
+`?lab=<path>`, or host several behind a selectable catalog — drop a `labs.json`
+next to the app and the learner gets a landing page to choose from
+(see [`spec/catalog.md`](spec/catalog.md)). Without a `labs.json`, the app loads
+the single lab in `lab/` exactly as below:
 
 ```yaml
 title: "My Lab"

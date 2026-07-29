@@ -13,9 +13,15 @@
 const APP_CACHE = "labspace-app";
 const LAB_CACHE = "labspace-lab";
 
-// Pathname prefix for lab content (e.g. "/sbxlab/lab/"). Computed once from
-// the SW scope so it works regardless of the deployment subpath.
-const labPath = new URL("lab/", self.registration.scope).pathname;
+// Pathname prefixes for lab content (e.g. "/sbxlab/lab/", "/sbxlab/labs/").
+// Computed once from the SW scope so they work regardless of the deployment
+// subpath. `lab/` is the single default lab; `labs/` holds catalog labs.
+const labPaths = [
+  new URL("lab/", self.registration.scope).pathname,
+  new URL("labs/", self.registration.scope).pathname,
+];
+const isLabContent = (pathname) =>
+  labPaths.some((prefix) => pathname.startsWith(prefix));
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -34,7 +40,7 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  if (url.pathname.startsWith(labPath)) {
+  if (isLabContent(url.pathname)) {
     e.respondWith(labContentFetch(e.request));
     return;
   }
@@ -51,9 +57,7 @@ self.addEventListener("message", (e) => {
     Promise.all(
       urls.map(async (url) => {
         const u = new URL(url);
-        const cacheName = u.pathname.startsWith(labPath)
-          ? LAB_CACHE
-          : APP_CACHE;
+        const cacheName = isLabContent(u.pathname) ? LAB_CACHE : APP_CACHE;
         try {
           // cache: "reload" bypasses the HTTP cache to store fresh content.
           const response = await fetch(url, { cache: "reload" });

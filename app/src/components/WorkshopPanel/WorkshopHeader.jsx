@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router";
 import { toast } from "react-toastify";
 import { useActiveSection, useWorkshop } from "../../WorkshopContext";
 import { useTerminal } from "../../context/TerminalContext";
@@ -188,6 +189,16 @@ export function WorkshopHeader() {
     <header className="workshop-header">
       <div className="workshop-header-bar">
         <div className="workshop-brand">
+          {workshop.labKey && (
+            <Link
+              to="/"
+              className="workshop-back-link"
+              title="Back to all labs"
+              aria-label="Back to all labs"
+            >
+              <span className="material-symbols-outlined">arrow_back</span>
+            </Link>
+          )}
           <img
             src="docker.svg"
             alt=""

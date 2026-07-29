@@ -68,6 +68,28 @@
     min-width: 0;
   }
 
+  .workshop-back-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    color: var(--bs-secondary-color);
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--bs-secondary-bg);
+      color: var(--bs-primary);
+    }
+
+    .material-symbols-outlined {
+      font-size: 20px;
+    }
+  }
+
   .workshop-brand-logo {
     width: 30px;
     height: 30px;

@@ -9,8 +9,10 @@ import {
 import { toast } from "react-toastify";
 import Spinner from "react-bootstrap/Spinner";
 import { useNavigate, useParams } from "react-router";
-import { loadLabspace } from "./labspace/loader";
-import { substituteVariables } from "./labspace/slugify";
+import { loadLabspace, resolveLabUrl } from "./labspace/loader";
+import { substituteVariables, slugify } from "./labspace/slugify";
+import { scopedKey } from "./labspace/storage";
+import { useCatalog } from "./context/CatalogContext";
 
 // Server-free workshop context. Loads the labspace.yaml (and everything it
 // references) as static assets, keeps variables in memory, and substitutes
@@ -20,14 +22,48 @@ const WorkshopContext = createContext();
 
 const VARIABLES_KEY = "simspace:variables";
 
+// Works out which lab to load and how to namespace its saved state, from the
+// route's `labId` (catalog mode), the `?lab=` override, or the default single
+// lab. Returns null while a catalog-mode lab is still waiting on the catalog.
+//
+//   labUrl:   labspace.yaml to fetch
+//   labKey:   suffix for localStorage keys ("" = default lab, un-namespaced)
+//   basePath: route prefix for section navigation ("" = single-lab routes)
+function resolveTarget(labId, catalog) {
+  if (labId) {
+    if (catalog.status !== "ready") return null; // catalog still loading
+    const lab = catalog.getLab(labId);
+    if (!lab) return { error: `Lab "${labId}" was not found in the catalog.` };
+    return { labUrl: lab.labspaceUrl, labKey: labId, basePath: `/labs/${labId}` };
+  }
+  // No catalog id in the route: honor a `?lab=` override, else the default lab.
+  const override = new URLSearchParams(window.location.search).get("lab");
+  return {
+    labUrl: resolveLabUrl(),
+    // Namespace an explicit override so switching labs can't cross-contaminate;
+    // the plain default keeps the original, un-suffixed keys for compatibility.
+    labKey: override ? slugify(override) : "",
+    basePath: "",
+  };
+}
+
 export const WorkshopContextProvider = ({ children, printMode = false }) => {
-  const { sectionId } = useParams();
+  const { labId, sectionId } = useParams();
+  const catalog = useCatalog();
   const navigate = useNavigate();
   const [workshop, setWorkshop] = useState(null);
   const [variables, setVariables] = useState(null);
   const [activeSectionId, setActiveSectionId] = useState(
     printMode ? null : sectionId,
   );
+
+  const target = useMemo(
+    () => resolveTarget(labId, catalog),
+    [labId, catalog],
+  );
+  const labKey = target?.labKey || "";
+  const basePath = target?.basePath || "";
+  const variablesKey = scopedKey(VARIABLES_KEY, labKey);
 
   useEffect(() => {
     if (printMode) return;
@@ -36,21 +72,31 @@ export const WorkshopContextProvider = ({ children, printMode = false }) => {
 
   const changeActiveSection = useCallback(
     (sectionId) => {
-      navigate(`/${sectionId}`);
+      navigate(`${basePath}/${sectionId}`);
     },
-    [navigate],
+    [navigate, basePath],
   );
 
-  // Load the labspace once on mount.
+  // Load the labspace once the target lab is known. In catalog mode this waits
+  // for the catalog to resolve the id; a full remount (keyed on labId) handles
+  // switching between labs.
   useEffect(() => {
+    if (!target?.labUrl) return;
+    if (target.error) {
+      toast.error(
+        `${target.error} Check labs.json and the URL, then pick a lab.`,
+        { toastId: "workshop-load-error", autoClose: false },
+      );
+      return;
+    }
     let cancelled = false;
-    loadLabspace()
+    loadLabspace(target.labUrl)
       .then((data) => {
         if (cancelled) return;
-        setWorkshop(data);
+        setWorkshop({ ...data, labKey });
         const defaultVars = data.variables || {};
         try {
-          const saved = localStorage.getItem(VARIABLES_KEY);
+          const saved = localStorage.getItem(variablesKey);
           const parsed = saved ? JSON.parse(saved) : null;
           setVariables(parsed ? { ...defaultVars, ...parsed } : defaultVars);
         } catch {
@@ -72,7 +118,7 @@ export const WorkshopContextProvider = ({ children, printMode = false }) => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [target, labKey, variablesKey]);
 
   // Default to the first section once the workshop is loaded.
   useEffect(() => {
@@ -102,16 +148,16 @@ export const WorkshopContextProvider = ({ children, printMode = false }) => {
     setVariables((vars) => {
       const next = { ...vars, [key]: value ? value : undefined };
       try {
-        localStorage.setItem(VARIABLES_KEY, JSON.stringify(next));
+        localStorage.setItem(variablesKey, JSON.stringify(next));
       } catch { /* ignore storage errors */ }
       return next;
     });
-  }, []);
+  }, [variablesKey]);
 
   const resetVariables = useCallback(() => {
-    try { localStorage.removeItem(VARIABLES_KEY); } catch { /* ignore */ }
+    try { localStorage.removeItem(variablesKey); } catch { /* ignore */ }
     setVariables(workshop?.variables || {});
-  }, [workshop]);
+  }, [workshop, variablesKey]);
 
   if (!workshop || (!printMode && !activeSection) || variables === null) {
     return (

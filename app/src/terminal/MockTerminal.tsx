@@ -16,6 +16,7 @@ import {
 } from "react";
 import type { Session } from "../engine/types";
 import { Simulator } from "../engine/simulator";
+import { scopedKey } from "../labspace/storage";
 import "./MockTerminal.css";
 
 /** A cross-terminal event broadcast so peers can refresh shared UI. */
@@ -38,6 +39,8 @@ export interface MockTerminalProps {
   error?: string | null;
   /** This terminal's id — passed to the engine for `when.terminal` matching. */
   terminalId?: string;
+  /** Lab key that namespaces this terminal's saved transcript across labs. */
+  labKey?: string;
   /** Shell prompt shown in command mode. Defaults to "$ ". */
   shellPrompt?: string;
   /** Override streaming; defaults to the lab's `settings.streaming`. */
@@ -111,6 +114,7 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
       simulator,
       error,
       terminalId,
+      labKey,
       shellPrompt = "$ ",
       streaming,
       streamDelayMs,
@@ -123,7 +127,9 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     },
     ref,
   ) {
-    const storageKey = terminalId ? `simspace:terminal:${terminalId}` : null;
+    const storageKey = terminalId
+      ? scopedKey(`simspace:terminal:${terminalId}`, labKey)
+      : null;
 
     const savedSession = useMemo(() => {
       if (!storageKey) return null;

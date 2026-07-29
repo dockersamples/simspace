@@ -1,0 +1,22 @@
+{
+  "labs": [
+    {
+      "id": "platform-tour",
+      "path": "labs/platform-tour/labspace.yaml",
+      "title": "The Labspace Feature Tour",
+      "description": "A working demo of everything the platform can do — commands, files, variables, terminals, controls, agents, and CI.",
+      "icon": "explore",
+      "tags": ["platform", "start here"],
+      "estimatedMinutes": 15
+    },
+    {
+      "id": "docker-tour",
+      "path": "labs/tour-of-docker/labspace.yaml",
+      "title": "A Tour of Docker",
+      "description": "The Docker CLI, Scout, Sandboxes, and CI — every command scripted and run in your browser.",
+      "icon": "sailing",
+      "tags": ["docker", "applied example"],
+      "estimatedMinutes": 30
+    }
+  ]
+}
