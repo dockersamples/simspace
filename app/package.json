@@ -10,6 +10,7 @@
     "preview": "vite preview --host=0.0.0.0",
     "lint": "eslint .",
     "validate-lab": "node scripts/run-ts.mjs scripts/validate-lab.ts",
+    "generate-catalog": "node scripts/generate-catalog.mjs",
     "prettier": "prettier --write .",
     "prettier-check": "prettier --check ."
   },

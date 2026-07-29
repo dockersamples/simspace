@@ -1,6 +1,15 @@
 title: "The Labspace Feature Tour"
 description: "A working demo of everything a Labspace can do — this lab is its own documentation."
 
+# Catalog card metadata for the landing page. Optional — omit it and the card
+# falls back to the title/description above with a default icon. `labs.json` is
+# generated from these, so this is the single source of truth (no duplication).
+catalog:
+  icon: explore
+  tags: ["platform", "start here"]
+  estimatedMinutes: 15
+  order: 1
+
 # The scenario spec that scripts every command (relative to this file).
 simulator: simulator.yaml
 

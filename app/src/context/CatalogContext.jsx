@@ -6,8 +6,8 @@ import { loadCatalog } from "../labspace/catalog";
 // labspace.yaml) read from here.
 //
 // status: "loading" until the fetch settles, then "ready". When no catalog is
-// deployed, labs is null and hasCatalog is false — callers fall back to the
-// single lab in lab/.
+// deployed (or it's empty), labs is null and hasCatalog is false — Home shows a
+// "no labs found" notice.
 
 const CatalogContext = createContext({
   status: "loading",

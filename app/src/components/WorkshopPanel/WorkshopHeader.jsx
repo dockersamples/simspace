@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
 import { useActiveSection, useWorkshop } from "../../WorkshopContext";
+import { useCatalog } from "../../context/CatalogContext";
 import { useTerminal } from "../../context/TerminalContext";
 import { usePanelWindow } from "../../context/PanelWindowContext";
 
@@ -21,6 +22,10 @@ export function WorkshopHeader() {
   const { activeSection } = useActiveSection();
   const terminal = useTerminal();
   const panelWindow = usePanelWindow();
+  // Only offer "back to all labs" when there's actually a catalog to return to
+  // (two or more labs). A single lab is entered directly, with no landing page.
+  const { labs } = useCatalog();
+  const multiLab = (labs?.length ?? 0) > 1;
   const [menu, setMenu] = useState(null);
   const [isOfflineCached, setIsOfflineCached] = useState(false);
 
@@ -124,6 +129,8 @@ export function WorkshopHeader() {
     const urls = [
       // App shell
       window.location.origin + window.location.pathname,
+      // The catalog (so the landing page works offline too)
+      new URL("labs.json", document.baseURI).toString(),
       // Lab content files loaded at startup
       ...(workshop.offlineUrls || []),
     ];
@@ -189,7 +196,7 @@ export function WorkshopHeader() {
     <header className="workshop-header">
       <div className="workshop-header-bar">
         <div className="workshop-brand">
-          {workshop.labKey && (
+          {multiLab && (
             <Link
               to="/"
               className="workshop-back-link"

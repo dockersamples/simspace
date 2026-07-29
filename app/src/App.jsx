@@ -9,11 +9,11 @@ import { CatalogProvider } from "./context/CatalogContext";
 // so deep links and reloads work on any static host — including GitHub Pages —
 // without a server-side rewrite or 404 fallback.
 //
-// Two shapes coexist:
-//   - Single-lab (no labs.json): `#/`, `#/:sectionId`, `#/export` — no lab id.
-//   - Catalog (labs.json present): `#/` lists labs; a lab lives under
-//     `#/labs/:labId/:sectionId?` with `#/labs/:labId/export`.
-// Home picks between the two once the catalog has (or hasn't) loaded.
+// Every lab comes from the catalog (labs.json, generated from labs/*/). Home
+// decides at `#/`: one lab is entered directly (clean URL, no id), several show
+// the selection page. The routes:
+//   - `#/:sectionId`, `#/export` — the single-lab case (no id in the URL).
+//   - `#/labs/:labId/:sectionId?`, `#/labs/:labId/export` — a chosen catalog lab.
 function App() {
   return (
     <HashRouter>

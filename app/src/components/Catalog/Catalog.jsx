@@ -2,9 +2,9 @@ import { useEffect } from "react";
 import { Link } from "react-router";
 import "./Catalog.scss";
 
-// Landing page shown when a labs.json catalog is deployed. Lists every
-// available lab as a card that links into `#/labs/:id`. Rendered by Home only
-// in catalog mode, so it never appears in the single-lab fallback.
+// The lab-selection landing page. Lists every lab as a card that links into
+// `#/labs/:id`. Home renders it only when the catalog has two or more labs (a
+// single lab is entered directly, with no landing page).
 export function Catalog({ labs }) {
   useEffect(() => {
     document.title = "Labspace — Choose a lab";

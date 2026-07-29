@@ -9,8 +9,8 @@ import {
 import { toast } from "react-toastify";
 import Spinner from "react-bootstrap/Spinner";
 import { useNavigate, useParams } from "react-router";
-import { loadLabspace, resolveLabUrl } from "./labspace/loader";
-import { substituteVariables, slugify } from "./labspace/slugify";
+import { loadLabspace } from "./labspace/loader";
+import { substituteVariables } from "./labspace/slugify";
 import { scopedKey } from "./labspace/storage";
 import { useCatalog } from "./context/CatalogContext";
 
@@ -22,28 +22,34 @@ const WorkshopContext = createContext();
 
 const VARIABLES_KEY = "simspace:variables";
 
-// Works out which lab to load and how to namespace its saved state, from the
-// route's `labId` (catalog mode), the `?lab=` override, or the default single
-// lab. Returns null while a catalog-mode lab is still waiting on the catalog.
+// Works out which lab to load and how to namespace its saved state. Every lab
+// comes from the catalog: the route's `labId` selects one, and at the root with
+// exactly one lab that lab is entered directly (no id in the URL). Returns null
+// while the catalog is still loading, or an { error } when there's nothing to
+// load.
 //
 //   labUrl:   labspace.yaml to fetch
-//   labKey:   suffix for localStorage keys ("" = default lab, un-namespaced)
-//   basePath: route prefix for section navigation ("" = single-lab routes)
+//   labKey:   suffix for localStorage keys (the lab id — keeps labs isolated)
+//   basePath: route prefix for section navigation ("" for the single-lab root)
 function resolveTarget(labId, catalog) {
-  if (labId) {
-    if (catalog.status !== "ready") return null; // catalog still loading
-    const lab = catalog.getLab(labId);
-    if (!lab) return { error: `Lab "${labId}" was not found in the catalog.` };
-    return { labUrl: lab.labspaceUrl, labKey: labId, basePath: `/labs/${labId}` };
+  if (catalog.status !== "ready") return null; // catalog still loading
+  const labs = catalog.labs || [];
+  const lab = labId
+    ? catalog.getLab(labId)
+    : labs.length === 1
+      ? labs[0]
+      : null;
+  if (!lab) {
+    return {
+      error: labId
+        ? `Lab "${labId}" was not found in the catalog.`
+        : "No lab found. Add one under labs/<id>/ and regenerate the catalog (npm run validate-lab).",
+    };
   }
-  // No catalog id in the route: honor a `?lab=` override, else the default lab.
-  const override = new URLSearchParams(window.location.search).get("lab");
   return {
-    labUrl: resolveLabUrl(),
-    // Namespace an explicit override so switching labs can't cross-contaminate;
-    // the plain default keeps the original, un-suffixed keys for compatibility.
-    labKey: override ? slugify(override) : "",
-    basePath: "",
+    labUrl: lab.labspaceUrl,
+    labKey: lab.id,
+    basePath: labId ? `/labs/${lab.id}` : "",
   };
 }
 
@@ -57,10 +63,7 @@ export const WorkshopContextProvider = ({ children, printMode = false }) => {
     printMode ? null : sectionId,
   );
 
-  const target = useMemo(
-    () => resolveTarget(labId, catalog),
-    [labId, catalog],
-  );
+  const target = useMemo(() => resolveTarget(labId, catalog), [labId, catalog]);
   const labKey = target?.labKey || "";
   const basePath = target?.basePath || "";
   const variablesKey = scopedKey(VARIABLES_KEY, labKey);
@@ -144,18 +147,27 @@ export const WorkshopContextProvider = ({ children, printMode = false }) => {
     document.title = `${workshop.title}${activeSection?.title ? ` - ${activeSection.title}` : ""}`;
   }, [workshop, activeSection]);
 
-  const setVariable = useCallback((key, value) => {
-    setVariables((vars) => {
-      const next = { ...vars, [key]: value ? value : undefined };
-      try {
-        localStorage.setItem(variablesKey, JSON.stringify(next));
-      } catch { /* ignore storage errors */ }
-      return next;
-    });
-  }, [variablesKey]);
+  const setVariable = useCallback(
+    (key, value) => {
+      setVariables((vars) => {
+        const next = { ...vars, [key]: value ? value : undefined };
+        try {
+          localStorage.setItem(variablesKey, JSON.stringify(next));
+        } catch {
+          /* ignore storage errors */
+        }
+        return next;
+      });
+    },
+    [variablesKey],
+  );
 
   const resetVariables = useCallback(() => {
-    try { localStorage.removeItem(variablesKey); } catch { /* ignore */ }
+    try {
+      localStorage.removeItem(variablesKey);
+    } catch {
+      /* ignore */
+    }
     setVariables(workshop?.variables || {});
   }, [workshop, variablesKey]);
 
@@ -192,6 +204,7 @@ export const useActiveSection = () => {
 };
 
 export const useVariables = () => {
-  const { variables, setVariable, resetVariables } = useContext(WorkshopContext);
+  const { variables, setVariable, resetVariables } =
+    useContext(WorkshopContext);
   return { variables, setVariable, resetVariables };
 };

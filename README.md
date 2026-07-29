@@ -34,8 +34,9 @@ app/                  the consolidated static app (build + deploy this)
     terminal/         <SbxTerminal> mock terminal component
     components/       instructions panel, terminal panel, markdown renderer
   public/
-    lab/              a sample lab (labspace.yaml + simulator.yaml + *.md)
-spec/                 specifications for the two YAML formats
+    labs/             sample labs — labs/<id>/ (labspace.yaml + simulator.yaml + *.md)
+  scripts/            validate-lab + catalog generation
+spec/                 specifications for the YAML formats + catalog
 AGENTS.md             onboarding guide for agentic coding sessions
 Dockerfile            builds app/ and serves it with nginx (optional)
 docker-bake.hcl       bake targets for the static-app image
@@ -47,8 +48,8 @@ formats it consumes are specified under [`spec/`](spec):
 
 - [`spec/labspace.md`](spec/labspace.md) — the `labspace.yaml` lab config.
 - [`spec/simulator.md`](spec/simulator.md) — the `simulator.yaml` scenario spec.
-- [`spec/catalog.md`](spec/catalog.md) — the optional `labs.json` for hosting
-  several labs behind a selection page.
+- [`spec/catalog.md`](spec/catalog.md) — the `labs/` layout and the generated
+  `labs.json` catalog.
 
 ## The `app/`
 
@@ -62,23 +63,21 @@ client-side, no server.
 ```bash
 cd app
 npm install
-npm run dev        # local dev server, serves the sample lab in app/public/lab/
+npm run dev        # local dev server, serves the labs in app/public/labs/
 npm run build      # static build → app/dist
 npm run preview    # serve the production build
 ```
 
 ## Authoring a lab
 
-A lab is a `labspace.yaml` plus the files it references, kept together in a
-`lab/` directory. The app loads `lab/labspace.yaml` by default; all paths inside
-it are resolved relative to the `labspace.yaml`, so they stay simple
-(`simulator.yaml`, `00-intro.md`). Keeping the lab in its own directory means a
-Docker dev environment can mount just that directory without clobbering the
-app's own assets. Deploy one lab per site, force a specific one with
-`?lab=<path>`, or host several behind a selectable catalog — drop a `labs.json`
-next to the app and the learner gets a landing page to choose from
-(see [`spec/catalog.md`](spec/catalog.md)). Without a `labs.json`, the app loads
-the single lab in `lab/` exactly as below:
+A lab is a `labspace.yaml` plus the files it references, kept together in its own
+directory under `labs/` (`labs/<id>/`). Paths inside the `labspace.yaml` resolve
+relative to it, so they stay simple (`simulator.yaml`, `00-intro.md`). The app
+reads a generated `labs.json` catalog: with one lab it opens directly (no landing
+page, no id in the URL); with several it shows a selection page and runs each
+under `#/labs/<id>/`. You never write `labs.json` — it's generated from each
+lab's `labspace.yaml` (see [`spec/catalog.md`](spec/catalog.md)). A lab's
+`labspace.yaml` looks like:
 
 ```yaml
 title: "My Lab"
@@ -105,8 +104,8 @@ services:                        # optional external-URL tabs (iframes)
   code blocks (a Run button), `save-as=<path>` blocks (a Save button), file
   links, variable prompts, and OS-conditional content.
 
-The sample lab under [`app/public/lab/`](app/public/lab) is a complete, working
-example — copy it as a starting point.
+The sample labs under [`app/public/labs/`](app/public/labs) are complete, working
+examples — copy one as a starting point.
 
 ## Deploying
 

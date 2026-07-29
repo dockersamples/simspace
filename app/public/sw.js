@@ -13,15 +13,13 @@
 const APP_CACHE = "labspace-app";
 const LAB_CACHE = "labspace-lab";
 
-// Pathname prefixes for lab content (e.g. "/sbxlab/lab/", "/sbxlab/labs/").
-// Computed once from the SW scope so they work regardless of the deployment
-// subpath. `lab/` is the single default lab; `labs/` holds catalog labs.
-const labPaths = [
-  new URL("lab/", self.registration.scope).pathname,
-  new URL("labs/", self.registration.scope).pathname,
-];
+// Lab content is everything under `labs/` plus the generated `labs.json`
+// catalog. Computed once from the SW scope so it works regardless of the
+// deployment subpath.
+const labsPrefix = new URL("labs/", self.registration.scope).pathname;
+const catalogPath = new URL("labs.json", self.registration.scope).pathname;
 const isLabContent = (pathname) =>
-  labPaths.some((prefix) => pathname.startsWith(prefix));
+  pathname.startsWith(labsPrefix) || pathname === catalogPath;
 
 self.addEventListener("install", () => {
   self.skipWaiting();

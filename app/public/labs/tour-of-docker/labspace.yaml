@@ -1,6 +1,15 @@
 title: "A Tour of Docker (Simulated)"
 description: "The Docker CLI, Docker Scout, Docker Sandboxes, and CI — every command scripted and run in your browser."
 
+# Catalog card metadata for the landing page (labs.json is generated from this).
+# `title` overrides the card label without changing the in-lab header above.
+catalog:
+  title: "A Tour of Docker"
+  icon: sailing
+  tags: ["docker", "applied example"]
+  estimatedMinutes: 30
+  order: 2
+
 # Path to the simulator scenario spec (relative to this file). All terminals
 # below share this one spec, and one shared state + filesystem.
 simulator: simulator.yaml
