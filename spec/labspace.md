@@ -23,7 +23,7 @@ locally. No backend is required.
 
 ```
                 ┌──────────────────────────────────────────────┐
-  page load  ─► │ 1. resolve labspace.yaml URL (?lab= override)  │
+  page load  ─► │ 1. read labs.json; pick the lab (id, or sole)  │
                 │ 2. fetch + parse labspace.yaml                 │
                 │ 3. fetch the referenced simulator: spec        │
                 │ 4. fetch each section's contentPath markdown   │
@@ -36,9 +36,10 @@ Key properties:
 
 - **Single source.** One `labspace.yaml` fully describes a lab. Paths it
   references are resolved **relative to the `labspace.yaml` file itself**.
-- **Self-contained directory.** A lab lives in its own directory (the default is
-  `lab/`, holding `labspace.yaml` and everything it references) so it can be
-  mounted or swapped as a single unit without touching the app's own assets.
+- **Self-contained directory.** A lab lives in its own directory under `labs/`
+  (`labs/<id>/`, holding `labspace.yaml` and everything it references) so it can
+  be added, mounted, or swapped as a single unit without touching the app's own
+  assets or other labs.
 - **One simulator, many terminals.** Every declared terminal tab is backed by
   the **same** simulator instance — one shared state tree and one shared
   virtual filesystem. A change made in one terminal is visible in the others,
@@ -51,20 +52,21 @@ Key properties:
 
 ## 2. Resolving which lab to load
 
-By default the app loads `lab/labspace.yaml` (relative to the app's base URI) —
-the lab lives in its own `lab/` directory so it can be mounted or replaced as a
-whole without clobbering the app's assets. A `?lab=<path>` query parameter
-overrides the path, so a single build can host several labs:
+Every lab lives in `labs/<id>/`, and the app reads a generated `labs.json`
+catalog to find them (see the companion `catalog.md` specification). With one
+lab the app enters it directly; with several it shows a landing page and runs the
+chosen lab under `#/labs/<id>/…`:
 
 ```
-https://example.com/            → loads ./lab/labspace.yaml
-https://example.com/?lab=labs/docker-networking/labspace.yaml
+https://example.com/                    → one lab: entered directly
+                                          many:    the lab-selection page
+https://example.com/#/labs/networking   → loads ./labs/networking/labspace.yaml
 ```
 
-The override is resolved relative to the app's base URI. All paths **inside**
-the chosen `labspace.yaml` (`simulator`, `sections[].contentPath`) are then
-resolved relative to that file's location — so within `lab/` they stay simple
-(`simulator.yaml`, `00-intro.md`).
+Paths **inside** each `labspace.yaml` (`simulator`, `sections[].contentPath`) are
+resolved relative to that file's location — so within `labs/<id>/` they stay
+simple (`simulator.yaml`, `00-intro.md`). The catalog itself is resolved relative
+to the app's base URI, so subpath deploys (e.g. GitHub Pages) work unchanged.
 
 ---
 
@@ -181,8 +183,21 @@ docker run --name $$containerName$$ -d nginx
 | `no-run-button`    | Hides the **Run** button (shown by default)                     |
 | `no-copy-button`   | Hides the **Copy** button (shown by default)                    |
 
-Code blocks without `save-as` show a **Run** button (unless `no-run-button`)
-that types the block into the target terminal and executes it.
+The **Run** button (types the block into the target terminal and executes it)
+is shown for shell blocks — languages `bash`, `sh`, or `console` — and for
+`prompt` blocks, unless `no-run-button` is set or the block has a `save-as`.
+
+**`prompt` language.** A ` ```prompt ` block renders as plaintext (no syntax
+highlighting) but keeps the **Run** button, so a learner can send a natural-
+language prompt into the terminal — for example, into an AI agent session
+(`then.session` in the simulator). Use it whenever the block's contents are a
+prompt to type rather than a shell command.
+
+````markdown
+```prompt terminal-id=agent
+Refactor the server to read the port from an environment variable.
+```
+````
 
 **Directives** (via remark-directive) provide interactive elements:
 

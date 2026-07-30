@@ -3,8 +3,8 @@
 # This repo produces two images from one app:
 #
 #   production — nginx serving the built static site (the "runtime"). A lab
-#                author bases their deploy image on this and swaps in their lab/
-#                directory (the lab is loaded at runtime, so no rebuild needed).
+#                author bases their deploy image on this and swaps in their labs/
+#                directory (labs are loaded at runtime, so no rebuild needed).
 #   authoring  — native-arch Node with the app source + scripts, for authors to
 #                run `npm run dev` (live preview) and `npm run validate-lab`.
 #
@@ -37,9 +37,9 @@ EXPOSE 80
 ##################################################
 
 # Native-arch (no --platform pin) so `npm run dev` / `validate-lab` run on the
-# author's machine and in CI. Authors mount only their lab/ directory into this:
-#   dev:      -v ./lab:/usr/local/app/public/lab   (served by `npm run dev`)
-#   validate: -v ./lab:/lab                          (npm run validate-lab -- /lab)
+# author's machine and in CI. Authors mount only their labs/ directory into this:
+#   dev:      -v ./labs:/usr/local/app/public/labs  (served by `npm run dev`)
+#   validate: -v ./labs:/labs                        (npm run validate-lab -- /labs)
 FROM node:24-alpine AS authoring
 WORKDIR /usr/local/app
 COPY app/package*.json ./

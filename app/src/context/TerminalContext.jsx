@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef } from "react";
 import { Simulator } from "../engine/simulator";
 import { useVariables, useWorkshop } from "../WorkshopContext";
+import { scopedKey } from "../labspace/storage";
 
 // Owns the single Simulator shared by every terminal in the pane. All terminals
 // read and write the same state store and virtual filesystem — like two shells
@@ -24,6 +25,9 @@ export function TerminalContextProvider({ children }) {
   const terminals = useMemo(() => workshop.terminals || [], [workshop]);
   const defaultTerminalId = terminals[0]?.id || "terminal";
 
+  // Per-lab storage key so several labs can keep independent engine snapshots.
+  const engineKey = scopedKey(ENGINE_KEY, workshop.labKey);
+
   // Build ONE Simulator for all terminals. Stringify the seed files so a new
   // object with identical contents doesn't force a needless rebuild.
   const filesKey = JSON.stringify(workshop.files ?? {});
@@ -31,7 +35,7 @@ export function TerminalContextProvider({ children }) {
     try {
       let restoredState, restoredFiles;
       try {
-        const saved = localStorage.getItem(ENGINE_KEY);
+        const saved = localStorage.getItem(engineKey);
         if (saved) {
           const parsed = JSON.parse(saved);
           restoredState = parsed.state;
@@ -51,7 +55,7 @@ export function TerminalContextProvider({ children }) {
       return { simulator: null, error: e.message };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workshop.simulatorSpec, filesKey]);
+  }, [workshop.simulatorSpec, filesKey, engineKey]);
 
   // Pub/sub so a change (or reset) in one terminal can refresh the others —
   // e.g. keeping every terminal's Settings toggles in sync with shared state.
@@ -63,23 +67,23 @@ export function TerminalContextProvider({ children }) {
     listenersRef.current.forEach((fn) => fn(event));
     if (event.type === "state" && simulator) {
       try {
-        localStorage.setItem(ENGINE_KEY, JSON.stringify({
+        localStorage.setItem(engineKey, JSON.stringify({
           state: simulator.state(),
           files: simulator.files(),
         }));
       } catch { /* storage may be full or unavailable */ }
     }
-  }, [simulator]);
+  }, [simulator, engineKey]);
 
   // Reset re-seeds the shared machine once, then tells every terminal to clear
   // its transcript and re-greet.
   const resetAll = useCallback(() => {
     if (!simulator) return;
-    try { localStorage.removeItem(ENGINE_KEY); } catch { /* ignore */ }
+    try { localStorage.removeItem(engineKey); } catch { /* ignore */ }
     resetVariables();
     simulator.reset();
     broadcast({ type: "reset" });
-  }, [simulator, broadcast, resetVariables]);
+  }, [simulator, broadcast, resetVariables, engineKey]);
 
   const register = useCallback((id, handle) => {
     if (handle) handlesRef.current[id] = handle;

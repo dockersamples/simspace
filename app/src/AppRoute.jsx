@@ -1,6 +1,7 @@
 import "./App.scss";
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
 import { ToastContainer } from "react-toastify";
+import { useParams } from "react-router";
 import { WorkshopPanel } from "./components/WorkshopPanel/WorkshopPanel";
 import { WorkshopContextProvider } from "./WorkshopContext";
 import { TabContextProvider } from "./TabContext";
@@ -10,9 +11,13 @@ import { PanelWindow } from "./components/PanelWindow/PanelWindow";
 import { TerminalPanel } from "./components/TerminalPanel/TerminalPanel";
 
 function AppRoute() {
+  // Remount the whole provider tree when the lab changes so its simulator,
+  // variables, and terminals reinitialize cleanly instead of leaking state
+  // from the previously loaded lab.
+  const { labId } = useParams();
   return (
     <>
-      <WorkshopContextProvider>
+      <WorkshopContextProvider key={labId ?? "default"}>
         <TabContextProvider>
           <TerminalContextProvider>
             <PanelWindowProvider>

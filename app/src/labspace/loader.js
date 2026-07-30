@@ -30,17 +30,6 @@
 import { parse } from "yaml";
 import { slugify } from "./slugify";
 
-/**
- * Resolves the URL of the labspace.yaml to load. Defaults to `lab/labspace.yaml`
- * (the lab lives in its own directory so it can be mounted/replaced as a single
- * unit without clobbering the app's own assets), overridable with a `?lab=<path>`
- * query parameter so one build can host several labs.
- */
-export function resolveLabUrl() {
-  const override = new URLSearchParams(window.location.search).get("lab");
-  return new URL(override || "lab/labspace.yaml", document.baseURI).toString();
-}
-
 async function fetchText(url) {
   const res = await fetch(url);
   if (!res.ok) {
@@ -54,7 +43,7 @@ async function fetchText(url) {
  * markdown is kept raw (`contentRaw`); variable substitution happens at render
  * time so it reflects the current variable values.
  */
-export async function loadLabspace(labUrl = resolveLabUrl()) {
+export async function loadLabspace(labUrl) {
   const raw = parse(await fetchText(labUrl));
   if (!raw || typeof raw !== "object") {
     throw new Error("labspace.yaml did not parse to an object");

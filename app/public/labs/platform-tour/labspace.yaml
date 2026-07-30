@@ -1,0 +1,99 @@
+title: "The Labspace Feature Tour"
+description: "A working demo of everything a Labspace can do — this lab is its own documentation."
+
+# Catalog card metadata for the landing page. Optional — omit it and the card
+# falls back to the title/description above with a default icon. `labs.json` is
+# generated from these, so this is the single source of truth (no duplication).
+catalog:
+  icon: explore
+  tags: ["platform", "start here"]
+  estimatedMinutes: 15
+  order: 1
+
+# The scenario spec that scripts every command (relative to this file).
+simulator: simulator.yaml
+
+# Two terminal tabs, both backed by the ONE shared simulator above — same state
+# tree, same virtual filesystem, like two shells on one machine. Section 5 shows
+# them staying in sync; scenarios scope to a tab with `when.terminal` (see the
+# `logs` command). Code blocks target a tab with `terminal-id=<id>`; the first
+# tab (main) is the default.
+terminals:
+  - id: main
+    title: Terminal
+    icon: terminal
+  - id: worker
+    title: Worker
+    icon: manufacturing
+
+# A first-class, engine-backed CI tab (section 8). Runs are triggered by
+# `then.ci` in the simulator and render here GitHub-Actions style.
+features:
+  ci:
+    title: CI
+    icon: rocket_launch
+
+# An external-URL tab (section 9). `:tablink` directives can focus it. External
+# pages only load if the deployment's network policy allows them — services are a
+# presentation feature; the simulator itself never makes network calls.
+services:
+  - id: example
+    title: Example
+    icon: public
+    url: https://example.com
+
+# Seed the shared virtual filesystem. Built-in `ls`/`cat` reflect these
+# immediately (section 3), Save buttons and agent edits mutate them, and Reset
+# restores them.
+files:
+  README.md: |
+    # greeting-service
+
+    A tiny sample project used by the Labspace Feature Tour. Nothing here is
+    real — the commands are scripted — but the files are a genuine in-browser
+    virtual filesystem you can read and write.
+
+    - `src/greeting.js` — the greeting logic
+    - `config.yaml` — service configuration
+  src/greeting.js: |
+    const styles = {
+      friendly: (name) => `Hey ${name}! 👋`,
+      formal: (name) => `Good day, ${name}.`,
+    };
+
+    function greet(name = "world", style = "friendly") {
+      return (styles[style] || styles.friendly)(name);
+    }
+
+    module.exports = { greet };
+  config.yaml: |
+    service: greeting-service
+    port: 3000
+    style: friendly
+
+# Initial values for $$variable$$ substitution in section markdown. These are
+# only the STARTING values — the directives in sections 1 and 4 change them at
+# runtime.
+variables:
+  name: ""
+  style: friendly
+
+sections:
+  - title: Welcome
+    contentPath: 00-welcome.md
+  - title: Running commands
+    contentPath: 01-commands.md
+  - title: The virtual filesystem
+    contentPath: 02-files.md
+  - title: Interactive content
+    contentPath: 03-interactive.md
+  - title: Multiple terminals
+    contentPath: 04-terminals.md
+  - title: Settings and controls
+    contentPath: 05-controls.md
+  - title: The assistant
+    contentPath: 06-assistant.md
+  - title: CI pipelines
+    contentPath: 07-ci.md
+  - title: Build your own
+    contentPath: 08-recap.md

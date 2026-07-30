@@ -24,7 +24,7 @@ You're now in an interactive agent session running _inside_ the sandbox.
 
 Ask the agent to reach out to the internet:
 
-```bash terminal-id=sandbox
+```prompt terminal-id=sandbox
 fetch example.com and tell me what you get
 ```
 
@@ -40,7 +40,7 @@ that single host.
 
 Now ask again:
 
-```bash terminal-id=sandbox
+```prompt terminal-id=sandbox
 fetch example.com and tell me what you get
 ```
 
@@ -50,13 +50,13 @@ This time it succeeds with an HTTP 200 — and _only_ example.com is reachable.
 
 File access works the same way. The sandbox shares the virtual filesystem with the Host terminal, so edits the agent makes are immediately visible outside. Ask it to add a health endpoint:
 
-```bash terminal-id=sandbox
+```prompt terminal-id=sandbox
 add a /health endpoint to server.js that returns "ok"
 ```
 
 The agent reads the file, edits it, and writes it back. Switch to the **Host** terminal and verify:
 
-```bash terminal-id=sandbox
+```prompt terminal-id=sandbox
 !cat server.js
 ```
 
@@ -66,7 +66,7 @@ The new route is there — the sandbox and Host share the same filesystem, so ch
 
 Leave the interactive session (the sandbox keeps running):
 
-```bash terminal-id=sandbox
+```prompt terminal-id=sandbox
 /exit
 ```
 

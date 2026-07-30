@@ -1,8 +1,9 @@
-name: Deploy Labspace lab
+name: Deploy Labspace labs
 
-# Reusable workflow that validates a lab, assembles a static site by overlaying
-# the lab onto the prebuilt runtime image's payload, and publishes it to GitHub
-# Pages. A lab author's repo calls it in one step:
+# Reusable workflow that validates a repo's labs, assembles a static site by
+# overlaying them onto the prebuilt runtime image's payload, generates the
+# labs.json catalog, and publishes to GitHub Pages. A lab author's repo calls it
+# in one step:
 #
 #   jobs:
 #     deploy:
@@ -14,22 +15,23 @@ name: Deploy Labspace lab
 #         pages: write
 #         id-token: write
 #
-# The lab is loaded at runtime, so no app rebuild is needed — the site is just
-# the runtime image's static files with the author's lab/ swapped in.
+# Labs are loaded at runtime, so no app rebuild is needed — the site is just the
+# runtime image's static files with the author's labs/ swapped in and a freshly
+# generated labs.json. One lab is entered directly; several show a landing page.
 
 on:
   workflow_call:
     inputs:
-      lab-dir:
-        description: "Path to the lab directory (contains labspace.yaml)."
+      labs-dir:
+        description: "Path to the labs directory (contains labs/<id>/labspace.yaml)."
         type: string
-        default: "lab"
+        default: "labs"
       runtime-image:
         description: "Runtime image the site is based on."
         type: string
         default: "dockersamples/simspace"
       authoring-image:
-        description: "Authoring image used to validate the lab."
+        description: "Authoring image used to validate labs + generate the catalog."
         type: string
         default: "dockersamples/simspace-authoring"
       runtime-tag:
@@ -51,19 +53,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Validate lab
+      - name: Validate labs
+        # Validates every lab under labs/ and fails if none are found (e.g. a
+        # single-lab repo not yet moved to labs/<id>/).
         run: |
           docker run --rm \
-            -v "${{ github.workspace }}/${{ inputs.lab-dir }}:/lab:ro" \
+            -v "${{ github.workspace }}/${{ inputs.labs-dir }}:/labs:ro" \
             "${{ inputs.authoring-image }}:${{ inputs.runtime-tag }}" \
-            npm run validate-lab -- /lab
+            npm run validate-lab -- /labs
 
   build:
     needs: validate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Assemble static site (runtime payload + this lab)
+      - name: Assemble static site (runtime payload + these labs + catalog)
         run: |
           set -euo pipefail
           image="${{ inputs.runtime-image }}:${{ inputs.runtime-tag }}"
@@ -72,10 +76,15 @@ jobs:
           mkdir -p site
           docker cp "$cid":/usr/share/nginx/html/. site/
           docker rm "$cid"
-          # Replace the runtime image's sample lab with this repo's lab.
-          rm -rf site/lab
-          mkdir -p site/lab
-          cp -R "${{ inputs.lab-dir }}/." site/lab/
+          # Replace the runtime image's sample labs + catalog with this repo's.
+          rm -rf site/labs site/labs.json
+          mkdir -p site/labs
+          cp -R "${{ inputs.labs-dir }}/." site/labs/
+          # Generate labs.json for these labs (from each labspace.yaml).
+          docker run --rm \
+            -v "${{ github.workspace }}:/work" \
+            "${{ inputs.authoring-image }}:${{ inputs.runtime-tag }}" \
+            npm run generate-catalog -- "/work/${{ inputs.labs-dir }}" /work/site/labs.json
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: site

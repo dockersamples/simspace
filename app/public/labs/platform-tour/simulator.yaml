@@ -1,0 +1,324 @@
+version: "2.0"
+
+metadata:
+  id: platform-tour
+  title: "The Labspace Feature Tour"
+  summary: "A working demo of everything a Labspace can do — commands, files, variables, terminals, controls, agents, and CI."
+  authors: ["Docker Samples"]
+
+objectives:
+  - "See how commands are matched to scripted output and drive shared state"
+  - "Read and write the virtual filesystem with ls, cat, and Save buttons"
+  - "Drive interactive content with variables, controls, and multiple terminals"
+  - "Run a scripted agent session and a mock CI pipeline"
+
+# ── Settings ──────────────────────────────────────────────────────────────────
+# Cosmetic pacing profiles. An output entry's `delay:` names one of these (or a
+# raw millisecond count) so simulated work feels like it takes a beat. Pacing is
+# purely presentational and never changes WHAT is printed, so labs stay
+# deterministic. Built-in profiles short/medium/long always exist.
+settings:
+  pace:
+    beat: 250 # a short pause between related lines
+    work: 900 # a step doing some work (build/test)
+
+# ── State ─────────────────────────────────────────────────────────────────────
+# The single source of truth. Every scenario is gated on, and mutates, this tree.
+# All terminals share it, and Reset restores it to exactly these values.
+state:
+  build:
+    done: false
+  tests:
+    passing: false
+  deploy:
+    configured: false # flipped by the Settings toggle below
+  assistant:
+    running: false
+  app:
+    hasHealth: false
+
+# ── Controls ──────────────────────────────────────────────────────────────────
+# A toggle in the Settings dialog that flips state without typing a command.
+# Section 6 uses it to unblock `deploy`; section 8 reuses the same flag to make a
+# CI step pass (state-derived pass/fail — see the workflow below).
+controls:
+  - id: deploy-target
+    label: "Configure a deploy target"
+    description: "Sets the credentials the `deploy` command and the CI pipeline need."
+    state: deploy.configured
+    enabled: true
+    disabled: false
+
+# ── CI workflow catalog ───────────────────────────────────────────────────────
+# `git push` (section 8) triggers this. The `deploy` step's outcome is NOT
+# scripted — its `requires: deploy.configured` means the run fails until the
+# control above is on, and a Re-run in the CI tab picks up the change with no
+# second push. Step logs are condensed teaching output, not real build logs.
+workflows:
+  - id: ship-it
+    name: "Build · Test · Deploy"
+    on: push
+    steps:
+      - id: checkout
+        name: "Check out repository"
+        logs:
+          - "$ git checkout $GITHUB_SHA"
+          - "HEAD is now at f00dcafe Add greeting service"
+      - id: build
+        name: "Build"
+        logs:
+          - "$ npm run build"
+          - "Build succeeded in 3.2s"
+      - id: test
+        name: "Test"
+        logs:
+          - "$ npm test"
+          - "12 passing (0.4s)"
+      - id: deploy
+        name: "Deploy"
+        requires: deploy.configured
+        logs:
+          - "$ deploy --env production"
+          - "Deployed greeting-service to production ✓"
+        failure:
+          error: "Deploy failed — no deploy target is configured."
+          logs:
+            - "$ deploy --env production"
+            - "Error: missing DEPLOY_TOKEN. Configure a deploy target and re-run."
+
+# ── Defaults ──────────────────────────────────────────────────────────────────
+defaults:
+  unmatched:
+    stderr: ["Command not simulated in this lab. Try the commands in the instructions on the left."]
+    exit: 127
+  unmatchedAgent:
+    output:
+      - "I only know the prompts this tour scripted. Try asking me to \"add a health check\""
+      - "or to \"tell me a joke\"."
+
+scenarios:
+  # ══════════════════════════════════════════════════════════════════════════
+  # SECTION 1 — greet: variable substitution + argument capture
+  # ══════════════════════════════════════════════════════════════════════════
+
+  - id: greet-named
+    description: "greet <name> — captures the positional arg and echoes it back."
+    when:
+      command: [greet]
+      args: { 0: { any: true } }
+    then:
+      output:
+        - "👋  Hello, {{ args.0 }} — welcome to the Labspace Feature Tour!"
+        - "Everything you see here is scripted in a simulator.yaml and runs in your browser."
+
+  - id: greet-anon
+    when:
+      command: [greet]
+    then:
+      output:
+        - "👋  Hello there! Pass your name to personalize it: greet <your-name>"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # SECTION 2 — build / test: state preconditions, pacing, stderr + exit codes
+  # ══════════════════════════════════════════════════════════════════════════
+
+  - id: build-again
+    description: "A no-op when already built — shows a state-gated branch."
+    when:
+      command: [build]
+      state: { build.done: true }
+    then:
+      output:
+        - "Nothing to do — the project is already built. (Reset to start over.)"
+
+  - id: build
+    when:
+      command: [build]
+    then:
+      state: { build.done: true }
+      output:
+        - { text: "Resolving dependencies...", delay: beat }
+        - { text: "Compiling src/greeting.js", delay: work }
+        - { text: "Bundling assets", delay: work }
+        - "Build succeeded ✓  (output in dist/)"
+
+  - id: test-before-build
+    when:
+      command: [test]
+      state: { build.done: false }
+    then:
+      stderr:
+        - "No build found. Run `build` first, then `test`."
+      exit: 1
+
+  - id: test
+    when:
+      command: [test]
+      state: { build.done: true }
+    then:
+      state: { tests.passing: true }
+      output:
+        - { text: "greeting » returns a friendly greeting  ✓", delay: beat }
+        - { text: "greeting » supports a formal style       ✓", delay: beat }
+        - ""
+        - "2 passing"
+
+  # status reports shared state — run it in either terminal to prove they share
+  # one machine (section 5).
+  - id: status-built
+    when:
+      command: [status]
+      state: { build.done: true }
+    then:
+      output:
+        - "Project: greeting-service"
+        - "  build:  ✓ complete"
+        - "  tests:  {{ state.tests.passing }}"
+        - "  health: {{ state.app.hasHealth }}"
+
+  - id: status-clean
+    when:
+      command: [status]
+    then:
+      output:
+        - "Project: greeting-service"
+        - "  build:  — not built yet (run `build`)"
+        - "  tests:  not run"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # SECTION 5 — logs: terminal scoping with `when.terminal`
+  # ══════════════════════════════════════════════════════════════════════════
+
+  - id: logs-worker
+    description: "Only fires in the Worker terminal (when.terminal)."
+    when:
+      command: [logs]
+      terminal: worker
+    then:
+      output:
+        - "[worker] 12:00:01  picked up job build#1"
+        - "[worker] 12:00:04  build finished, artifacts cached"
+        - "[worker] 12:00:04  idle — waiting for work"
+
+  - id: logs-elsewhere
+    when:
+      command: [logs]
+    then:
+      stderr:
+        - "No log stream here. Worker logs live in the Worker terminal tab."
+      exit: 1
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # SECTION 6 — deploy: a Settings control gates behavior (no command needed)
+  # ══════════════════════════════════════════════════════════════════════════
+
+  - id: deploy-configured
+    when:
+      command: [deploy]
+      state: { deploy.configured: true }
+    then:
+      output:
+        - { text: "Authenticating with deploy target...", delay: beat }
+        - { text: "Uploading bundle...", delay: work }
+        - "Deployed greeting-service to production ✓"
+
+  - id: deploy-unconfigured
+    when:
+      command: [deploy]
+    then:
+      stderr:
+        - "Deploy blocked: no deploy target configured."
+        - "Open the Settings tab (top-right) and turn on \"Configure a deploy target\", then try again."
+      exit: 1
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # SECTION 7 — assistant: an interactive agent session
+  # ══════════════════════════════════════════════════════════════════════════
+
+  - id: assistant-start
+    when:
+      command: [assistant]
+    then:
+      state: { assistant.running: true }
+      output:
+        - { text: "Starting the assistant...", delay: beat }
+      session:
+        prompt: "assistant> "
+        intro:
+          - "Hi! I'm a scripted assistant. Every reply is defined by an agent scenario."
+          - "Try: \"add a health check to the greeting service\" or \"tell me a joke\"."
+          - "Run a normal command with a ! prefix (e.g. !status). Type /exit to leave."
+        outro:
+          - "Assistant session ended. (It was all data — no real model involved.)"
+
+  - id: assistant-add-health
+    when:
+      agent: true
+      promptContains: ["health"]
+      state: { app.hasHealth: false }
+    then:
+      output:
+        - "Sure — I'll add a health check to src/greeting.js and export it."
+        - { text: "Editing src/greeting.js...", delay: work }
+        - "Done. There's now a health() function, exported alongside greet()."
+      files:
+        - replace: src/greeting.js
+          find: "module.exports = { greet };"
+          with: |
+            function health() {
+              return { status: "ok" };
+            }
+
+            module.exports = { greet, health };
+      state: { app.hasHealth: true }
+
+  - id: assistant-health-already
+    when:
+      agent: true
+      promptContains: ["health"]
+    then:
+      output:
+        - "The health check is already in place — `health()` is exported from src/greeting.js."
+
+  - id: assistant-joke
+    when:
+      agent: true
+      promptContains: ["joke"]
+    then:
+      output:
+        - "Why do programmers prefer dark mode?"
+        - { text: "Because light attracts bugs. 🐛", delay: medium }
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # SECTION 8 — git push: trigger a mock CI run (gated on the deploy control)
+  # ══════════════════════════════════════════════════════════════════════════
+
+  - id: git-add
+    when:
+      command: [git, add]
+    then:
+      output: []
+
+  - id: git-commit
+    when:
+      command: [git, commit]
+    then:
+      output:
+        - "[main f00dcafe] Add greeting service"
+        - " 3 files changed, 24 insertions(+)"
+
+  # The push always runs the pipeline; the pipeline's outcome is decided by the
+  # `deploy` step's `requires: deploy.configured` (state-derived, no `conclusion`
+  # here). So the same push fails before the control is on and — via the CI tab's
+  # Re-run — goes green once it is, with nothing new to commit.
+  - id: git-push
+    when:
+      command: [git, push]
+    then:
+      output:
+        - "Enumerating objects: 9, done."
+        - "To github.com:acme/greeting-service.git"
+        - "   a1b2c3d..f00dcafe  main -> main"
+      ci:
+        workflow: ship-it
+        commit: "Add greeting service"
