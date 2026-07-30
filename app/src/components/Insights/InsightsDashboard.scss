@@ -162,6 +162,16 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: #2d9568;
+
+    // Auto-refresh turned off: neutral, no pulse.
+    &.is-off {
+      color: var(--bs-secondary-color);
+
+      .insights-live-dot {
+        background: var(--bs-secondary-color);
+        animation: none;
+      }
+    }
   }
   .insights-live-dot {
     width: 7px;
@@ -169,6 +179,15 @@
     border-radius: 999px;
     background: #2d9568;
     animation: insights-pulse 2s ease-in-out infinite;
+  }
+  .insights-interval select {
+    padding: 4px 8px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 999px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 0.78rem;
+    cursor: pointer;
   }
   @keyframes insights-pulse {
     0%,

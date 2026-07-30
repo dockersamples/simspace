@@ -12,9 +12,20 @@ import "./InsightsDashboard.scss";
 
 const tokenKey = (endpoint) => `simspace:stats-token:${endpoint}`;
 
-// How often the dashboard silently re-fetches /stats so it can be left open on
-// the side and stay current. Cumulative stats change slowly, so this is gentle.
-const POLL_MS = 15000;
+// The dashboard silently re-fetches /stats on this cadence so it can be left
+// open (in a background window during a workshop) and stay current. The
+// interval is instructor-selectable; `0` turns auto-refresh off. Persisted so
+// the choice sticks across visits.
+const INTERVAL_KEY = "simspace:stats-interval";
+const DEFAULT_INTERVAL_MS = 15000;
+const INTERVAL_OPTIONS = [
+  { label: "Every 5s", value: 5000 },
+  { label: "Every 10s", value: 10000 },
+  { label: "Every 15s", value: 15000 },
+  { label: "Every 30s", value: 30000 },
+  { label: "Every 60s", value: 60000 },
+  { label: "Off", value: 0 },
+];
 
 export function InsightsDashboard({ lab }) {
   const endpoint = lab.tracking.endpoint.replace(/\/+$/, "");
@@ -29,6 +40,21 @@ export function InsightsDashboard({ lab }) {
   const [state, setState] = useState("idle"); // idle | loading | ready | error
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState(null);
+  const [intervalMs, setIntervalMs] = useState(() => {
+    const saved = Number(localStorage.getItem(INTERVAL_KEY));
+    return INTERVAL_OPTIONS.some((o) => o.value === saved)
+      ? saved
+      : DEFAULT_INTERVAL_MS;
+  });
+
+  const changeInterval = useCallback((ms) => {
+    setIntervalMs(ms);
+    try {
+      localStorage.setItem(INTERVAL_KEY, String(ms));
+    } catch {
+      /* ignore storage errors */
+    }
+  }, []);
 
   useEffect(() => {
     document.title = `${lab.title} — Insights`;
@@ -95,18 +121,14 @@ export function InsightsDashboard({ lab }) {
     if (token) refresh(token);
   }, [token, refresh]);
 
-  // Once loaded, keep the dashboard current by polling in the background, so it
-  // can be parked on the side. Pauses while the tab is hidden.
+  // Once loaded, keep the dashboard current by polling in the background. It
+  // keeps polling even when the tab is blurred/hidden, so you can run a workshop
+  // in one window and watch stats in another. `intervalMs === 0` turns it off.
   useEffect(() => {
-    if (state !== "ready" || !token) return undefined;
-    const tick = () => {
-      if (document.visibilityState === "visible") {
-        refresh(token, { silent: true });
-      }
-    };
-    const id = setInterval(tick, POLL_MS);
+    if (state !== "ready" || !token || !intervalMs) return undefined;
+    const id = setInterval(() => refresh(token, { silent: true }), intervalMs);
     return () => clearInterval(id);
-  }, [state, token, refresh]);
+  }, [state, token, refresh, intervalMs]);
 
   // ── Derived, lab-ordered chart data ─────────────────────────────────────────
   const model = useMemo(() => {
@@ -242,8 +264,7 @@ export function InsightsDashboard({ lab }) {
         {backLink}
         <h1 className="insights-title">{lab.title} — Insights</h1>
         <p className="insights-subtitle">
-          Instructor view · cumulative · lab id <code>{labId}</code> ·
-          auto-refreshing
+          Instructor view · cumulative · lab id <code>{labId}</code>
         </p>
       </header>
 
@@ -257,15 +278,31 @@ export function InsightsDashboard({ lab }) {
         <div className="insights-card-head">
           <h2 className="insights-card-title">Progress funnel</h2>
           <div className="insights-live">
-            <span className="insights-live-badge" title="Auto-refreshing">
+            <span
+              className={"insights-live-badge" + (intervalMs ? "" : " is-off")}
+              title={intervalMs ? "Auto-refreshing" : "Auto-refresh off"}
+            >
               <span className="insights-live-dot" />
-              Live
+              {intervalMs ? "Live" : "Paused"}
             </span>
             {updatedAt && (
               <span className="insights-updated">
                 updated {updatedAt.toLocaleTimeString()}
               </span>
             )}
+            <label className="insights-interval">
+              <span className="visually-hidden">Refresh interval</span>
+              <select
+                value={intervalMs}
+                onChange={(e) => changeInterval(Number(e.target.value))}
+              >
+                {INTERVAL_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               type="button"
               className="insights-refresh"
