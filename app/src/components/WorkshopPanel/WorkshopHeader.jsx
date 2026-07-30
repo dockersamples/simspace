@@ -6,6 +6,7 @@ import { useCatalog } from "../../context/CatalogContext";
 import { useTerminal } from "../../context/TerminalContext";
 import { useTracking } from "../../context/TrackingContext";
 import { usePanelWindow } from "../../context/PanelWindowContext";
+import { PresenceBar } from "./PresenceBar";
 
 // Must match the cache names in public/sw.js.
 const APP_CACHE = "labspace-app";
@@ -236,9 +237,12 @@ export function WorkshopHeader() {
             </span>
           </div>
         </div>
-        <div className="workshop-progress-count">
-          <span className="workshop-progress-current">{current + 1}</span>
-          <span className="workshop-progress-total">/ {sections.length}</span>
+        <div className="workshop-header-right">
+          <PresenceBar />
+          <div className="workshop-progress-count">
+            <span className="workshop-progress-current">{current + 1}</span>
+            <span className="workshop-progress-total">/ {sections.length}</span>
+          </div>
         </div>
       </div>
       <div
