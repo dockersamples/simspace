@@ -23,13 +23,18 @@ variable "AUTHORING_IMAGE" {
   default = "dockersamples/simspace-authoring"
 }
 
-# Tags applied to the built images.
+# Tags applied to the built images. The explicit list type lets bake coerce a
+# comma-separated override from the environment (TAGS=1.0.0,1,latest) into a
+# list; without it HCL infers a tuple from the default and rejects the string.
 variable "TAGS" {
+  type    = list(string)
   default = ["latest"]
 }
 
-# Target platforms for the release build.
+# Target platforms for the release build. Typed as a list for the same reason,
+# so PLATFORMS=linux/amd64,linux/arm64 can be overridden from the environment.
 variable "PLATFORMS" {
+  type    = list(string)
   default = ["linux/amd64", "linux/arm64"]
 }
 
