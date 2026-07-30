@@ -18,7 +18,7 @@ the author. The session ends on `/exit`.
 Each prompt is matched by keyword. Ask the assistant to add a health check —
 type this into the `assistant>` prompt (or use the Run button):
 
-```text terminal-id=main
+```prompt terminal-id=main
 add a health check to the greeting service
 ```
 
@@ -26,7 +26,7 @@ It reports what it's doing and actually edits `src/greeting.js` in the shared
 filesystem. You can run a normal command _without leaving the session_ by
 prefixing it with `!`. Verify the edit:
 
-```text terminal-id=main
+```bash terminal-id=main
 !cat src/greeting.js
 ```
 
@@ -35,14 +35,14 @@ it'll notice the work is already done.
 
 ## It has some personality, too
 
-```text terminal-id=main
+```prompt terminal-id=main
 tell me a joke
 ```
 
 Anything the author didn't script falls through to a friendly "I don't know how
 to help with that" reply. When you're finished, leave the session:
 
-```text terminal-id=main
+```bash terminal-id=main
 /exit
 ```
 

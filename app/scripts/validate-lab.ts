@@ -53,6 +53,10 @@ const SHELL_LANGS = new Set([
   "console",
   "",
   "text",
+  // `prompt` renders as plaintext but keeps its Run button (an AI prompt typed
+  // into the terminal). Treat it as runnable so its lines are checked for
+  // reachability — typically against an agent scenario (`when.agent`).
+  "prompt",
 ]);
 const ARG_TMPL = /\{\{\s*args\.([A-Za-z0-9_.]+)\s*\}\}/g;
 const STATE_TMPL = /\{\{\s*state\.([A-Za-z0-9_.]+)\s*\}\}/g;

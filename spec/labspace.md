@@ -183,8 +183,21 @@ docker run --name $$containerName$$ -d nginx
 | `no-run-button`    | Hides the **Run** button (shown by default)                     |
 | `no-copy-button`   | Hides the **Copy** button (shown by default)                    |
 
-Code blocks without `save-as` show a **Run** button (unless `no-run-button`)
-that types the block into the target terminal and executes it.
+The **Run** button (types the block into the target terminal and executes it)
+is shown for shell blocks — languages `bash`, `sh`, or `console` — and for
+`prompt` blocks, unless `no-run-button` is set or the block has a `save-as`.
+
+**`prompt` language.** A ` ```prompt ` block renders as plaintext (no syntax
+highlighting) but keeps the **Run** button, so a learner can send a natural-
+language prompt into the terminal — for example, into an AI agent session
+(`then.session` in the simulator). Use it whenever the block's contents are a
+prompt to type rather than a shell command.
+
+````markdown
+```prompt terminal-id=agent
+Refactor the server to read the port from an environment variable.
+```
+````
 
 **Directives** (via remark-directive) provide interactive elements:
 

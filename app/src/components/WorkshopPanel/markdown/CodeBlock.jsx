@@ -16,6 +16,10 @@ export function CodeBlock({ node, inline, className, children, ...props }) {
   const match = /language-(\w+)/.exec(className || "");
   let language = match ? match[1] : "text";
   if (language === "sh" || language === "console") language = "bash";
+  // `prompt` blocks are AI prompts: render as plaintext (no syntax
+  // highlighting) but still offer the Run button so the learner can send the
+  // prompt into the terminal.
+  const isPrompt = language === "prompt";
 
   // These properties are populated by the codeIndexer remark plugin
   const saveAsPath = node.properties.dataSaveAsPath;
@@ -27,7 +31,7 @@ export function CodeBlock({ node, inline, className, children, ...props }) {
   const canRun =
     !printMode &&
     node.properties.dataDisplayRunButton === "true" &&
-    language === "bash";
+    (language === "bash" || isPrompt);
   const canCopy =
     !printMode && node.properties.dataDisplayCopyButton === "true";
   const canSaveAsFile =
@@ -121,7 +125,7 @@ export function CodeBlock({ node, inline, className, children, ...props }) {
       <div className="code-block-body">
         <SyntaxHighlighter
           style={darcula}
-          language={language}
+          language={isPrompt ? "text" : language}
           PreTag="div"
           className="bg-none"
           wrapLines={highlightLines.length > 0 || printMode}
