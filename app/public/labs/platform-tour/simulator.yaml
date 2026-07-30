@@ -103,6 +103,7 @@ scenarios:
 
   - id: greet-named
     description: "greet <name> — captures the positional arg and echoes it back."
+    completes: say-hello
     when:
       command: [greet]
       args: { 0: { any: true } }
@@ -112,6 +113,7 @@ scenarios:
         - "Everything you see here is scripted in a simulator.yaml and runs in your browser."
 
   - id: greet-anon
+    completes: say-hello
     when:
       command: [greet]
     then:
@@ -132,6 +134,7 @@ scenarios:
         - "Nothing to do — the project is already built. (Reset to start over.)"
 
   - id: build
+    completes: build-the-service
     when:
       command: [build]
     then:
@@ -152,6 +155,7 @@ scenarios:
       exit: 1
 
   - id: test
+    completes: run-the-tests
     when:
       command: [test]
       state: { build.done: true }
@@ -191,6 +195,7 @@ scenarios:
 
   - id: logs-worker
     description: "Only fires in the Worker terminal (when.terminal)."
+    completes: check-worker-logs
     when:
       command: [logs]
       terminal: worker
@@ -213,6 +218,7 @@ scenarios:
   # ══════════════════════════════════════════════════════════════════════════
 
   - id: deploy-configured
+    completes: deploy-the-service
     when:
       command: [deploy]
       state: { deploy.configured: true }
@@ -252,6 +258,7 @@ scenarios:
           - "Assistant session ended. (It was all data — no real model involved.)"
 
   - id: assistant-add-health
+    completes: ask-the-assistant
     when:
       agent: true
       promptContains: ["health"]
@@ -312,6 +319,7 @@ scenarios:
   # here). So the same push fails before the control is on and — via the CI tab's
   # Re-run — goes green once it is, with nothing new to commit.
   - id: git-push
+    completes: push-to-ci
     when:
       command: [git, push]
     then:

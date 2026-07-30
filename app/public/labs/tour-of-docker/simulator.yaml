@@ -287,6 +287,7 @@ scenarios:
 
   # A rebuild AFTER the fix produces a patched image. Must precede docker-build.
   - id: docker-build-patched
+    completes: rebuild-image
     when:
       command: [docker, build]
       state: { source.patched: true }
@@ -369,6 +370,7 @@ scenarios:
             No vulnerable packages detected
 
   - id: scout-vulnerable
+    completes: scan-for-cves
     when:
       command: [docker, scout, cves]
     then:
@@ -424,6 +426,7 @@ scenarios:
 
   # Applying the fix: bump express in package.json and flag the source patched.
   - id: npm-install-express
+    completes: patch-the-dependency
     when:
       command: [npm, install]
       prompt: "express@4.19.2"
@@ -443,6 +446,7 @@ scenarios:
 
   - id: sbx-run
     description: "Start a sandboxed agent session in the Sandbox terminal."
+    completes: start-sandbox
     when:
       command: [sbx, run, claude]
       terminal: sandbox
@@ -505,6 +509,7 @@ scenarios:
         - "by default. Enable a network policy for example.com, then ask me again."
 
   - id: agent-edit-server
+    completes: edit-with-agent
     when:
       agent: true
       terminal: sandbox
@@ -583,6 +588,7 @@ scenarios:
   # another push (there'd be nothing to commit) but by enabling the credentials
   # and pressing Re-run in the CI tab.
   - id: git-push
+    completes: trigger-ci
     when:
       command: [git, push]
     then:

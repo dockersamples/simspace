@@ -10,6 +10,21 @@ catalog:
   estimatedMinutes: 30
   order: 2
 
+# Version string. Progress is stored per lab and per version, so bumping this
+# when you add or rename steps invalidates stale completion records.
+version: "1.0.0"
+
+# OPTIONAL presence + analytics backend. The lab stays a static asset and only
+# talks to this endpoint; omit the whole block and no network calls are made.
+# `http://localhost:8888` is the pulse service from the repo's dev compose
+# (`docker compose up`); point it at your own deployment in production. In-lab
+# this only ever surfaces LIVE presence — cumulative data lives in the
+# instructor dashboard (#/labs/tour-of-docker/insights).
+tracking:
+  endpoint: http://localhost:8888
+  presence: true
+  identity: optional-name # anonymous | optional-name
+
 # Path to the simulator scenario spec (relative to this file). All terminals
 # below share this one spec, and one shared state + filesystem.
 simulator: simulator.yaml
@@ -86,10 +101,25 @@ sections:
         title: "Remove the container"
   - title: Find and fix a CVE with Scout
     contentPath: 02-scout.md
+    steps:
+      - id: scan-for-cves
+        title: "Scan the image for CVEs"
+      - id: patch-the-dependency
+        title: "Upgrade the vulnerable dependency"
+      - id: rebuild-image
+        title: "Rebuild the fixed image"
   - title: Run an agent in a Sandbox
     contentPath: 03-sandbox.md
+    steps:
+      - id: start-sandbox
+        title: "Start the sandboxed agent"
+      - id: edit-with-agent
+        title: "Have the agent add a /health endpoint"
   - title: Build and sign in CI
     contentPath: 04-ci.md
+    steps:
+      - id: trigger-ci
+        title: "Push to trigger the pipeline"
 
 variables:
   containerName: web

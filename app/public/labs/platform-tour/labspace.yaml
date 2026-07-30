@@ -10,6 +10,21 @@ catalog:
   estimatedMinutes: 15
   order: 1
 
+# OPTIONAL presence + analytics backend. The lab stays static and only talks to
+# this endpoint; omit the whole block and no network calls are made. Here it
+# points at the pulse service from the repo's dev compose (`docker compose up`);
+# point it at your own deployment in production. In-lab this only surfaces LIVE
+# presence — cumulative data lives in the instructor dashboard (see the Insights
+# link on the catalog card, or #/labs/platform-tour/insights).
+tracking:
+  endpoint: http://localhost:8888
+  presence: true
+  identity: optional-name # anonymous | optional-name
+
+# Version string. Progress (completed milestones) is stored per lab and per
+# version, so bumping this when you add/rename steps invalidates stale progress.
+version: "1.0.0"
+
 # The scenario spec that scripts every command (relative to this file).
 simulator: simulator.yaml
 
@@ -78,22 +93,47 @@ variables:
   name: ""
   style: friendly
 
+# Sections may declare `steps:` — milestones tracked as the learner completes
+# them. Each step id is referenced by a scenario's `completes:` in
+# simulator.yaml; when that scenario fires, the step is marked done (a check in
+# the nav, and — with a tracking backend — a live "who's here" count at that
+# milestone). Sections with no steps (a reading page) simply omit `steps:`.
 sections:
   - title: Welcome
     contentPath: 00-welcome.md
+    steps:
+      - id: say-hello
+        title: "Say hello with the greet command"
   - title: Running commands
     contentPath: 01-commands.md
+    steps:
+      - id: build-the-service
+        title: "Build the service"
+      - id: run-the-tests
+        title: "Run the tests"
   - title: The virtual filesystem
     contentPath: 02-files.md
   - title: Interactive content
     contentPath: 03-interactive.md
   - title: Multiple terminals
     contentPath: 04-terminals.md
+    steps:
+      - id: check-worker-logs
+        title: "Read the worker's logs"
   - title: Settings and controls
     contentPath: 05-controls.md
+    steps:
+      - id: deploy-the-service
+        title: "Deploy the service"
   - title: The assistant
     contentPath: 06-assistant.md
+    steps:
+      - id: ask-the-assistant
+        title: "Ask the assistant to add a health check"
   - title: CI pipelines
     contentPath: 07-ci.md
+    steps:
+      - id: push-to-ci
+        title: "Push to trigger the CI pipeline"
   - title: Build your own
     contentPath: 08-recap.md
