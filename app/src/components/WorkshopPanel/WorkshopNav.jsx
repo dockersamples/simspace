@@ -1,6 +1,7 @@
 import Dropdown from "react-bootstrap/Dropdown";
 import { useActiveSection, useWorkshop } from "../../WorkshopContext";
 import { useTracking } from "../../context/TrackingContext";
+import { AvatarStack } from "./AvatarStack";
 import "./WorkshopNav.scss";
 
 export function WorkshopNav() {
@@ -9,6 +10,12 @@ export function WorkshopNav() {
   const tracking = useTracking();
 
   const index = sections.findIndex((s) => s.id === activeSection?.id);
+
+  // Live presence by reading position, so learners can see where others are as
+  // they move through the lab. Only shown when a backend is connected.
+  const perSection = tracking?.presence?.perSection || {};
+  const presenceAvatars = tracking?.presence?.avatars || [];
+  const ownId = tracking?.actor?.id;
 
   return (
     <Dropdown className="workshop-nav dropdown-center" drop="up-centered">
@@ -30,6 +37,10 @@ export function WorkshopNav() {
         {sections.map((section, i) => {
           const isActive = activeSection?.id === section.id;
           const isComplete = tracking?.isSectionComplete?.(section) ?? false;
+          const here = perSection[section.id] || 0;
+          const hereAvatars = presenceAvatars.filter(
+            (a) => a.sectionId === section.id,
+          );
           return (
             <Dropdown.Item
               key={section.id}
@@ -39,6 +50,20 @@ export function WorkshopNav() {
             >
               <span className="workshop-nav-item-index">{i + 1}</span>
               <span className="workshop-nav-item-title">{section.title}</span>
+              {here > 0 && (
+                <span
+                  className="workshop-nav-item-presence"
+                  title={`${here} here now`}
+                >
+                  <AvatarStack
+                    avatars={hereAvatars}
+                    total={here}
+                    ownId={ownId}
+                    max={2}
+                    size="sm"
+                  />
+                </span>
+              )}
               {isComplete ? (
                 <span className="material-symbols-outlined workshop-nav-item-check is-complete">
                   check_circle

@@ -98,6 +98,12 @@
       font-weight: 500;
     }
 
+    .workshop-nav-item-presence {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+    }
+
     .workshop-nav-item-check {
       flex: 0 0 auto;
       font-size: 16px;

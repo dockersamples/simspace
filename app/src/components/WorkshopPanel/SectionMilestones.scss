@@ -1,0 +1,69 @@
+.section-milestones {
+  margin: 0 0 24px;
+  padding: 12px 14px;
+  border: 1px solid var(--wp-border);
+  border-radius: 10px;
+  background: var(--wp-surface);
+
+  .section-milestones-caption {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--wp-text-muted);
+    margin-bottom: 8px;
+  }
+
+  .section-milestones-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .section-milestone {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--wp-text);
+
+    .section-milestone-check {
+      flex: 0 0 auto;
+      font-size: 18px;
+      color: var(--wp-text-muted);
+    }
+
+    .section-milestone-title {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    &.is-done {
+      .section-milestone-check {
+        color: #2d9568;
+        font-variation-settings: "FILL" 1;
+      }
+      .section-milestone-title {
+        color: var(--wp-text-muted);
+      }
+    }
+  }
+
+  .section-milestone-presence {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+
+  .section-milestone-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--wp-accent);
+    white-space: nowrap;
+  }
+}

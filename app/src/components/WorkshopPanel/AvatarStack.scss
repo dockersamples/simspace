@@ -1,0 +1,62 @@
+// Overlapping avatar bubbles shared by the header presence bar and per-milestone
+// presence. Two sizes: `md` (header) and `sm` (inline milestones).
+
+.avatar-stack {
+  display: inline-flex;
+  align-items: center;
+
+  .avatar-bubble {
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    color: #fff;
+    // Ring in the surrounding surface colour so overlapping bubbles separate.
+    border: 2px solid var(--wp-bg-elevated);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+
+    & + .avatar-bubble {
+      margin-left: -8px;
+    }
+
+    // Your own bubble sits on top with an accent ring.
+    &.is-you {
+      position: relative;
+      z-index: 2;
+      outline: 2px solid var(--wp-accent);
+      outline-offset: -2px;
+    }
+  }
+
+  .avatar-bubble--more {
+    background: var(--wp-surface);
+    color: var(--wp-text-muted);
+    font-weight: 700;
+  }
+
+  &.avatar-stack--md .avatar-bubble {
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+
+    &.avatar-bubble--more {
+      font-size: 11px;
+    }
+  }
+
+  &.avatar-stack--sm .avatar-bubble {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+    border-width: 1.5px;
+
+    & + .avatar-bubble {
+      margin-left: -6px;
+    }
+
+    &.avatar-bubble--more {
+      font-size: 9px;
+    }
+  }
+}
