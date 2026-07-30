@@ -15,7 +15,7 @@ function resolveSrc(src, baseUrl) {
   }
 }
 
-export function RenderedImage({ src, alt, node, ...rest }) {
+export function RenderedImage({ src, alt, ...rest }) {
   // The section's own directory when available, else the lab root.
   const sectionBaseUrl = useMarkdownBaseUrl();
   const { baseUrl: labBaseUrl } = useWorkshop();
