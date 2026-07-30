@@ -102,6 +102,13 @@
       flex: 0 0 auto;
       font-size: 16px;
       color: var(--wp-accent);
+
+      // A completed section (all its steps done) gets a solid green check,
+      // distinct from the accent-coloured "current section" mark.
+      &.is-complete {
+        color: #2d9568;
+        font-variation-settings: "FILL" 1;
+      }
     }
 
     &:hover,

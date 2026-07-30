@@ -86,6 +86,7 @@ function normalizeScenario(raw: unknown, index: number): Scenario {
   return {
     id,
     description: typeof s.description === "string" ? s.description : undefined,
+    completes: typeof s.completes === "string" ? s.completes : undefined,
     when: normalizeWhen(s.when, id),
     then: (s.then as Scenario["then"]) ?? {},
   };

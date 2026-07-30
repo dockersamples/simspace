@@ -1,10 +1,12 @@
 import Dropdown from "react-bootstrap/Dropdown";
 import { useActiveSection, useWorkshop } from "../../WorkshopContext";
+import { useTracking } from "../../context/TrackingContext";
 import "./WorkshopNav.scss";
 
 export function WorkshopNav() {
   const { sections } = useWorkshop();
   const { activeSection, changeActiveSection } = useActiveSection();
+  const tracking = useTracking();
 
   const index = sections.findIndex((s) => s.id === activeSection?.id);
 
@@ -25,22 +27,30 @@ export function WorkshopNav() {
       </Dropdown.Toggle>
 
       <Dropdown.Menu align="center" className="workshop-nav-menu">
-        {sections.map((section, i) => (
-          <Dropdown.Item
-            key={section.id}
-            active={activeSection?.id === section.id}
-            onClick={() => changeActiveSection(section.id)}
-            className="workshop-nav-item"
-          >
-            <span className="workshop-nav-item-index">{i + 1}</span>
-            <span className="workshop-nav-item-title">{section.title}</span>
-            {activeSection?.id === section.id && (
-              <span className="material-symbols-outlined workshop-nav-item-check">
-                check
-              </span>
-            )}
-          </Dropdown.Item>
-        ))}
+        {sections.map((section, i) => {
+          const isActive = activeSection?.id === section.id;
+          const isComplete = tracking?.isSectionComplete?.(section) ?? false;
+          return (
+            <Dropdown.Item
+              key={section.id}
+              active={isActive}
+              onClick={() => changeActiveSection(section.id)}
+              className="workshop-nav-item"
+            >
+              <span className="workshop-nav-item-index">{i + 1}</span>
+              <span className="workshop-nav-item-title">{section.title}</span>
+              {isComplete ? (
+                <span className="material-symbols-outlined workshop-nav-item-check is-complete">
+                  check_circle
+                </span>
+              ) : isActive ? (
+                <span className="material-symbols-outlined workshop-nav-item-check">
+                  check
+                </span>
+              ) : null}
+            </Dropdown.Item>
+          );
+        })}
       </Dropdown.Menu>
     </Dropdown>
   );

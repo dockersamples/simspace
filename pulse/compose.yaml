@@ -1,0 +1,25 @@
+# Run the pulse service locally. Pair it with a lab whose labspace.yaml points
+# `tracking.endpoint` at http://localhost:8888.
+#
+#   docker compose up --build
+#
+services:
+  pulse:
+    build: .
+    ports:
+      - "8888:8888"
+    environment:
+      PORT: "8888"
+      DB_PATH: "/data/pulse.db"
+      PRESENCE_TTL_MS: "30000"
+      # Set a token to enable the instructor-only /stats endpoint. Leave unset
+      # and /stats stays disabled (404), so drop-off data is never public.
+      # STATS_TOKEN: "change-me"
+      # Lock ingest to your lab's origin instead of the open default:
+      # CORS_ORIGIN: "https://labs.example.com"
+    volumes:
+      - pulse-data:/data
+    restart: unless-stopped
+
+volumes:
+  pulse-data:

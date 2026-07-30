@@ -1,0 +1,21 @@
+{
+  "name": "pulse",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Optional presence + analytics backend for Simspace labs. Ingests anonymous learning events; serves live presence (who's here now) and cumulative stats (instructor-only).",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node dist/server.cjs",
+    "dev": "node scripts/build.mjs && node dist/server.cjs",
+    "test:smoke": "node scripts/build.mjs && node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.3"
+  }
+}

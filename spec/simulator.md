@@ -134,6 +134,7 @@ state:
 scenarios:
   - id: docker-run         # REQUIRED, unique. Used in errors/traces.
     description: "..."     # OPTIONAL, author note.
+    completes: run-container # OPTIONAL. Marks a step done when this fires. §5.1
     when: { ... }          # REQUIRED. Match conditions. §6
     then: { ... }          # REQUIRED. Effects.          §7
 ```
@@ -147,6 +148,23 @@ Matching algorithm (per command):
 4. If none match and the command is a built-in (`ls`, `cat`), the built-in
    runs against the virtual filesystem.
 5. If none match and no built-in applies, the engine uses `defaults.unmatched` (§8).
+
+### 5.1 `completes` — progress step tag
+
+`completes: <step-id>` optionally ties a scenario to a **step** declared in a
+section's `steps:` catalog in `labspace.yaml` (see `labspace.md` §5.2). When the
+scenario fires, the app marks that step complete — a strong "the learner did it"
+signal, because firing is already gated on the right command **and** the right
+state.
+
+- Optional and additive; unknown to the matching algorithm (it never affects
+  which scenario fires). A scenario with no `completes:` records nothing.
+- The engine only *reports* the completed step id on the command outcome;
+  recording, persistence, and any telemetry happen in the app layer, so the
+  engine stays pure and deterministic.
+- Works identically for command and agent (`when.agent`) scenarios.
+- `npm run validate-lab` errors on a `completes:` naming a step id that no
+  section catalogs, and warns on a cataloged step no scenario completes.
 
 ---
 

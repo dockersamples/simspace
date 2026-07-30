@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { useActiveSection, useWorkshop } from "../../WorkshopContext";
 import { useCatalog } from "../../context/CatalogContext";
 import { useTerminal } from "../../context/TerminalContext";
+import { useTracking } from "../../context/TrackingContext";
 import { usePanelWindow } from "../../context/PanelWindowContext";
 
 // Must match the cache names in public/sw.js.
@@ -21,6 +22,7 @@ export function WorkshopHeader() {
   const { title, sections } = workshop;
   const { activeSection } = useActiveSection();
   const terminal = useTerminal();
+  const tracking = useTracking();
   const panelWindow = usePanelWindow();
   // Only offer "back to all labs" when there's actually a catalog to return to
   // (two or more labs). A single lab is entered directly, with no landing page.
@@ -100,6 +102,21 @@ export function WorkshopHeader() {
     closeMenu();
     panelWindow?.toggle();
   }, [panelWindow, closeMenu]);
+
+  // Progress is intentionally NOT cleared by "Reset lab" (re-seeding the
+  // exercise shouldn't erase what the learner has completed). This is the
+  // explicit, separate way to clear it.
+  const resetProgress = useCallback(() => {
+    closeMenu();
+    if (!tracking?.resetProgress) return;
+    if (
+      window.confirm(
+        "Reset your progress? This clears your completed-step check-marks. Your lab state is unaffected.",
+      )
+    ) {
+      tracking.resetProgress();
+    }
+  }, [tracking, closeMenu]);
 
   const makeAvailableOffline = useCallback(async () => {
     closeMenu();
@@ -260,6 +277,17 @@ export function WorkshopHeader() {
               <span className="material-symbols-outlined">restart_alt</span>
               Reset lab
             </button>
+            {tracking?.hasSteps && (
+              <button
+                type="button"
+                className="workshop-context-menu-item"
+                role="menuitem"
+                onClick={resetProgress}
+              >
+                <span className="material-symbols-outlined">check_circle</span>
+                Reset progress
+              </button>
+            )}
             {panelWindow && (
               <button
                 type="button"

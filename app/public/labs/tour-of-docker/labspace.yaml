@@ -73,6 +73,17 @@ sections:
     contentPath: 00-intro.md
   - title: The Docker CLI
     contentPath: 01-docker.md
+    # Progress checkpoints for this section. Each `id` is referenced by a
+    # scenario's `completes:` in simulator.yaml; when that scenario fires, the
+    # step is marked done (a check-mark in the section nav). Fully optional —
+    # omit `steps:` and the section tracks no progress.
+    steps:
+      - id: run-container
+        title: "Run a container"
+      - id: stop-container
+        title: "Stop the container"
+      - id: remove-container
+        title: "Remove the container"
   - title: Find and fix a CVE with Scout
     contentPath: 02-scout.md
   - title: Run an agent in a Sandbox

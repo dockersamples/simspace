@@ -31,7 +31,21 @@ export function TerminalPanel() {
   );
 
   const handleChange = useCallback(
-    () => broadcast({ type: "state" }),
+    (info) => {
+      broadcast({ type: "state" });
+      // When the command completed a tracked step, fan out a `step` event for
+      // the tracking layer (progress store / presence). Kept separate from the
+      // `state` event so it never interferes with shared-state persistence.
+      if (info?.completes) {
+        broadcast({
+          type: "step",
+          stepId: info.completes,
+          scenario: info.matched,
+          command: info.line,
+          terminalId: info.terminalId,
+        });
+      }
+    },
     [broadcast],
   );
 

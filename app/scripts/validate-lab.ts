@@ -224,7 +224,11 @@ function validateLab(labDir: string): {
   const services =
     (labspace.services as { id?: string; title?: string }[]) ?? [];
   const sections =
-    (labspace.sections as { title?: string; contentPath?: string }[]) ?? [];
+    (labspace.sections as {
+      title?: string;
+      contentPath?: string;
+      steps?: { id?: string; title?: string }[];
+    }[]) ?? [];
 
   // slugify mirrors the labspace loader so terminal/service default ids match.
   const slugify = (s: string) =>
@@ -392,6 +396,51 @@ function validateLab(labDir: string): {
         for (const sm of text.matchAll(STATE_TMPL)) {
           stateRefs.push({ path: sm[1], at: `${at} ${field}` });
         }
+      }
+    }
+
+    // ── Step catalog ↔ scenario `completes:` cross-check ──────────────────────
+    // labspace.yaml sections own the step catalog (what appears in the progress
+    // UI); simulator.yaml scenarios reference step ids via `completes:`. Flag a
+    // scenario completing an unknown step (ERROR) and a cataloged step nothing
+    // completes (WARNING — unreachable). Mirrors the loader's default-id rule.
+    const catalogStepIds = new Set<string>();
+    const stepIdCounts = new Map<string, number>();
+    for (const [i, s] of sections.entries()) {
+      for (const [j, step] of (s.steps ?? []).entries()) {
+        const id = step.id ?? (step.title ? slugify(step.title) : "");
+        if (!id) {
+          err(
+            "labspace.yaml",
+            `section "${s.title ?? `#${i}`}" step #${j} has neither id nor title`,
+          );
+          continue;
+        }
+        catalogStepIds.add(id);
+        stepIdCounts.set(id, (stepIdCounts.get(id) ?? 0) + 1);
+      }
+    }
+    for (const [id, n] of stepIdCounts) {
+      if (n > 1) warn("labspace.yaml", `duplicate step id "${id}"`);
+    }
+
+    const completedStepIds = new Set<string>();
+    for (const sc of lab.scenarios) {
+      if (!sc.completes) continue;
+      completedStepIds.add(sc.completes);
+      if (!catalogStepIds.has(sc.completes)) {
+        err(
+          `scenario "${sc.id}"`,
+          `completes "${sc.completes}" is not a step id in any section's steps: catalog`,
+        );
+      }
+    }
+    for (const id of catalogStepIds) {
+      if (!completedStepIds.has(id)) {
+        warn(
+          "labspace.yaml",
+          `step "${id}" is cataloged but no scenario completes it (unreachable)`,
+        );
       }
     }
   }

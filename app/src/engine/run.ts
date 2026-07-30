@@ -43,6 +43,7 @@ export function run(
       stderr,
       exit: resolveExit(then, lab),
       matched: m.scenario.id,
+      completes: m.scenario.completes,
       session: then.session,
     };
   }
@@ -88,6 +89,7 @@ export function runAgent(
     stderr,
     exit: resolveExit(then, lab),
     matched: m ? m.scenario.id : "",
+    completes: m ? m.scenario.completes : undefined,
   };
 }
 

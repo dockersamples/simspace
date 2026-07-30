@@ -75,6 +75,7 @@ to the app's base URI, so subpath deploys (e.g. GitHub Pages) work unchanged.
 ```yaml
 title: "Getting Started (Simulated)"        # OPTIONAL. Document / header title.
 description: "A fully in-browser lab."       # OPTIONAL. Sub-title / summary.
+version: "1.0.0"                             # OPTIONAL. Lab version (progress invalidation). §4.1
 
 simulator: simulator.yaml                    # REQUIRED. Path to the scenario spec.
 
@@ -102,6 +103,12 @@ features:                                    # OPTIONAL. Feature flags (e.g. CI 
   ci:
     title: CI
     icon: rocket_launch
+
+tracking:                                    # OPTIONAL. Presence/analytics backend. §10.2
+  endpoint: https://pulse.example.com
+  labId: my-lab
+  presence: true
+  identity: optional-name
 ```
 
 Field summary:
@@ -110,6 +117,7 @@ Field summary:
 | ------------- | -------- | -------------------------------------------------------------- |
 | `title`       | no       | Header title; also sets `document.title` (default `"Labspace"`) |
 | `description` | no       | Shown as the sub-title (default empty)                         |
+| `version`     | no       | Lab version string; namespaces/invalidates stored progress (§4.1) |
 | `simulator`   | **yes**  | Path (relative to this file) to the `simulator.yaml` spec      |
 | `terminals`   | no       | Terminal tabs, all sharing one simulator (default: one tab)    |
 | `files`       | no       | Seed files for the shared virtual filesystem                   |
@@ -117,6 +125,7 @@ Field summary:
 | `variables`   | no       | Initial values for `$$variable$$` substitution in content      |
 | `services`    | no       | External-URL tabs (iframes) in the right-hand pane             |
 | `features`    | no       | Feature flags that add built-in tabs (e.g. `ci`) (§10)        |
+| `tracking`    | no       | Optional presence/analytics backend config (§10.2)            |
 
 A `labspace.yaml` that does not parse to a mapping, or that omits `simulator`,
 is a hard load error surfaced to the learner.
@@ -129,6 +138,15 @@ is a hard load error surfaced to the learner.
   tab title (`"<title> - <active section title>"`). Defaults to `"Labspace"`.
 - `description` — a one-line summary shown as the header sub-title. Defaults to
   an empty string.
+
+### 4.1 `version` — lab version (progress invalidation)
+
+An optional version string for the lab. The app records a learner's completed
+**steps** (§5.2) in `localStorage`, tagged with this version. When the stored
+version no longer matches, the completion record is cleared (the lab's steps may
+have changed) while the learner's anonymous handle is kept. Unversioned labs
+(no `version:`) never auto-invalidate progress. Bump it whenever you add,
+remove, or rename steps.
 
 ---
 
@@ -149,6 +167,7 @@ sections:
 | ------------- | -------- | ------------------------------------------------------- |
 | `title`       | yes      | Page title, shown in the nav and as the section heading |
 | `contentPath` | no       | Path (relative to `labspace.yaml`) to the markdown file |
+| `steps`       | no       | Progress checkpoints for this section (§5.2)            |
 
 Behaviour:
 
@@ -208,6 +227,44 @@ Refactor the server to read the port from an environment variable.
 | `:variabledefinition`  | Defines/prompts for a `$$variable$$` value inline              |
 | `:variablesetbutton`   | Button that sets a variable to a fixed value                   |
 | `:conditionaldisplay`  | Shows/hides content based on a variable's value                |
+
+### 5.2 `steps` — progress checkpoints
+
+A section may declare an ordered list of **steps**: author-defined checkpoints
+that make up the lab's progress model. A step is marked **complete** when a
+scenario in `simulator.yaml` tagged with a matching `completes: <step-id>` fires
+(see `simulator.md` §5.1) — i.e. when the learner actually ran the right command
+in the right state, not merely viewed the page.
+
+```yaml
+sections:
+  - title: The Docker CLI
+    contentPath: 01-docker.md
+    steps:
+      - id: run-container
+        title: "Run a container"
+      - id: stop-container
+        title: "Stop the container"
+```
+
+| Field   | Required | Purpose                                                              |
+| ------- | -------- | -------------------------------------------------------------------- |
+| `id`    | no       | Stable id referenced by a scenario's `completes:`. Defaults to `slugify(title)` |
+| `title` | no       | Human label for the step, shown in progress UI                       |
+
+Behaviour:
+
+- **Opt-in and additive.** A section with no `steps:` tracks no progress; a lab
+  with no steps anywhere behaves exactly as before (no recording, no network).
+- Completion is recorded in `localStorage` (namespaced per lab, and per
+  `version:` §4.1) and **survives the exercise Reset** — retrying the sandbox
+  doesn't erase what you completed. A separate "Reset progress" action clears it.
+- A **section** is treated as complete when all of its steps are complete; the
+  section nav shows a check-mark. Informational sections (no steps) carry no
+  completion signal.
+- The mapping is lint-checked: `npm run validate-lab` flags a scenario whose
+  `completes:` names an unknown step id (error) and a cataloged step that no
+  scenario completes (warning).
 
 ---
 
@@ -368,6 +425,44 @@ Behaviour:
   **Reset** along with the rest of the state.
 - With no `features.ci` block, no CI tab is shown and `then.ci` effects still
   write `state.ci.runs` but have no visible surface.
+
+### 10.2 `tracking` — presence & analytics backend
+
+`tracking` optionally connects a lab to a **`pulse`** backend (see the `pulse/`
+directory) for **live presence** ("who's here now") and cumulative analytics.
+The lab stays a static asset: it only ever talks to the endpoint declared here,
+and **omitting `tracking:` entirely means the app makes no network calls at
+all.** One backend serves many labs, keyed by `labId`.
+
+```yaml
+tracking:
+  endpoint: https://pulse.example.com # REQUIRED to enable; the pulse base URL
+  labId: my-lab # OPTIONAL bucket key (default: catalog id)
+  presence: true # OPTIONAL show live presence (default true when endpoint set)
+  identity: optional-name # OPTIONAL anonymous | optional-name (default optional-name)
+```
+
+| Field      | Required | Purpose                                                            |
+| ---------- | -------- | ------------------------------------------------------------------ |
+| `endpoint` | **yes**  | Base URL of the `pulse` service. Absent → tracking off, no network |
+| `labId`    | no       | Bucket key on a shared backend (defaults to the catalog lab id)    |
+| `presence` | no       | Show live presence UI (default `true` when `endpoint` is set)      |
+| `identity` | no       | `anonymous` (never send a name) or `optional-name` (default)       |
+
+Behaviour:
+
+- The lab reports **anonymous** events (`lab_started`, `section_viewed`,
+  `step_completed`, `lab_completed`, `reset`) plus periodic heartbeats, and polls
+  back a live presence aggregate. Identifiers are random per-browser handles,
+  not identities.
+- **In-lab, only live presence is shown — never cumulative completion counts.**
+  Cumulative data is instructor-only (`pulse`'s gated `/stats`) or a catalog-page
+  aggregate, so a learner never sees a discouraging drop-off number mid-lab.
+- Requires a step catalog (§5.2) for step-level presence; the global "who's here"
+  works from section navigation alone.
+
+See the design doc `Design - Live Presence & Progress Tracking.md` and
+`pulse/README.md` for the full model and backend deployment.
 
 ---
 

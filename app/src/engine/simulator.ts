@@ -34,6 +34,8 @@ export interface CommandOutcome {
   lines: OutputLine[];
   exit: number;
   matched: string;
+  /** The step id the matched scenario completes, if it declared `completes:`. */
+  completes?: string;
   /** When set, the caller should enter an interactive agent session. */
   session?: Session;
 }
@@ -43,6 +45,8 @@ export interface AgentOutcome {
   lines: OutputLine[];
   exit: number;
   matched: string;
+  /** The step id the matched agent scenario completes, if any. */
+  completes?: string;
 }
 
 export interface SimulatorInit {
@@ -153,6 +157,7 @@ export class Simulator {
       lines: [...result.stdout.map(out), ...result.stderr.map(err)],
       exit: result.exit,
       matched: result.matched,
+      completes: result.completes,
       session: result.session,
     };
   }
@@ -184,6 +189,7 @@ export class Simulator {
       lines: [...result.stdout.map(out), ...result.stderr.map(err)],
       exit: result.exit,
       matched: result.matched,
+      completes: result.completes,
     };
   }
 }

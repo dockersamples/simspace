@@ -32,6 +32,22 @@ export interface MockTerminalHandle {
   saveFile: (path: string, content: string) => void;
 }
 
+/**
+ * Details of a terminal change reported to `onChange`. Present only when the
+ * command completed a tracked step (`completes` set); otherwise `onChange` is
+ * called with `undefined` (a bare "shared state changed" signal).
+ */
+export interface TerminalChange {
+  /** The step id the command completed (from the scenario's `completes:`). */
+  completes: string;
+  /** The matched scenario id (`Result.matched`). */
+  matched?: string;
+  /** The command line that fired the step. */
+  line?: string;
+  /** The terminal the command came from. */
+  terminalId?: string;
+}
+
 export interface MockTerminalProps {
   /** The shared simulator instance backing every terminal. */
   simulator: Simulator | null;
@@ -51,8 +67,13 @@ export interface MockTerminalProps {
   agentThinkMs?: number;
   /** Extra lines printed once on start (dim). Set to [] to suppress the default. */
   greeting?: string[];
-  /** Called after this terminal mutates shared state, so peers can refresh. */
-  onChange?: () => void;
+  /**
+   * Called after this terminal runs a command, so peers can refresh shared
+   * state. When the command completed a tracked step, the `info` argument
+   * carries the step id (and matched scenario / command line); otherwise it is
+   * called with `undefined`.
+   */
+  onChange?: (info?: TerminalChange) => void;
   /** Subscribe to cross-terminal events; returns an unsubscribe function. */
   subscribe?: (fn: (event: TerminalEvent) => void) => () => void;
   className?: string;
@@ -136,9 +157,15 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
       try {
         const raw = localStorage.getItem(storageKey);
         return raw
-          ? (JSON.parse(raw) as { lines: TermLine[]; mode: Mode; history: string[] })
+          ? (JSON.parse(raw) as {
+              lines: TermLine[];
+              mode: Mode;
+              history: string[];
+            })
           : null;
-      } catch { return null; }
+      } catch {
+        return null;
+      }
     }, [storageKey]);
 
     const [lines, setLines] = useState<TermLine[]>(() =>
@@ -197,7 +224,10 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     // Reset terminal + simulator whenever a new simulator is built (spec change).
     // Skipped on mount when we restored a saved session (greetedRef pre-filled).
     useEffect(() => {
-      if (greetedRef.current?.sim === simulator && greetedRef.current?.key === greetKey) {
+      if (
+        greetedRef.current?.sim === simulator &&
+        greetedRef.current?.key === greetKey
+      ) {
         return;
       }
       greetedRef.current = { sim: simulator, key: greetKey };
@@ -228,7 +258,9 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
           storageKey,
           JSON.stringify({ lines, mode, history: history.current }),
         );
-      } catch { /* storage full or unavailable */ }
+      } catch {
+        /* storage full or unavailable */
+      }
     }, [storageKey, lines, mode]);
 
     // Keep the newest output in view. A layout effect scrolls synchronously
@@ -303,9 +335,21 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
 
     // Announce that this terminal changed shared state so peers can refresh
     // (e.g. keep every terminal's Settings toggles in sync).
-    const notify = useCallback(() => {
-      onChange?.();
-    }, [onChange]);
+    const notify = useCallback(
+      (outcome?: { completes?: string; matched?: string }, line?: string) => {
+        onChange?.(
+          outcome?.completes
+            ? {
+                completes: outcome.completes,
+                matched: outcome.matched,
+                line,
+                terminalId,
+              }
+            : undefined,
+        );
+      },
+      [onChange, terminalId],
+    );
 
     // Render an agent turn: indent non-empty lines and tag stderr distinctly.
     const emitAgentTurn = useCallback(
@@ -370,7 +414,7 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
             pause: l.pause,
           })),
         );
-        notify();
+        notify(outcome, line);
 
         if (outcome.session) {
           // A one-shot prompt (e.g. `run -p "…"`) runs a single prompt, then exits (no REPL).
@@ -379,7 +423,7 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
             await think();
             const ao = simulator.prompt(oneShot, terminalId);
             await emitAgentTurn(ao);
-            notify();
+            notify(ao, line);
             return;
           }
           await enterSession(outcome.session);
@@ -414,13 +458,13 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
               pause: l.pause,
             })),
           );
-          notify();
+          notify(cmdOutcome, line.slice(1));
           return;
         }
         await think();
         const ao = simulator.prompt(line, terminalId);
         await emitAgentTurn(ao);
-        notify();
+        notify(ao, line);
       },
       [simulator, terminalId, emit, think, emitAgentTurn, notify],
     );
@@ -434,7 +478,9 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
 
         const currentMode = modeRef.current;
         const promptPrefix =
-          currentMode.kind === "session" ? sess_prompt(currentMode.sess) : shellPrompt;
+          currentMode.kind === "session"
+            ? sess_prompt(currentMode.sess)
+            : shellPrompt;
 
         // Echo the typed line with its prompt, always (even when empty).
         append(promptPrefix + raw, "input");
@@ -560,7 +606,11 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     const resetView = useCallback(() => {
       if (!simulator) return;
       if (storageKey) {
-        try { localStorage.removeItem(storageKey); } catch { /* ignore */ }
+        try {
+          localStorage.removeItem(storageKey);
+        } catch {
+          /* ignore */
+        }
       }
       modeRef.current = { kind: "command" };
       setMode({ kind: "command" });

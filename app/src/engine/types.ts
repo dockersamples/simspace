@@ -178,6 +178,13 @@ export interface Then {
 export interface Scenario {
   id: string;
   description?: string;
+  /**
+   * The id of a step this scenario completes when it fires. Optional and
+   * additive: authors tag the scenario that represents "the learner did it" so
+   * the app layer can record progress. The engine only reports it — recording
+   * and any telemetry happen outside the engine, keeping it pure.
+   */
+  completes?: string;
   when: When;
   then: Then;
 }
@@ -244,6 +251,8 @@ export interface Result {
   exit: number;
   /** Matched scenario ID, "__builtin__" for built-ins, or "" for unmatched default. */
   matched: string;
+  /** The step id the matched scenario completes, if it declared `completes:`. */
+  completes?: string;
   /** Set when the matched scenario declares a session effect. */
   session?: Session;
 }

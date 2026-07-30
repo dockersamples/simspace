@@ -68,6 +68,14 @@ export async function loadLabspace(labUrl) {
         // against this, so images load no matter how sections are nested.
         baseUrl: contentUrl ? new URL(".", contentUrl).toString() : labBaseUrl,
         contentRaw: contentUrl ? await fetchText(contentUrl) : "",
+        // Optional progress-tracking checkpoints for this section. A step's id
+        // is referenced by a scenario's `completes:` in simulator.yaml; it
+        // defaults to slugify(title) so authors can omit it. Absent → the
+        // section declares no steps (progress tracking is fully opt-in).
+        steps: (Array.isArray(sec.steps) ? sec.steps : []).map((step) => ({
+          id: step.id || slugify(step.title || ""),
+          title: step.title,
+        })),
       };
     }),
   );
@@ -117,6 +125,9 @@ export async function loadLabspace(labUrl) {
     ],
     title: raw.title || "Labspace",
     subtitle: raw.description || "",
+    // Optional lab version, used to namespace/invalidate stored progress when a
+    // lab's steps change. Unversioned labs (no `version:`) leave this null.
+    version: raw.version != null ? String(raw.version) : null,
     sections,
     services,
     variables: raw.variables || {},
@@ -125,6 +136,11 @@ export async function loadLabspace(labUrl) {
     // Optional feature flags (e.g. `features.ci` enables the mock CI tab). Kept
     // as-is so presentation code can read per-feature config (title, icon).
     features: raw.features || {},
+    // Optional progress/presence tracking config. When absent the app records
+    // nothing and makes no network calls; when present it points at a `pulse`
+    // backend (endpoint), buckets events under labId, and controls the live
+    // presence UI and identity mode. Kept as-is for the tracking layer to read.
+    tracking: raw.tracking || null,
     simulatorSpec,
   };
 }

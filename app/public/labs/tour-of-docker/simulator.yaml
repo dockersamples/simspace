@@ -123,6 +123,7 @@ scenarios:
 
   - id: docker-run
     description: "Start a container. Captures --name so later output matches it."
+    completes: run-container # marks the "Run a container" step done (labspace.yaml)
     when:
       command: [docker, run]
       args: { --name: { any: true } }
@@ -212,6 +213,7 @@ scenarios:
       exit: 1
 
   - id: docker-stop
+    completes: stop-container
     when:
       command: [docker, stop]
       state: { container.running: true }
@@ -229,6 +231,7 @@ scenarios:
       exit: 1
 
   - id: docker-rm
+    completes: remove-container
     when:
       command: [docker, rm]
       state: { container.created: true }
@@ -519,7 +522,10 @@ scenarios:
         - "  "
         - '  app.listen(3000, () => console.log("listening on :3000"));'
         - ""
-        - { text: "Adding GET /health and writing the file back.", delay: medium }
+        - {
+            text: "Adding GET /health and writing the file back.",
+            delay: medium,
+          }
         - ""
         - 'Done — server.js now has a GET /health that returns "ok".'
       files:
