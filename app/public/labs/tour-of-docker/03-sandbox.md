@@ -56,7 +56,7 @@ add a /health endpoint to server.js that returns "ok"
 
 The agent reads the file, edits it, and writes it back. Switch to the **Host** terminal and verify:
 
-```bash terminal-id=sandbox
+```prompt terminal-id=sandbox
 !cat server.js
 ```
 
@@ -66,7 +66,7 @@ The new route is there — the sandbox and Host share the same filesystem, so ch
 
 Leave the interactive session (the sandbox keeps running):
 
-```bash terminal-id=sandbox
+```prompt terminal-id=sandbox
 /exit
 ```
 
