@@ -12,6 +12,10 @@ import "./InsightsDashboard.scss";
 
 const tokenKey = (endpoint) => `simspace:stats-token:${endpoint}`;
 
+// How often the dashboard silently re-fetches /stats so it can be left open on
+// the side and stay current. Cumulative stats change slowly, so this is gentle.
+const POLL_MS = 15000;
+
 export function InsightsDashboard({ lab }) {
   const endpoint = lab.tracking.endpoint.replace(/\/+$/, "");
   const labId = lab.tracking.labId;
@@ -24,6 +28,7 @@ export function InsightsDashboard({ lab }) {
   const [labspace, setLabspace] = useState(null);
   const [state, setState] = useState("idle"); // idle | loading | ready | error
   const [error, setError] = useState("");
+  const [updatedAt, setUpdatedAt] = useState(null);
 
   useEffect(() => {
     document.title = `${lab.title} — Insights`;
@@ -40,38 +45,44 @@ export function InsightsDashboard({ lab }) {
     };
   }, [lab.labspaceUrl]);
 
-  const load = useCallback(
-    async (tok) => {
+  // Fetches /stats. `silent` (used by the background poll and manual refresh
+  // once loaded) updates the data in place without the full-page loading/error
+  // states, so a transient blip never kicks the instructor back to the gate.
+  const refresh = useCallback(
+    async (tok, { silent = false } = {}) => {
       if (!tok) return;
-      setState("loading");
-      setError("");
+      if (!silent) {
+        setState("loading");
+        setError("");
+      }
       try {
         const res = await fetch(
           `${endpoint}/stats?labId=${encodeURIComponent(labId)}`,
           { headers: { Authorization: `Bearer ${tok}` } },
         );
-        if (res.status === 401) {
-          setState("error");
-          setError("That token was rejected. Check it and try again.");
-          return;
-        }
-        if (res.status === 404) {
-          setState("error");
-          setError(
-            "This backend has stats disabled (no STATS_TOKEN configured on the server).",
-          );
-          return;
-        }
         if (!res.ok) {
+          if (silent) return; // keep showing the last good data on a poll blip
           setState("error");
-          setError(`Request failed (HTTP ${res.status}).`);
+          if (res.status === 401) {
+            setError("That token was rejected. Check it and try again.");
+          } else if (res.status === 404) {
+            setError(
+              "This backend has stats disabled (no STATS_TOKEN configured on the server).",
+            );
+          } else {
+            setError(`Request failed (HTTP ${res.status}).`);
+          }
           return;
         }
         setStats(await res.json());
-        setState("ready");
-        sessionStorage.setItem(tokenKey(endpoint), tok);
-        setToken(tok);
+        setUpdatedAt(new Date());
+        if (!silent) {
+          setState("ready");
+          sessionStorage.setItem(tokenKey(endpoint), tok);
+          setToken(tok);
+        }
       } catch (e) {
+        if (silent) return;
         setState("error");
         setError(`Could not reach the backend: ${e.message}`);
       }
@@ -81,8 +92,21 @@ export function InsightsDashboard({ lab }) {
 
   // Auto-load when a token is already remembered for this backend.
   useEffect(() => {
-    if (token) load(token);
-  }, [token, load]);
+    if (token) refresh(token);
+  }, [token, refresh]);
+
+  // Once loaded, keep the dashboard current by polling in the background, so it
+  // can be parked on the side. Pauses while the tab is hidden.
+  useEffect(() => {
+    if (state !== "ready" || !token) return undefined;
+    const tick = () => {
+      if (document.visibilityState === "visible") {
+        refresh(token, { silent: true });
+      }
+    };
+    const id = setInterval(tick, POLL_MS);
+    return () => clearInterval(id);
+  }, [state, token, refresh]);
 
   // ── Derived, lab-ordered chart data ─────────────────────────────────────────
   const model = useMemo(() => {
@@ -175,7 +199,7 @@ export function InsightsDashboard({ lab }) {
           className="insights-gate"
           onSubmit={(e) => {
             e.preventDefault();
-            load(tokenInput.trim());
+            refresh(tokenInput.trim());
           }}
         >
           <label htmlFor="stats-token" className="insights-gate-label">
@@ -218,7 +242,8 @@ export function InsightsDashboard({ lab }) {
         {backLink}
         <h1 className="insights-title">{lab.title} — Insights</h1>
         <p className="insights-subtitle">
-          Instructor view · cumulative · lab id <code>{labId}</code>
+          Instructor view · cumulative · lab id <code>{labId}</code> ·
+          auto-refreshing
         </p>
       </header>
 
@@ -231,14 +256,25 @@ export function InsightsDashboard({ lab }) {
       <section className="insights-card">
         <div className="insights-card-head">
           <h2 className="insights-card-title">Progress funnel</h2>
-          <button
-            type="button"
-            className="insights-refresh"
-            onClick={() => load(token)}
-          >
-            <span className="material-symbols-outlined">refresh</span>
-            Refresh
-          </button>
+          <div className="insights-live">
+            <span className="insights-live-badge" title="Auto-refreshing">
+              <span className="insights-live-dot" />
+              Live
+            </span>
+            {updatedAt && (
+              <span className="insights-updated">
+                updated {updatedAt.toLocaleTimeString()}
+              </span>
+            )}
+            <button
+              type="button"
+              className="insights-refresh"
+              onClick={() => refresh(token, { silent: true })}
+              title="Refresh now"
+            >
+              <span className="material-symbols-outlined">refresh</span>
+            </button>
+          </div>
         </div>
         <p className="insights-card-note">
           Distinct learners reaching each milestone, in lab order. Where the

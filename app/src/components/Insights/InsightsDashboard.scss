@@ -146,16 +146,59 @@
     color: var(--bs-secondary-color);
     margin: 4px 0 16px;
   }
+  // Live-status cluster in the funnel card head: a pulsing "Live" badge, the
+  // last-updated time, and a compact manual refresh.
+  .insights-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .insights-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #2d9568;
+  }
+  .insights-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #2d9568;
+    animation: insights-pulse 2s ease-in-out infinite;
+  }
+  @keyframes insights-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.3;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .insights-live-dot {
+      animation: none;
+    }
+  }
+  .insights-updated {
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    font-variant-numeric: tabular-nums;
+  }
+
   .insights-refresh {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 5px 10px;
+    justify-content: center;
+    padding: 5px;
     border: 1px solid var(--bs-border-color);
     border-radius: 999px;
     background: transparent;
     color: var(--bs-secondary-color);
-    font-size: 0.8rem;
     cursor: pointer;
 
     .material-symbols-outlined {
