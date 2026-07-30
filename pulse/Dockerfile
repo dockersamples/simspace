@@ -1,3 +1,15 @@
+# Development stage: full toolchain + dev deps + source, for `docker compose`
+# (the root compose.yaml targets this and mounts src/ over it). Kept first so
+# `docker build` without a target still produces the production runtime below.
+FROM node:22-alpine AS dev
+WORKDIR /app
+RUN apk add --no-cache python3 make g++
+COPY package.json package-lock.json* ./
+RUN npm install
+COPY . .
+EXPOSE 8888
+CMD ["npm", "run", "dev"]
+
 # Build stage: install deps (incl. native better-sqlite3) and bundle the service.
 FROM node:22-alpine AS build
 WORKDIR /app

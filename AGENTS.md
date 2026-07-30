@@ -54,12 +54,16 @@ app/                 THE PRODUCT — the consolidated static React app
   scripts/           Node tooling: validate-lab.ts (linter + catalog regen),
                      catalog.mjs + generate-catalog.mjs (build labs.json), run-ts.mjs
   dist/              build output — generated, do not edit
+pulse/               OPTIONAL presence + analytics backend (Node/TS, its own
+                     README). Labs are still static and server-free; a lab opts
+                     in via a `tracking:` block. Not built by the app pipeline.
 spec/                the format specifications + catalog (see above)
 .github/workflows/   deploy.yml (Pages for THIS repo) + deploy-lab.yml (reusable
                      workflow author repos call to validate + deploy their labs)
 Dockerfile           two images: `production` (nginx runtime) + `authoring`
                      (Node + validate-lab, for author dev/CI)
 docker-bake.hcl      bake targets: app / app-local, authoring / authoring-local
+compose.yaml         local dev stack (app Vite + pulse); `docker compose up --build`
 ```
 
 ## Two images, one lab-as-data model

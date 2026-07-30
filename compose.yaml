@@ -1,0 +1,71 @@
+# Local development for the whole platform — the static lab app AND the optional
+# pulse backend (presence + analytics) — in one command:
+#
+#   docker compose up --build
+#
+#     app    → http://localhost:5173   (Vite dev server, hot-reloads app/ edits)
+#     pulse  → http://localhost:8888   (presence + analytics API)
+#
+# This is for working ON this repo (app/ + pulse/). Lab AUTHORS don't need it —
+# they use the prebuilt authoring image (see simspace-starter/compose.yaml).
+#
+# The two services don't talk to each other directly: the browser calls pulse,
+# so both ports are published to the host. To exercise presence/analytics, point
+# a lab at pulse by adding to its app/public/labs/<id>/labspace.yaml:
+#
+#   tracking:
+#     endpoint: http://localhost:8888
+#     labId: <the lab id>
+#     presence: true
+#
+# The sample labs ship WITHOUT tracking (they also deploy to GitHub Pages, which
+# has no backend), so out of the box pulse simply runs idle until a lab opts in.
+
+name: simspace
+
+services:
+  # The static lab app in dev mode (Vite + HMR). Built from the root Dockerfile's
+  # `authoring` target (Node + app source). The whole app/ is bind-mounted for
+  # live editing; an anonymous volume keeps the image's node_modules so you don't
+  # need Node or a local install.
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: authoring
+    command: npm run dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./app:/usr/local/app
+      - /usr/local/app/node_modules
+    develop:
+      watch:
+        - path: ./app/package.json
+          action: rebuild
+
+  # The presence + analytics backend. Built from pulse/Dockerfile's `dev` target
+  # (toolchain + dev deps + source). src/ and scripts/ are mounted so a
+  # `docker compose restart pulse` rebuilds from your edits; the SQLite log
+  # persists in a named volume.
+  pulse:
+    build:
+      context: ./pulse
+      target: dev
+    command: npm run dev
+    ports:
+      - "8888:8888"
+    environment:
+      PORT: "8888"
+      DB_PATH: "/data/pulse.db"
+      PRESENCE_TTL_MS: "30000"
+      # Enables the instructor-only /stats endpoint (and the in-app dashboard).
+      # Override with `PULSE_STATS_TOKEN=… docker compose up`.
+      STATS_TOKEN: "${PULSE_STATS_TOKEN:-dev-token}"
+    volumes:
+      - ./pulse/src:/app/src
+      - ./pulse/scripts:/app/scripts
+      - pulse-data:/data
+
+volumes:
+  pulse-data:

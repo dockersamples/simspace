@@ -36,10 +36,13 @@ app/                  the consolidated static app (build + deploy this)
   public/
     labs/             sample labs — labs/<id>/ (labspace.yaml + simulator.yaml + *.md)
   scripts/            validate-lab + catalog generation
+pulse/                OPTIONAL presence + analytics backend (Node/TS). Labs stay
+                      static; a lab opts in via a `tracking:` block. See pulse/README.md
 spec/                 specifications for the YAML formats + catalog
 AGENTS.md             onboarding guide for agentic coding sessions
 Dockerfile            builds app/ and serves it with nginx (optional)
 docker-bake.hcl       bake targets for the static-app image
+compose.yaml          local dev stack: app (Vite) + pulse together
 .github/workflows/    GitHub Pages deploy workflow
 ```
 
@@ -67,6 +70,23 @@ npm run dev        # local dev server, serves the labs in app/public/labs/
 npm run build      # static build → app/dist
 npm run preview    # serve the production build
 ```
+
+### Local development with Docker Compose
+
+To work on the whole platform — the static app **and** the optional
+[`pulse`](pulse/README.md) backend — at once, use the root `compose.yaml`:
+
+```bash
+docker compose up --build
+#   app   → http://localhost:5173   (Vite dev server, hot-reloads app/ edits)
+#   pulse → http://localhost:8888   (presence + analytics API)
+```
+
+The sample labs ship without a backend (they also deploy to GitHub Pages, which
+has none), so `pulse` runs idle until a lab opts in with a `tracking:` block
+pointing at `http://localhost:8888` (see [`spec/labspace.md`](spec/labspace.md)
+§10.2). Lab authors don't need this — they use the prebuilt authoring image (see
+`simspace-starter`).
 
 ## Authoring a lab
 
