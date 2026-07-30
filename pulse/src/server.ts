@@ -133,6 +133,30 @@ export function createApp({ config, log, presence, now = () => Date.now() }: Dep
         return;
       }
 
+      // ── Live presence stream (public, SSE) ────────────────────────────────────
+      // Pushes the presence aggregate on connect and every few seconds after,
+      // so clients get smoother updates than polling. Clients that can't use
+      // SSE fall back to GET /presence.
+      if (req.method === "GET" && path === "/stream") {
+        const labId = url.searchParams.get("labId");
+        if (!labId) {
+          json(res, 400, { error: "labId required" });
+          return;
+        }
+        res.setHeader("Access-Control-Allow-Origin", config.corsOrigin);
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("Connection", "keep-alive");
+        res.writeHead(200);
+        const send = () => {
+          res.write(`data: ${JSON.stringify(presence.aggregate(labId))}\n\n`);
+        };
+        send();
+        const timer = setInterval(send, 3000);
+        req.on("close", () => clearInterval(timer));
+        return;
+      }
+
       // ── Catalog count (public, aggregate-only) ───────────────────────────────
       if (req.method === "GET" && path === "/completed") {
         const labId = url.searchParams.get("labId");

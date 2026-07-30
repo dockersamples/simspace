@@ -42,6 +42,7 @@ export function buildCatalog(labsDir) {
       throw new Error(`labs/${id}/labspace.yaml does not parse: ${e.message}`);
     }
     const cat = (doc && typeof doc === "object" && doc.catalog) || {};
+    const track = (doc && typeof doc === "object" && doc.tracking) || null;
     labs.push({
       id,
       path: `labs/${id}/labspace.yaml`,
@@ -53,6 +54,13 @@ export function buildCatalog(labsDir) {
       tags: Array.isArray(cat.tags) ? cat.tags : [],
       estimatedMinutes: cat.estimatedMinutes ?? null,
       order: typeof cat.order === "number" ? cat.order : null,
+      // Public tracking coordinates (endpoint + bucket id) so the landing page
+      // can show a cumulative "N completed" per lab and link to its dashboard.
+      // Only the non-sensitive bits; omitted entirely when a lab opts out.
+      tracking:
+        track && track.endpoint
+          ? { endpoint: track.endpoint, labId: track.labId || id }
+          : null,
     });
   }
   labs.sort((a, b) => {

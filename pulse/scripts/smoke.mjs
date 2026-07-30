@@ -116,6 +116,17 @@ try {
   // A lab with no tracking config never appears.
   const empty = await (await fetch(`${base}/presence?labId=other`)).json();
   check("unknown lab has zero presence", empty.total === 0, JSON.stringify(empty));
+
+  // SSE stream emits an initial aggregate frame.
+  const ac = new AbortController();
+  const stream = await fetch(`${base}/stream?labId=demo`, { signal: ac.signal });
+  const reader = stream.body.getReader();
+  const { value } = await reader.read();
+  const frame = new TextDecoder().decode(value);
+  check("stream emits a data frame", frame.startsWith("data: "), frame.slice(0, 40));
+  const parsed = JSON.parse(frame.replace(/^data: /, "").trim());
+  check("stream frame carries presence total", parsed.total === 1, JSON.stringify(parsed));
+  ac.abort();
 } catch (e) {
   failures += 1;
   console.error("smoke error:", e.message);

@@ -178,15 +178,18 @@ export function TrackingContextProvider({ children }) {
     };
   }, [endpoint, emit]);
 
-  // Poll live presence back for the (Phase 3) presence UI.
+  // Live presence for the UI: prefer the SSE stream (smoother), fall back to
+  // polling if the browser or server can't do SSE.
   useEffect(() => {
     if (!presenceEnabled) return undefined;
     let cancelled = false;
+    let es = null;
+    let timer = null;
+    const q = `labId=${encodeURIComponent(labId)}`;
+
     const poll = async () => {
       try {
-        const res = await fetch(
-          `${endpoint}/presence?labId=${encodeURIComponent(labId)}`,
-        );
+        const res = await fetch(`${endpoint}/presence?${q}`);
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled) setPresence(data);
@@ -194,11 +197,42 @@ export function TrackingContextProvider({ children }) {
         /* presence is best-effort */
       }
     };
-    poll();
-    const timer = setInterval(poll, PRESENCE_POLL_MS);
+    const startPolling = () => {
+      if (timer || cancelled) return;
+      poll();
+      timer = setInterval(poll, PRESENCE_POLL_MS);
+    };
+
+    if (typeof EventSource !== "undefined") {
+      try {
+        es = new EventSource(`${endpoint}/stream?${q}`);
+        es.onmessage = (e) => {
+          if (cancelled) return;
+          try {
+            setPresence(JSON.parse(e.data));
+          } catch {
+            /* ignore malformed frame */
+          }
+        };
+        es.onerror = () => {
+          // Only give up on SSE when the connection is truly closed (e.g. the
+          // server doesn't support it); transient drops auto-reconnect.
+          if (es && es.readyState === EventSource.CLOSED) {
+            es = null;
+            startPolling();
+          }
+        };
+      } catch {
+        startPolling();
+      }
+    } else {
+      startPolling();
+    }
+
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      if (es) es.close();
+      if (timer) clearInterval(timer);
     };
   }, [presenceEnabled, endpoint, labId]);
 

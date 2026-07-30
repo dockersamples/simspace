@@ -36,6 +36,15 @@ function normalize(lab) {
     icon: lab.icon || "science",
     tags: Array.isArray(lab.tags) ? lab.tags : [],
     estimatedMinutes: lab.estimatedMinutes ?? null,
+    // Public tracking coordinates ({ endpoint, labId }) or null. Lets the
+    // landing page show a cumulative completion count and link to the dashboard.
+    tracking:
+      lab.tracking && lab.tracking.endpoint
+        ? {
+            endpoint: lab.tracking.endpoint,
+            labId: lab.tracking.labId || lab.id,
+          }
+        : null,
     // Fully-resolved URL of this lab's labspace.yaml, ready to hand to the loader.
     labspaceUrl: new URL(lab.path, document.baseURI).toString(),
   };

@@ -139,6 +139,33 @@
   background: rgba(37, 96, 255, 0.1);
 }
 
+.catalog-chip-completed {
+  color: #2d9568;
+  background: rgba(45, 149, 104, 0.12);
+
+  .material-symbols-outlined {
+    font-variation-settings: "FILL" 1;
+  }
+}
+
+.catalog-card-insights {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  text-decoration: none;
+
+  .material-symbols-outlined {
+    font-size: 0.95rem;
+  }
+  &:hover {
+    color: var(--bs-primary);
+  }
+}
+
 .catalog-card-arrow {
   flex: 0 0 auto;
   align-self: center;

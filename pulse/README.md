@@ -42,6 +42,7 @@ tracking:
 | ------ | ----------------------- | ---------- | ------- |
 | POST   | `/events`               | lab (public) | Ingest one event or a JSON array. Append-only, CORS-open, rate-limited. |
 | GET    | `/presence?labId=`      | lab (public) | Live aggregate: `{ total, perSection, perMilestone, avatars }`. |
+| GET    | `/stream?labId=`        | lab (public) | Server-Sent Events: the same aggregate pushed on connect and every ~3s. Clients fall back to `/presence` polling. |
 | GET    | `/completed?labId=`     | catalog (public) | Aggregate-only `{ completed }` count for a lab. |
 | GET    | `/stats?labId=`         | instructor | Cumulative funnel / per-step drop-off. Requires `STATS_TOKEN`. |
 | GET    | `/healthz`              | ops        | Liveness. |
