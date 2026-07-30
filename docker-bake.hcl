@@ -1,17 +1,19 @@
 # Bake definition for the Labspace images.
 #
-#   docker buildx bake                    # build both images, multi-platform
+#   docker buildx bake                    # build all images, multi-platform
 #   docker buildx bake --push             # build and push to the registry
 #   docker buildx bake app-local          # runtime image, single-arch, local daemon
 #   docker buildx bake authoring-local    # authoring image, single-arch, local daemon
+#   docker buildx bake pulse-local        # pulse backend, single-arch, local daemon
 #
-# Release both images together under the same tags so a lab pinned to a version
-# gets a matching runtime + authoring pair:
+# Release the images together under the same tags so a lab pinned to a version
+# gets a matching runtime + authoring (+ pulse) set:
 #   TAGS=1.0.0,1,latest docker buildx bake --push
 #
 # Common override (publish to the public org):
 #   IMAGE=docker.io/dockersamples/simspace \
 #   AUTHORING_IMAGE=docker.io/dockersamples/simspace-authoring \
+#   PULSE_IMAGE=docker.io/dockersamples/simspace-pulse \
 #   docker buildx bake --push
 
 # Fully-qualified image names (without tag).
@@ -21,6 +23,10 @@ variable "IMAGE" {
 
 variable "AUTHORING_IMAGE" {
   default = "dockersamples/simspace-authoring"
+}
+
+variable "PULSE_IMAGE" {
+  default = "dockersamples/simspace-pulse"
 }
 
 # Tags applied to the built images. The explicit list type lets bake coerce a
@@ -38,9 +44,9 @@ variable "PLATFORMS" {
   default = ["linux/amd64", "linux/arm64"]
 }
 
-# Build both images by default so releases stay in lock-step.
+# Build all images by default so releases stay in lock-step.
 group "default" {
-  targets = ["app", "authoring"]
+  targets = ["app", "authoring", "pulse"]
 }
 
 # Multi-platform static-app (runtime) image. Use --push to publish, since a
@@ -72,6 +78,23 @@ target "authoring" {
 # Single-platform authoring build for local use, loaded into the daemon.
 target "authoring-local" {
   inherits  = ["authoring"]
+  platforms = ["local"]
+  output    = ["type=docker"]
+}
+
+# Multi-platform pulse backend (Node + SQLite presence/analytics API). Built
+# from pulse/Dockerfile's runtime stage; its own directory is the build context.
+target "pulse" {
+  context    = "./pulse"
+  dockerfile = "Dockerfile"
+  target     = "runtime"
+  platforms  = PLATFORMS
+  tags       = [for t in TAGS : "${PULSE_IMAGE}:${t}"]
+}
+
+# Single-platform pulse build for local use, loaded into the daemon.
+target "pulse-local" {
+  inherits  = ["pulse"]
   platforms = ["local"]
   output    = ["type=docker"]
 }
