@@ -6,6 +6,8 @@
 import { parse as parseYaml } from "yaml";
 import {
   Control,
+  InputRequest,
+  InputStep,
   Lab,
   Matcher,
   SchemaVersion,
@@ -88,8 +90,87 @@ function normalizeScenario(raw: unknown, index: number): Scenario {
     description: typeof s.description === "string" ? s.description : undefined,
     completes: typeof s.completes === "string" ? s.completes : undefined,
     when: normalizeWhen(s.when, id),
-    then: (s.then as Scenario["then"]) ?? {},
+    then: normalizeThen(s.then, id),
   };
+}
+
+/**
+ * normalizeThen passes the effects block through unchanged except for `input`,
+ * whose two author forms (single-step sugar and an explicit `steps:` list) are
+ * normalized to the canonical `{ steps, then }` shape the engine consumes.
+ */
+function normalizeThen(raw: unknown, id: string): Scenario["then"] {
+  const then = ((raw as Scenario["then"]) ?? {}) as Scenario["then"];
+  if (then.input !== undefined) {
+    then.input = normalizeInput(then.input, id);
+  }
+  return then;
+}
+
+/**
+ * normalizeInput accepts either the single-step sugar (prompt/key/mask plus a
+ * `then` directly on the mapping) or the explicit `{ steps: [...], then }` form,
+ * and returns the canonical InputRequest. The resolution `then` is required so
+ * a request always has effects to apply once collected.
+ */
+function normalizeInput(raw: unknown, id: string): InputRequest {
+  if (raw === null || typeof raw !== "object") {
+    throw new ManifestError(
+      `scenario "${id}": \`then.input\` must be a mapping`,
+    );
+  }
+  const obj = raw as Record<string, unknown>;
+
+  let steps: unknown;
+  if (obj.steps !== undefined) {
+    if (!Array.isArray(obj.steps)) {
+      throw new ManifestError(
+        `scenario "${id}": \`then.input.steps\` must be a list`,
+      );
+    }
+    steps = obj.steps;
+  } else {
+    // Single-step sugar: the step fields sit directly on `then.input`.
+    steps = [{ key: obj.key, prompt: obj.prompt, mask: obj.mask }];
+  }
+
+  const normalized = (steps as unknown[]).map((s, i) =>
+    normalizeInputStep(s, id, i),
+  );
+  if (normalized.length === 0) {
+    throw new ManifestError(
+      `scenario "${id}": \`then.input\` declares no steps`,
+    );
+  }
+
+  const then = normalizeThen(obj.then, id);
+  return { steps: normalized, then };
+}
+
+function normalizeInputStep(
+  raw: unknown,
+  id: string,
+  index: number,
+): InputStep {
+  if (raw === null || typeof raw !== "object") {
+    throw new ManifestError(
+      `scenario "${id}": \`then.input\` step #${index} must be a mapping`,
+    );
+  }
+  const s = raw as Record<string, unknown>;
+  const key = typeof s.key === "string" ? s.key : "";
+  if (!key) {
+    throw new ManifestError(
+      `scenario "${id}": \`then.input\` step #${index} is missing \`key\``,
+    );
+  }
+  const prompt = typeof s.prompt === "string" ? s.prompt : "";
+  if (!prompt) {
+    throw new ManifestError(
+      `scenario "${id}": \`then.input\` step "${key}" is missing \`prompt\``,
+    );
+  }
+  return { key, prompt, mask: s.mask === true };
 }
 
 function normalizeWhen(raw: unknown, id: string): When {

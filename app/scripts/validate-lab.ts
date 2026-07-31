@@ -60,6 +60,7 @@ const SHELL_LANGS = new Set([
 ]);
 const ARG_TMPL = /\{\{\s*args\.([A-Za-z0-9_.]+)\s*\}\}/g;
 const STATE_TMPL = /\{\{\s*state\.([A-Za-z0-9_.]+)\s*\}\}/g;
+const INPUT_TMPL = /\{\{\s*input\.([A-Za-z0-9_.]+)\s*\}\}/g;
 
 /** Normalize an arg matcher name to the key templates use (dashes stripped). */
 function captureKey(name: string): string {
@@ -141,25 +142,42 @@ function metaValue(meta: string[], key: string): string | undefined {
   return eq >= 0 ? hit.slice(eq + 1) : "";
 }
 
-/** Yield every templatable string in a scenario's `then`, tagged with a field name. */
+/** Yield every templatable string in a `then` block, tagged with a field name. */
+function* thenBlockStrings(
+  then: Scenario["then"],
+  prefix: string,
+): Generator<{ text: string; field: string }> {
+  for (const [i, l] of (then.output ?? []).entries()) {
+    const text = typeof l === "string" ? l : (l.text ?? "");
+    if (text) yield { text, field: `${prefix}.output[${i}]` };
+  }
+  for (const [i, l] of (then.stderr ?? []).entries()) {
+    const text = typeof l === "string" ? l : (l.text ?? "");
+    if (text) yield { text, field: `${prefix}.stderr[${i}]` };
+  }
+  for (const [i, op] of (then.files ?? []).entries()) {
+    if (op.content)
+      yield { text: op.content, field: `${prefix}.files[${i}].content` };
+    if (op.with) yield { text: op.with, field: `${prefix}.files[${i}].with` };
+  }
+  for (const [k, v] of Object.entries(then.state ?? {}))
+    if (typeof v === "string") yield { text: v, field: `${prefix}.state.${k}` };
+}
+
+/** Yield every templatable string in a scenario's `then`, tagged with a field
+ * name. Includes an interactive input request's step prompts and its resolution
+ * `then` block, so template placeholders there are checked too. */
 function* thenStrings(
   sc: Scenario,
 ): Generator<{ text: string; field: string }> {
-  for (const [i, l] of (sc.then.output ?? []).entries()) {
-    const text = typeof l === "string" ? l : (l.text ?? "");
-    if (text) yield { text, field: `then.output[${i}]` };
+  yield* thenBlockStrings(sc.then, "then");
+  const input = sc.then.input;
+  if (input) {
+    for (const [i, step] of input.steps.entries())
+      if (step.prompt)
+        yield { text: step.prompt, field: `then.input.steps[${i}].prompt` };
+    yield* thenBlockStrings(input.then, "then.input.then");
   }
-  for (const [i, l] of (sc.then.stderr ?? []).entries()) {
-    const text = typeof l === "string" ? l : (l.text ?? "");
-    if (text) yield { text, field: `then.stderr[${i}]` };
-  }
-  for (const [i, op] of (sc.then.files ?? []).entries()) {
-    if (op.content)
-      yield { text: op.content, field: `then.files[${i}].content` };
-    if (op.with) yield { text: op.with, field: `then.files[${i}].with` };
-  }
-  for (const [k, v] of Object.entries(sc.then.state ?? {}))
-    if (typeof v === "string") yield { text: v, field: `then.state.${k}` };
 }
 
 // ── Per-lab validation ──────────────────────────────────────────────────────
@@ -332,7 +350,10 @@ function validateLab(labDir: string): {
       if (sc.when.agent) agentScenarios.push(sc);
       else if (sc.when.command) commandPrefixes.push(sc.when.command);
 
-      for (const key of Object.keys(sc.then.state ?? {})) {
+      for (const key of [
+        ...Object.keys(sc.then.state ?? {}),
+        ...Object.keys(sc.then.input?.then.state ?? {}),
+      ]) {
         writtenStatePaths.add(key.replace(/\+=$/, "").trim());
       }
 
@@ -384,6 +405,9 @@ function validateLab(labDir: string): {
           captures.add(captureKey(name));
         }
       }
+      // Keys collected by an interactive input request, referenceable as
+      // {{ input.<key> }} inside its resolution `then` (and step prompts).
+      const inputKeys = new Set((sc.then.input?.steps ?? []).map((s) => s.key));
       for (const { text, field } of thenStrings(sc)) {
         for (const tm of text.matchAll(ARG_TMPL)) {
           if (!captures.has(tm[1])) {
@@ -395,6 +419,14 @@ function validateLab(labDir: string): {
         }
         for (const sm of text.matchAll(STATE_TMPL)) {
           stateRefs.push({ path: sm[1], at: `${at} ${field}` });
+        }
+        for (const im of text.matchAll(INPUT_TMPL)) {
+          if (!inputKeys.has(im[1])) {
+            err(
+              at,
+              `${field} references {{ input.${im[1]} }} but no input step declares key "${im[1]}"`,
+            );
+          }
         }
       }
     }
@@ -453,7 +485,12 @@ function validateLab(labDir: string): {
   }
   if (lab) {
     for (const sc of lab.scenarios) {
-      for (const op of sc.then.files ?? []) {
+      // A scenario's own file ops plus those in an input request's resolution.
+      const fileOps = [
+        ...(sc.then.files ?? []),
+        ...(sc.then.input?.then.files ?? []),
+      ];
+      for (const op of fileOps) {
         if (op.create) providedFiles.add(op.create);
         if (op.copy && op.to) providedFiles.add(op.to);
       }

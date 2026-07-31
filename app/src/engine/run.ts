@@ -8,7 +8,7 @@ import { Command } from "./commands";
 import { FS } from "./filesystem";
 import { match, matchAgent } from "./match";
 import { Store } from "./state";
-import { Lab, Result, resolvePace, Then } from "./types";
+import { InputRequest, Lab, Result, resolvePace, Then } from "./types";
 
 export type { Result };
 
@@ -45,6 +45,8 @@ export function run(
       matched: m.scenario.id,
       completes: m.scenario.completes,
       session: then.session,
+      input: then.input,
+      inputArgs: then.input ? m.args : undefined,
     };
   }
 
@@ -90,6 +92,39 @@ export function runAgent(
     exit: resolveExit(then, lab),
     matched: m ? m.scenario.id : "",
     completes: m ? m.scenario.completes : undefined,
+  };
+}
+
+/**
+ * runInput resolves a completed interactive input request (§7.5): it applies the
+ * request's `then` with the collected values in the `input` template scope and
+ * returns the output. No matching happens — resolution is inline and
+ * deterministic. State/file mutations are applied to st/fs in place.
+ */
+export function runInput(
+  lab: Lab,
+  req: InputRequest,
+  values: Record<string, string>,
+  fs: FS,
+  st: Store,
+  args: Record<string, string> = {},
+): Result {
+  const pace = resolvePace(lab.settings);
+  const then = req.then;
+  const { stdout, stderr } = applyThen(
+    then,
+    fs,
+    st,
+    args,
+    lab.workflows,
+    pace,
+    values,
+  );
+  return {
+    stdout,
+    stderr,
+    exit: resolveExit(then, lab),
+    matched: "",
   };
 }
 

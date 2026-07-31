@@ -32,17 +32,18 @@ export function applyThen(
   args: Record<string, string>,
   workflows?: Workflow[],
   pace: Record<string, number> = {},
+  input: Record<string, string> = {},
 ): ApplyOutput {
   // 1. Files (before state, so file content sees captured args).
   for (const op of then.files ?? []) {
-    applyFileOp(op, fs, st, args);
+    applyFileOp(op, fs, st, args, input);
   }
 
   // 2. State deltas (sorted for deterministic application; string values are
   //    templated against args + state applied so far).
   const state = then.state ?? {};
   for (const key of Object.keys(state).sort()) {
-    const value = renderStateValue(state[key], args, st);
+    const value = renderStateValue(state[key], args, st, input);
     if (key.endsWith(APPEND_SUFFIX)) {
       st.append(key.slice(0, -APPEND_SUFFIX.length).trim(), value);
     } else {
@@ -63,9 +64,9 @@ export function applyThen(
     st.append(CI_RUNS_KEY, ciRunToState(run));
   }
 
-  // 3. Output / stderr (rendered against args + post-delta state).
-  const stdout = renderLines(then.output, args, st, pace);
-  const stderr = renderLines(then.stderr, args, st, pace);
+  // 3. Output / stderr (rendered against args + post-delta state + input).
+  const stdout = renderLines(then.output, args, st, pace, input);
+  const stderr = renderLines(then.stderr, args, st, pace, input);
 
   // 4. MCP output appended to stdout (always at the default cadence).
   for (const call of then.mcp ?? []) {
@@ -81,9 +82,10 @@ function applyFileOp(
   fs: FS,
   st: Store,
   args: Record<string, string>,
+  input: Record<string, string> = {},
 ): void {
-  const content = render(op.content ?? "", args, st);
-  const withVal = render(op.with ?? "", args, st);
+  const content = render(op.content ?? "", args, st, input);
+  const withVal = render(op.with ?? "", args, st, input);
 
   if (op.mkdir) return fs.mkdir(op.mkdir);
   if (op.create) return fs.create(op.create, content);
@@ -99,6 +101,7 @@ function renderStateValue(
   v: StateValue,
   args: Record<string, string>,
   st: Store,
+  input: Record<string, string> = {},
 ): StateValue {
-  return typeof v === "string" ? render(v, args, st) : v;
+  return typeof v === "string" ? render(v, args, st, input) : v;
 }

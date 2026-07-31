@@ -304,6 +304,7 @@ then:
   exit: 0            # optional exit code (default 0)
   mcp: [ ... ]       # optional mocked MCP call blocks, §9
   session: { ... }   # optional: enter an interactive agent session, §14
+  input: { ... }     # optional: prompt for one or more values, §7.5
   ci: { ... }        # optional: trigger a mock CI workflow run, §15
 ```
 
@@ -400,6 +401,8 @@ Output, `content`, and `with` support `{{ }}` interpolation:
   no dashes, and flags are stored dash-stripped, so the two stay consistent.)
   Positional captures keep their numeric index: `{{ args.0 }}`.
 - `{{ state.<dot.path> }}` — a value from the **post-delta** state.
+- `{{ input.<key> }}` — a value collected by an interactive input request
+  (§7.5). Only meaningful inside that request's resolution `then`.
 
 ```yaml
 when:
@@ -414,6 +417,68 @@ then:
 ```
 
 No logic, loops, or expressions — substitution only.
+
+### 7.5 `input` — interactive input
+
+A command can pause and **prompt the learner for one or more values** — a
+password for `sbx secret set`, a name, a confirmation — by declaring
+`then.input`. The terminal collects a line per step, then applies the request's
+own `then` with the collected values in scope. It is bounded and deterministic:
+the same values always produce the same effects (no value-dependent branching —
+if you need that, write the value to state and branch in a follow-up command).
+
+`then.input` and `then.session` (§14) are mutually exclusive — a command either
+collects bounded input or opens an open-ended REPL, not both.
+
+**Single value** — the common case. The step fields sit directly on `input`,
+with the follow-up effects under `input.then`:
+
+```yaml
+- id: secret-set
+  when:
+    command: sbx secret set
+    args: { 0: { any: true } }        # the secret name
+  then:
+    output: ["Setting a value for secret '{{ args.0 }}'."]
+    input:
+      prompt: "Enter value: "          # label shown at the caret
+      key: value                       # name the typed value is stored under
+      mask: true                       # hide typed characters (default: false)
+      then:                            # effects applied once the value is submitted
+        output: ["Secret '{{ args.0 }}' stored."]
+        state:
+          secrets.db-password: "{{ input.value }}"
+```
+
+**Multiple values** — list the questions under `steps`; a single `then` runs
+once all are answered:
+
+```yaml
+then:
+  input:
+    steps:
+      - { key: username, prompt: "Username: " }
+      - { key: password, prompt: "Password: ", mask: true }
+    then:
+      output: ["Logged in as {{ input.username }}."]
+      state: { auth.user: "{{ input.username }}" }
+```
+
+Semantics:
+
+- **Order of effects.** The command's own `then` (output/state/files) applies
+  first — that is where the "what am I about to enter?" line prints. The
+  `input.then` effects apply **after** the last value is submitted.
+- **Scopes in `input.then`.** Templating there can read `{{ input.<key> }}` (the
+  collected values), `{{ args.<name> }}` (the **opening command's** captures,
+  e.g. the secret name), and `{{ state.<dot.path> }}`.
+- **`mask`.** Per step, default off. A masked step renders typed characters as
+  dots, echoes only dots to the transcript, and its value is never written to
+  local storage — so secrets don't leak into the saved session.
+- **Progress.** If the opening scenario declares `completes:` (§5.1), it fires on
+  **submission** (the learner finished the interaction), not when the prompt
+  opens. Abort words (`/cancel`, `/exit`, `/quit`) leave input mode with **no**
+  effects applied, so an abort completes nothing.
 
 ---
 

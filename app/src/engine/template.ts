@@ -5,21 +5,26 @@
 import { Store } from "./state";
 import { OutputEntry, RenderedLine, StateValue } from "./types";
 
-// Matches {{ args.name }} / {{ state.dot.path }} placeholders.
-const TMPL = /\{\{\s*(args|state)\.([A-Za-z0-9_.]+)\s*\}\}/g;
+// Matches {{ args.name }} / {{ state.dot.path }} / {{ input.key }} placeholders.
+const TMPL = /\{\{\s*(args|state|input)\.([A-Za-z0-9_.]+)\s*\}\}/g;
 
 /**
- * render substitutes template placeholders in s using captured args and the
- * (post-delta) state. Unknown placeholders render as an empty string.
+ * render substitutes template placeholders in s using captured args, the
+ * (post-delta) state, and any interactive input values (§7.5). Unknown
+ * placeholders render as an empty string.
  */
 export function render(
   s: string,
   args: Record<string, string>,
   st: Store,
+  input: Record<string, string> = {},
 ): string {
   return s.replace(TMPL, (_match, scope: string, key: string) => {
     if (scope === "args") {
       return args[key] ?? "";
+    }
+    if (scope === "input") {
+      return input[key] ?? "";
     }
     // scope === "state"
     const { value, present } = st.get(key);
@@ -38,10 +43,11 @@ export function renderLines(
   args: Record<string, string>,
   st: Store,
   pace: Record<string, number>,
+  input: Record<string, string> = {},
 ): RenderedLine[] {
   return (entries ?? []).map((entry) => {
     if (typeof entry === "string") {
-      return { text: render(entry, args, st) };
+      return { text: render(entry, args, st, input) };
     }
     const delayMs = resolveDelay(entry.delay, pace);
     if (entry.text === undefined || entry.text === null) {
@@ -49,7 +55,7 @@ export function renderLines(
       // reads `.text` is untouched; the `pause` flag tells the UI to skip it.
       return { text: "", pause: true, delayMs };
     }
-    const line: RenderedLine = { text: render(entry.text, args, st) };
+    const line: RenderedLine = { text: render(entry.text, args, st, input) };
     if (delayMs !== undefined) line.delayMs = delayMs;
     return line;
   });

@@ -95,6 +95,33 @@ export interface Session {
   outro?: string[];
 }
 
+/**
+ * One question in an interactive input request (§7.5). The terminal shows
+ * `prompt` at the caret, collects a line, and stores it under `key` so the
+ * request's resolution `then` can read it as `{{ input.<key> }}`.
+ */
+export interface InputStep {
+  /** Name the collected value is stored under (referenced as {{ input.<key> }}). */
+  key: string;
+  /** Label shown at the input caret while this step is collected (e.g. "Password: "). */
+  prompt: string;
+  /** When true, typed characters are masked (for secrets). Default false. */
+  mask?: boolean;
+}
+
+/**
+ * An interactive input request declared by `then.input`. After the opening
+ * command's effects are applied, the terminal collects one line per step, then
+ * applies `then` with the collected values in scope. Bounded and deterministic:
+ * every submission of the same values yields the same effects (no branching).
+ */
+export interface InputRequest {
+  /** Ordered questions to ask. A single-step author form normalizes to one step. */
+  steps: InputStep[];
+  /** Effects applied once every step is answered. Reads {{ input.<key> }}. */
+  then: Then;
+}
+
 /** The logs/error a step surfaces when its `requires` condition is unmet. */
 export interface WorkflowStepFailure {
   /** Error message surfaced on the run when this step is the failing one. */
@@ -171,6 +198,8 @@ export interface Then {
   exit?: number;
   mcp?: MCPCall[];
   session?: Session;
+  /** Enter interactive input collection after applying this scenario's effects (§7.5). */
+  input?: InputRequest;
   ci?: CITrigger;
 }
 
@@ -255,6 +284,14 @@ export interface Result {
   completes?: string;
   /** Set when the matched scenario declares a session effect. */
   session?: Session;
+  /** Set when the matched scenario declares an interactive input request. */
+  input?: InputRequest;
+  /**
+   * The opening command's captured args, carried alongside `input` so the
+   * request's resolution `then` can still read `{{ args.* }}` after the value is
+   * collected. Empty for scenarios with no captures.
+   */
+  inputArgs?: Record<string, string>;
 }
 
 /** Resolved presentation options after applying defaults. */

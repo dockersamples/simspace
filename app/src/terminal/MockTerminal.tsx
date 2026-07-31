@@ -1,7 +1,9 @@
 // MockTerminal renders an in-browser mock terminal driven by a simulator YAML
 // spec. Any command defined in the spec can be typed at the shell prompt. A
 // scenario with a `session` effect drops the user into an interactive agent
-// REPL; inside a session, `!cmd` runs a command scenario.
+// REPL; inside a session, `!cmd` runs a command scenario. A scenario with an
+// `input` effect (§7.5) instead collects one or more values (masking secrets),
+// then applies the request's resolution `then` — see the "input" Mode below.
 
 import {
   KeyboardEvent,
@@ -14,7 +16,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Session } from "../engine/types";
+import type { InputRequest, Session } from "../engine/types";
 import { Simulator } from "../engine/simulator";
 import { scopedKey } from "../labspace/storage";
 import "./MockTerminal.css";
@@ -110,9 +112,33 @@ interface EmitItem {
   pause?: boolean;
 }
 
-type Mode = { kind: "command" } | { kind: "session"; sess: Session };
+/**
+ * The opening command's tracking details, carried into input mode so the
+ * scenario's `completes` fires when the value is submitted (the "learner did
+ * it" moment), not when the prompt merely opens.
+ */
+interface InputOpen {
+  completes?: string;
+  matched?: string;
+  line?: string;
+  /** The opening command's captured args, passed back into submitInput. */
+  args?: Record<string, string>;
+}
+
+type Mode =
+  | { kind: "command" }
+  | { kind: "session"; sess: Session }
+  | {
+      kind: "input";
+      req: InputRequest;
+      stepIndex: number;
+      values: Record<string, string>;
+      open: InputOpen;
+    };
 
 const EXIT_COMMANDS = new Set(["/exit", "/quit"]);
+/** Lines that abort an in-progress interactive input and return to the shell. */
+const INPUT_ABORT = new Set(["/cancel", "/exit", "/quit"]);
 
 const WHALE = [
   "                  ##         .",
@@ -254,9 +280,17 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     useEffect(() => {
       if (!storageKey) return;
       try {
+        // Never persist an in-progress input: its collected values may include a
+        // masked secret. A refresh mid-input drops back to the command prompt.
+        const persistMode: Mode =
+          mode.kind === "input" ? { kind: "command" } : mode;
         localStorage.setItem(
           storageKey,
-          JSON.stringify({ lines, mode, history: history.current }),
+          JSON.stringify({
+            lines,
+            mode: persistMode,
+            history: history.current,
+          }),
         );
       } catch {
         /* storage full or unavailable */
@@ -414,6 +448,27 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
             pause: l.pause,
           })),
         );
+
+        if (outcome.input) {
+          // Enter interactive input collection. Completion is deferred to the
+          // submit (see runInputTurn), so we don't notify here.
+          const next: Mode = {
+            kind: "input",
+            req: outcome.input,
+            stepIndex: 0,
+            values: {},
+            open: {
+              completes: outcome.completes,
+              matched: outcome.matched,
+              line,
+              args: outcome.inputArgs,
+            },
+          };
+          modeRef.current = next;
+          setMode(next);
+          return;
+        }
+
         notify(outcome, line);
 
         if (outcome.session) {
@@ -469,6 +524,59 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
       [simulator, terminalId, emit, think, emitAgentTurn, notify],
     );
 
+    // Handles one line typed while collecting interactive input. Stores the
+    // value under the current step's key and advances; on the final step it
+    // resolves the request through the engine and returns to the shell. Abort
+    // words (/cancel, /exit, /quit) leave input mode without applying effects.
+    const runInputTurn = useCallback(
+      async (value: string, current: Extract<Mode, { kind: "input" }>) => {
+        if (!simulator) return;
+        if (INPUT_ABORT.has(value)) {
+          await emit([{ text: "(input cancelled)", kind: "dim" as LineKind }]);
+          modeRef.current = { kind: "command" };
+          setMode({ kind: "command" });
+          return;
+        }
+
+        const step = current.req.steps[current.stepIndex];
+        const values = { ...current.values, [step.key]: value };
+        const nextIndex = current.stepIndex + 1;
+
+        if (nextIndex < current.req.steps.length) {
+          // More questions to ask — advance to the next step's prompt.
+          const next: Mode = { ...current, stepIndex: nextIndex, values };
+          modeRef.current = next;
+          setMode(next);
+          return;
+        }
+
+        // All values collected: leave input mode, then apply the resolution.
+        modeRef.current = { kind: "command" };
+        setMode({ kind: "command" });
+        const outcome = simulator.submitInput(
+          current.req,
+          values,
+          current.open.args,
+        );
+        await emit(
+          outcome.lines.map((l) => ({
+            text: l.text,
+            kind: (l.stream === "stderr" ? "stderr" : "stdout") as LineKind,
+            delayMs: l.delayMs,
+            pause: l.pause,
+          })),
+        );
+        // Fire the opening scenario's deferred completion now that the learner
+        // finished the interaction. When it had no `completes`, this is a bare
+        // "shared state changed" signal (submitInput may have mutated state).
+        notify(
+          { completes: current.open.completes, matched: current.open.matched },
+          current.open.line,
+        );
+      },
+      [simulator, emit, notify],
+    );
+
     // Runs a raw line through the terminal exactly as if it had been typed and
     // submitted. Shared by the Enter handler and the imperative runCommand().
     const runLine = useCallback(
@@ -477,17 +585,33 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
         const line = raw.trim();
 
         const currentMode = modeRef.current;
-        const promptPrefix =
-          currentMode.kind === "session"
-            ? sess_prompt(currentMode.sess)
-            : shellPrompt;
+        const inInput = currentMode.kind === "input";
+        const masked =
+          inInput && !!currentMode.req.steps[currentMode.stepIndex].mask;
+        const promptPrefix = promptFor(currentMode, shellPrompt);
 
-        // Echo the typed line with its prompt, always (even when empty).
-        append(promptPrefix + raw, "input");
-        if (line) {
+        // Echo the typed line with its prompt, always (even when empty). A masked
+        // step echoes bullets so the secret never lands in the transcript (or the
+        // persisted lines) as plaintext.
+        const echo = masked ? "•".repeat(raw.length) : raw;
+        append(promptPrefix + echo, "input");
+        // Record real command lines in history — never interactive input values.
+        if (line && !inInput) {
           history.current.push(line);
         }
         historyPos.current = -1;
+
+        // While collecting input, every line is a value (empty included); only
+        // the abort words are special. Dispatch to the input handler.
+        if (inInput) {
+          setBusy(true);
+          try {
+            await runInputTurn(line, currentMode);
+          } finally {
+            setBusy(false);
+          }
+          return;
+        }
 
         if (!line) return;
 
@@ -509,7 +633,15 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
           setBusy(false);
         }
       },
-      [busy, simulator, shellPrompt, append, runCommand, runSessionTurn],
+      [
+        busy,
+        simulator,
+        shellPrompt,
+        append,
+        runCommand,
+        runSessionTurn,
+        runInputTurn,
+      ],
     );
 
     const submit = useCallback(async () => {
@@ -538,6 +670,13 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
       if (e.key === "Enter") {
         e.preventDefault();
         void submit();
+        return;
+      }
+      // While collecting interactive input, suppress history recall and path
+      // completion: neither should pull command history or filenames into what
+      // may be a masked value field. Enter (submit) and plain typing still work.
+      if (modeRef.current.kind === "input") {
+        if (e.key === "Tab") e.preventDefault();
         return;
       }
       if (e.key === "ArrowUp") {
@@ -664,8 +803,9 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
       );
     }
 
-    const promptPrefix =
-      mode.kind === "session" ? sess_prompt(mode.sess) : shellPrompt;
+    const promptPrefix = promptFor(mode, shellPrompt);
+    const maskInput =
+      mode.kind === "input" && !!mode.req.steps[mode.stepIndex].mask;
 
     return (
       <div
@@ -689,6 +829,7 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
               <input
                 ref={inputRef}
                 className="term-input"
+                type={maskInput ? "password" : "text"}
                 value={input}
                 spellCheck={false}
                 autoComplete="off"
@@ -708,6 +849,14 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
 
 function sess_prompt(sess: Session): string {
   return sess.prompt && sess.prompt.length > 0 ? sess.prompt : "> ";
+}
+
+/** The caret prefix for the current mode: the shell prompt, the session prompt,
+ * or the current input step's question label. */
+function promptFor(mode: Mode, shellPrompt: string): string {
+  if (mode.kind === "session") return sess_prompt(mode.sess);
+  if (mode.kind === "input") return mode.req.steps[mode.stepIndex].prompt;
+  return shellPrompt;
 }
 
 /**

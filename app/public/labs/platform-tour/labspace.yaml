@@ -20,7 +20,7 @@ catalog:
 
 # Version string. Progress (completed milestones) is stored per lab and per
 # version, so bumping this when you add/rename steps invalidates stale progress.
-version: "1.0.0"
+version: "1.1.0"
 
 # The scenario spec that scripts every command (relative to this file).
 simulator: simulator.yaml
@@ -122,6 +122,8 @@ sections:
     steps:
       - id: deploy-the-service
         title: "Deploy the service"
+      - id: set-deploy-token
+        title: "Configure the deploy target with a secret"
   - title: The assistant
     contentPath: 06-assistant.md
     steps:

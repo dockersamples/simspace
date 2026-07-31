@@ -7,9 +7,10 @@ import { ciRunToState, resolveCIRun } from "./ci";
 import { parseCommand, tokenize } from "./commands";
 import { FS, FSError } from "./filesystem";
 import { checkSchemaVersion, parseManifest } from "./manifest";
-import { run, runAgent } from "./run";
+import { run, runAgent, runInput } from "./run";
 import { Store } from "./state";
 import {
+  InputRequest,
   Lab,
   Options,
   RenderedLine,
@@ -38,6 +39,10 @@ export interface CommandOutcome {
   completes?: string;
   /** When set, the caller should enter an interactive agent session. */
   session?: Session;
+  /** When set, the caller should collect interactive input, then submitInput(). */
+  input?: InputRequest;
+  /** The opening command's captured args, to pass back into submitInput(). */
+  inputArgs?: Record<string, string>;
 }
 
 /** The result of executing one agent prompt inside a session. */
@@ -159,6 +164,33 @@ export class Simulator {
       matched: result.matched,
       completes: result.completes,
       session: result.session,
+      input: result.input,
+      inputArgs: result.inputArgs,
+    };
+  }
+
+  /**
+   * submitInput resolves a completed interactive input request: it applies the
+   * request's `then` with the collected values in scope and returns the output.
+   * `values` maps each step's `key` to the line the learner typed; `args` are
+   * the opening command's captured args (from the outcome's `inputArgs`), so the
+   * resolution `then` can still read `{{ args.* }}`.
+   */
+  submitInput(
+    req: InputRequest,
+    values: Record<string, string>,
+    args: Record<string, string> = {},
+  ): AgentOutcome {
+    let result;
+    try {
+      result = runInput(this.lab, req, values, this.fs, this.store, args);
+    } catch (e) {
+      return { lines: [err({ text: fsMessage(e) })], exit: 1, matched: "" };
+    }
+    return {
+      lines: [...result.stdout.map(out), ...result.stderr.map(err)],
+      exit: result.exit,
+      matched: result.matched,
     };
   }
 

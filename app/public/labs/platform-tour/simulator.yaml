@@ -237,6 +237,34 @@ scenarios:
         - "Open the Settings tab (top-right) and turn on \"Configure a deploy target\", then try again."
       exit: 1
 
+  # `sbx secret set <name>` demonstrates interactive input (then.input, §7.5): the
+  # command pauses, prompts for a MASKED value, and on submit stores it and
+  # configures the deploy target — a typed-secret alternative to the toggle above.
+  # `completes` fires on submission, not when the prompt opens; `/cancel` backs
+  # out with no effects. The opening arg ({{ args.0 }}) stays readable in the
+  # resolution `then`, alongside the collected {{ input.value }}.
+  - id: secret-set
+    description: "sbx secret set <name> — prompts (masked) for a value, then stores it."
+    completes: set-deploy-token
+    when:
+      command: [sbx, secret, set]
+      args: { 0: { any: true } }
+    then:
+      output:
+        - "Setting a value for secret '{{ args.0 }}'."
+      input:
+        prompt: "Value (hidden): "
+        key: value
+        mask: true
+        then:
+          output:
+            - { text: "Encrypting and storing secret...", delay: beat }
+            - "Secret '{{ args.0 }}' stored ✓"
+            - "Deploy target configured — you can now run `deploy`."
+          state:
+            deploy.token: "{{ input.value }}"
+            deploy.configured: true
+
   # ══════════════════════════════════════════════════════════════════════════
   # SECTION 7 — assistant: an interactive agent session
   # ══════════════════════════════════════════════════════════════════════════
