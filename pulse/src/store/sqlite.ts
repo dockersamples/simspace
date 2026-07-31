@@ -46,8 +46,7 @@ export class EventLog {
     this.db = new Database(dbPath);
     this.db.pragma("journal_mode = WAL");
     // `origin` namespaces every row by the deployment the event came from, so
-    // the same labId served from two different sites never collides. It's the
-    // leading column of both indexes because every read is scoped by it.
+    // the same labId served from two different sites never collides.
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS events (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,15 +61,22 @@ export class EventLog {
         ts_client   TEXT,
         ts_server   TEXT NOT NULL
       );
-      CREATE INDEX IF NOT EXISTS idx_events_origin_lab ON events (origin, lab_id, event);
-      CREATE INDEX IF NOT EXISTS idx_events_origin_lab_step ON events (origin, lab_id, step_id);
     `);
     // Migrate a pre-origin database: add the column (legacy rows get NULL,
     // surfaced as "unknown") so an existing volume keeps working after upgrade.
+    // MUST run before the indexes below, which reference `origin` — on an
+    // existing DB the CREATE TABLE above is a no-op, so the column only exists
+    // once this ALTER has run.
     const hasOrigin = (
       this.db.prepare(`PRAGMA table_info(events)`).all() as { name: string }[]
     ).some((c) => c.name === "origin");
     if (!hasOrigin) this.db.exec(`ALTER TABLE events ADD COLUMN origin TEXT`);
+
+    // Indexes lead with `origin` because every read is scoped by it.
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_events_origin_lab ON events (origin, lab_id, event);
+      CREATE INDEX IF NOT EXISTS idx_events_origin_lab_step ON events (origin, lab_id, step_id);
+    `);
 
     this.insertStmt = this.db.prepare(`
       INSERT INTO events

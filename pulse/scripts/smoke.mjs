@@ -4,6 +4,10 @@
 
 import { spawn } from "node:child_process";
 import { request } from "node:http";
+import { existsSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import Database from "better-sqlite3";
 
 const PORT = 8899;
 const TOKEN = "test-token";
@@ -15,6 +19,14 @@ const CORS_PORT = 8898;
 const corsBase = `http://127.0.0.1:${CORS_PORT}`;
 const ALLOWED = "https://alpha.example";
 const DENIED = "https://evil.example";
+
+// A third instance booted against a file DB seeded with the OLD (pre-origin)
+// schema, to prove the on-boot migration runs. Must be file-backed — :memory:
+// is always a fresh schema and never exercises the upgrade path.
+const LEGACY_PORT = 8896;
+const legacyBase = `http://127.0.0.1:${LEGACY_PORT}`;
+const legacyDb = join(tmpdir(), `pulse-legacy-${process.pid}.db`);
+const legacyDbFiles = [legacyDb, `${legacyDb}-wal`, `${legacyDb}-shm`];
 
 const child = spawn("node", ["dist/server.cjs"], {
   env: {
@@ -28,6 +40,7 @@ const child = spawn("node", ["dist/server.cjs"], {
 });
 
 let corsChild = null;
+let legacyChild = null;
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -294,12 +307,69 @@ try {
       preflight.headers["access-control-allow-origin"] === ALLOWED,
     `${preflight.status} ${JSON.stringify(preflight.headers)}`,
   );
+
+  // ── Migration: booting against a pre-origin DB ──────────────────────────────
+  // Regression guard: the origin index once referenced the column before the
+  // ALTER that adds it, so an existing volume threw "no such column: origin"
+  // on boot. Seed the old schema, then boot the real binary against it.
+  for (const f of legacyDbFiles) if (existsSync(f)) rmSync(f);
+  const seed = new Database(legacyDb);
+  seed.pragma("journal_mode = WAL");
+  seed.exec(`
+    CREATE TABLE events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lab_id TEXT NOT NULL, lab_version TEXT, session_id TEXT NOT NULL,
+      actor_id TEXT, event TEXT NOT NULL, section_id TEXT, step_id TEXT,
+      ts_client TEXT, ts_server TEXT NOT NULL);
+    CREATE INDEX idx_events_lab ON events (lab_id, event);
+  `);
+  seed
+    .prepare(
+      `INSERT INTO events (lab_id, session_id, event, ts_server) VALUES (?,?,?,?)`,
+    )
+    .run("legacy-lab", "s-old", "lab_completed", "2026-01-01T00:00:00.000Z");
+  seed.close();
+
+  legacyChild = spawn("node", ["dist/server.cjs"], {
+    env: {
+      ...process.env,
+      PORT: String(LEGACY_PORT),
+      DB_PATH: legacyDb,
+      STATS_TOKEN: TOKEN,
+    },
+    stdio: ["ignore", "inherit", "inherit"],
+  });
+  await waitForReady(legacyBase);
+
+  const legacyHealth = await raw("GET", "/healthz", { baseUrl: legacyBase });
+  check(
+    "boots against a pre-origin DB (migration adds the column)",
+    legacyHealth.status === 200,
+    JSON.stringify(legacyHealth),
+  );
+  const legacyLabs = (
+    await raw("GET", "/labs", { token: TOKEN, baseUrl: legacyBase })
+  ).json;
+  const legacyRow = legacyLabs.labs.find((l) => l.labId === "legacy-lab");
+  check(
+    "pre-existing rows survive migration under origin 'unknown'",
+    legacyRow && legacyRow.origin === "unknown" && legacyRow.completions === 1,
+    JSON.stringify(legacyLabs.labs),
+  );
 } catch (e) {
   failures += 1;
   console.error("smoke error:", e.message);
 } finally {
   child.kill("SIGTERM");
   if (corsChild) corsChild.kill("SIGTERM");
+  if (legacyChild) legacyChild.kill("SIGTERM");
+  for (const f of legacyDbFiles) {
+    try {
+      if (existsSync(f)) rmSync(f);
+    } catch {
+      /* best-effort temp cleanup */
+    }
+  }
 }
 
 console.log(failures === 0 ? "\nSMOKE PASS" : `\nSMOKE FAIL (${failures})`);
