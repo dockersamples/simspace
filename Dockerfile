@@ -17,7 +17,7 @@
 ##################################################
 
 # The static output is platform-independent, so build it on the build platform.
-FROM --platform=$BUILDPLATFORM node:24-alpine AS build
+FROM --platform=$BUILDPLATFORM dhi.io/node:24-alpine-dev AS build
 WORKDIR /usr/local/app
 COPY app/package*.json ./
 RUN npm ci
@@ -28,7 +28,7 @@ RUN npm run build
 #                  SERVE STAGE                   #
 ##################################################
 
-FROM nginx:alpine AS production
+FROM dhi.io/nginx:1-alpine AS production
 COPY --from=build /usr/local/app/dist /usr/share/nginx/html
 EXPOSE 80
 
@@ -40,7 +40,7 @@ EXPOSE 80
 # author's machine and in CI. Authors mount only their labs/ directory into this:
 #   dev:      -v ./labs:/usr/local/app/public/labs  (served by `npm run dev`)
 #   validate: -v ./labs:/labs                        (npm run validate-lab -- /labs)
-FROM node:24-alpine AS authoring
+FROM dhi.io/node:24-alpine-dev AS authoring
 WORKDIR /usr/local/app
 COPY app/package*.json ./
 RUN npm ci
