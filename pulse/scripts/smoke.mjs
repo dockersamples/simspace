@@ -106,6 +106,18 @@ try {
     JSON.stringify(stats.steps),
   );
 
+  // Time window: a wide window still includes the seeded events; a 1ms window
+  // excludes everything already recorded.
+  const authed = { headers: { Authorization: `Bearer ${TOKEN}` } };
+  const wide = await (
+    await fetch(`${base}/stats?labId=demo&sinceMs=3600000`, authed)
+  ).json();
+  check("windowed stats (1h) includes recent starts", wide.starts === 1, JSON.stringify(wide));
+  const tiny = await (
+    await fetch(`${base}/stats?labId=demo&sinceMs=1`, authed)
+  ).json();
+  check("windowed stats (1ms) excludes older events", tiny.starts === 0, JSON.stringify(tiny));
+
   // catalog completion count.
   let done = await (await fetch(`${base}/completed?labId=demo`)).json();
   check("completed = 0 before lab_completed", done.completed === 0, JSON.stringify(done));

@@ -44,7 +44,7 @@ tracking:
 | GET    | `/presence?labId=`      | lab (public) | Live aggregate: `{ total, perSection, perMilestone, avatars }`. |
 | GET    | `/stream?labId=`        | lab (public) | Server-Sent Events: the same aggregate pushed on connect and every ~3s. Clients fall back to `/presence` polling. |
 | GET    | `/completed?labId=`     | catalog (public) | Aggregate-only `{ completed }` count for a lab. |
-| GET    | `/stats?labId=`         | instructor | Cumulative funnel / per-step drop-off. Requires `STATS_TOKEN`. |
+| GET    | `/stats?labId=`         | instructor | Funnel / per-step drop-off. Optional `&sinceMs=<lookback>` scopes counts to a sliding time window (e.g. `10800000` for the last 3h; omit for all-time). Requires `STATS_TOKEN`. |
 | GET    | `/healthz`              | ops        | Liveness. |
 
 ## Events

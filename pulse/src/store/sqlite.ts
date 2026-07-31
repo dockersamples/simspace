@@ -75,14 +75,23 @@ export class EventLog {
    * (per-step distinct-session counts), which is why the /stats endpoint that
    * serves this is token-gated and never called by the lab UI.
    */
-  stats(labId: string): LabStats {
+  // `sinceIso`, when given, scopes every count to events at or after that UTC
+  // timestamp — the time-window feature. ts_server is stored as a UTC ISO
+  // string, so a lexicographic `>=` compare is a correct time compare. Passing
+  // the cutoff as `(? IS NULL OR ts_server >= ?)` keeps one query for both the
+  // windowed and all-time (sinceIso = undefined → null) cases.
+  stats(labId: string, sinceIso?: string): LabStats {
+    const since = sinceIso ?? null;
+
     const count = (event: string) =>
       (
         this.db
           .prepare(
-            `SELECT COUNT(DISTINCT session_id) AS n FROM events WHERE lab_id = ? AND event = ?`,
+            `SELECT COUNT(DISTINCT session_id) AS n
+               FROM events
+              WHERE lab_id = ? AND event = ? AND (? IS NULL OR ts_server >= ?)`,
           )
-          .get(labId, event) as { n: number }
+          .get(labId, event, since, since) as { n: number }
       ).n;
 
     const steps = this.db
@@ -92,10 +101,11 @@ export class EventLog {
                 COUNT(DISTINCT session_id) AS distinctSessions
            FROM events
           WHERE lab_id = ? AND event = 'step_completed' AND step_id IS NOT NULL
+                AND (? IS NULL OR ts_server >= ?)
           GROUP BY step_id
           ORDER BY distinctSessions DESC`,
       )
-      .all(labId) as StepStat[];
+      .all(labId, since, since) as StepStat[];
 
     const sections = this.db
       .prepare(
@@ -104,10 +114,15 @@ export class EventLog {
                 COUNT(DISTINCT session_id) AS distinctSessions
            FROM events
           WHERE lab_id = ? AND event = 'section_viewed' AND section_id IS NOT NULL
+                AND (? IS NULL OR ts_server >= ?)
           GROUP BY section_id
           ORDER BY distinctSessions DESC`,
       )
-      .all(labId) as { sectionId: string; views: number; distinctSessions: number }[];
+      .all(labId, since, since) as {
+      sectionId: string;
+      views: number;
+      distinctSessions: number;
+    }[];
 
     return {
       labId,

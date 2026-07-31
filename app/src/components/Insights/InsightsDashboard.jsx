@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { loadLabspace } from "../../labspace/loader";
 import "./InsightsDashboard.scss";
@@ -27,6 +27,36 @@ const INTERVAL_OPTIONS = [
   { label: "Off", value: 0 },
 ];
 
+// Time window for the stats. `0` = all-time (the default, so nothing changes
+// unless an instructor scopes it). Passed to /stats as `sinceMs`; the server
+// computes a sliding cutoff from its own clock. Persisted like the interval.
+const HOUR = 3600000;
+const WINDOW_KEY = "simspace:stats-window";
+const DEFAULT_WINDOW_MS = 0;
+const WINDOW_OPTIONS = [
+  { label: "Last 3 hours", value: 3 * HOUR },
+  { label: "Last day", value: 24 * HOUR },
+  { label: "Last week", value: 7 * 24 * HOUR },
+  { label: "Last month", value: 30 * 24 * HOUR },
+  { label: "All time", value: 0 },
+];
+
+// Reads a persisted numeric option. An ABSENT key falls back to the default;
+// a stored value is honored only if it's still a valid option. (A plain
+// `Number(getItem())` can't tell "unset" from a stored 0 — both look like 0 —
+// which would wrongly resolve an empty store to the 0-valued option.)
+function readStored(key, options, fallback) {
+  let raw;
+  try {
+    raw = localStorage.getItem(key);
+  } catch {
+    return fallback;
+  }
+  if (raw === null) return fallback;
+  const value = Number(raw);
+  return options.some((o) => o.value === value) ? value : fallback;
+}
+
 export function InsightsDashboard({ lab }) {
   const endpoint = lab.tracking.endpoint.replace(/\/+$/, "");
   const labId = lab.tracking.labId;
@@ -40,12 +70,16 @@ export function InsightsDashboard({ lab }) {
   const [state, setState] = useState("idle"); // idle | loading | ready | error
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState(null);
-  const [intervalMs, setIntervalMs] = useState(() => {
-    const saved = Number(localStorage.getItem(INTERVAL_KEY));
-    return INTERVAL_OPTIONS.some((o) => o.value === saved)
-      ? saved
-      : DEFAULT_INTERVAL_MS;
-  });
+  const [intervalMs, setIntervalMs] = useState(() =>
+    readStored(INTERVAL_KEY, INTERVAL_OPTIONS, DEFAULT_INTERVAL_MS),
+  );
+
+  const [windowMs, setWindowMs] = useState(() =>
+    readStored(WINDOW_KEY, WINDOW_OPTIONS, DEFAULT_WINDOW_MS),
+  );
+  // Read inside `refresh` (and the poll) so the current window is always used
+  // without making `refresh` change identity — keeps the poll effect stable.
+  const windowRef = useRef(windowMs);
 
   const changeInterval = useCallback((ms) => {
     setIntervalMs(ms);
@@ -82,8 +116,9 @@ export function InsightsDashboard({ lab }) {
         setError("");
       }
       try {
+        const since = windowRef.current ? `&sinceMs=${windowRef.current}` : "";
         const res = await fetch(
-          `${endpoint}/stats?labId=${encodeURIComponent(labId)}`,
+          `${endpoint}/stats?labId=${encodeURIComponent(labId)}${since}`,
           { headers: { Authorization: `Bearer ${tok}` } },
         );
         if (!res.ok) {
@@ -114,6 +149,21 @@ export function InsightsDashboard({ lab }) {
       }
     },
     [endpoint, labId],
+  );
+
+  const changeWindow = useCallback(
+    (ms) => {
+      windowRef.current = ms;
+      setWindowMs(ms);
+      try {
+        localStorage.setItem(WINDOW_KEY, String(ms));
+      } catch {
+        /* ignore storage errors */
+      }
+      // Refetch immediately (silently) so the numbers reflect the new window.
+      if (token) refresh(token, { silent: true });
+    },
+    [token, refresh],
   );
 
   // Auto-load when a token is already remembered for this backend.
@@ -264,8 +314,21 @@ export function InsightsDashboard({ lab }) {
         {backLink}
         <h1 className="insights-title">{lab.title} — Insights</h1>
         <p className="insights-subtitle">
-          Instructor view · cumulative · lab id <code>{labId}</code>
+          Instructor view · lab id <code>{labId}</code>
         </p>
+        <label className="insights-window">
+          <span className="insights-window-label">Showing</span>
+          <select
+            value={windowMs}
+            onChange={(e) => changeWindow(Number(e.target.value))}
+          >
+            {WINDOW_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </header>
 
       <div className="insights-tiles">
@@ -316,6 +379,14 @@ export function InsightsDashboard({ lab }) {
         <p className="insights-card-note">
           Distinct learners reaching each milestone, in lab order. Where the
           bars narrow is where people drop off.
+          {windowMs > 0 && (
+            <>
+              {" "}
+              Counts activity within the selected window, so someone who started
+              earlier but acted recently can appear at a later step than an
+              earlier one.
+            </>
+          )}
         </p>
         <BarList rows={model.funnel} max={maxFunnel} variant="funnel" />
       </section>

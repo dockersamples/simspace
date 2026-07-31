@@ -180,7 +180,8 @@
     background: #2d9568;
     animation: insights-pulse 2s ease-in-out infinite;
   }
-  .insights-interval select {
+  .insights-interval select,
+  .insights-window select {
     padding: 4px 8px;
     border: 1px solid var(--bs-border-color);
     border-radius: 999px;
@@ -188,6 +189,20 @@
     color: var(--bs-body-color);
     font-size: 0.78rem;
     cursor: pointer;
+  }
+
+  // Time-window selector under the header — scopes every number on the page.
+  .insights-window {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+
+    .insights-window-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--bs-secondary-color);
+    }
   }
   @keyframes insights-pulse {
     0%,

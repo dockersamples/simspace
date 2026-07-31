@@ -187,7 +187,16 @@ export function createApp({ config, log, presence, now = () => Date.now() }: Dep
           json(res, 400, { error: "labId required" });
           return;
         }
-        json(res, 200, log.stats(labId));
+        // Optional time window: `sinceMs` is a lookback in milliseconds. The
+        // cutoff is computed from the server clock on every request, so the
+        // window slides (a client's "last 3h" always means the last 3h) and
+        // there's no client/server clock-skew. Absent/0 → all-time.
+        const sinceMs = Number(url.searchParams.get("sinceMs"));
+        const sinceIso =
+          Number.isFinite(sinceMs) && sinceMs > 0
+            ? new Date(now() - sinceMs).toISOString()
+            : undefined;
+        json(res, 200, log.stats(labId, sinceIso));
         return;
       }
 
