@@ -456,13 +456,17 @@ Behaviour:
   back a live presence aggregate. Identifiers are random per-browser handles,
   not identities.
 - **In-lab, only live presence is shown — never cumulative completion counts.**
-  Cumulative data is instructor-only (`pulse`'s gated `/stats`) or a catalog-page
-  aggregate, so a learner never sees a discouraging drop-off number mid-lab.
+  This is deliberate, not an oversight: a mid-lab "X of Y completed this step"
+  number reads as drop-off and can *cause* the drop-off it reports (a learner who
+  sees "3 of 500 got here" may quietly give up), whereas live "who's here"
+  presence is a positive, "you're not alone" signal. So cumulative data is kept
+  out of the running lab — it lives only in the instructor dashboard (`pulse`'s
+  token-gated `/stats`) and as a catalog-page aggregate ("Completed by N
+  people"). Do not surface a completion/drop-off count beside a step.
 - Requires a step catalog (§5.2) for step-level presence; the global "who's here"
   works from section navigation alone.
 
-See the design doc `Design - Live Presence & Progress Tracking.md` and
-`pulse/README.md` for the full model and backend deployment.
+See `pulse/README.md` for the full backend model and deployment.
 
 ---
 

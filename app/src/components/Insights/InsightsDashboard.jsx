@@ -4,7 +4,8 @@ import { loadLabspace } from "../../labspace/loader";
 import "./InsightsDashboard.scss";
 
 // Instructor-only dashboard for one lab's CUMULATIVE analytics — the funnel and
-// per-step drop-off that must never appear inside a running lab (§ design doc).
+// per-step drop-off that must never appear inside a running lab (see
+// spec/labspace.md §10.2 for why).
 // It reads pulse's token-gated /stats, so it prompts for the instructor token
 // (remembered per backend in sessionStorage) and never exposes it to learners.
 //
