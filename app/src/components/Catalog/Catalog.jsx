@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import "./Catalog.scss";
 
-// Cumulative "N completed this lab" from the pulse backend. This is the ONE
-// place a cumulative number is shown — the catalog, not inside a running lab —
-// and only when at least one person has finished, so a new lab reads as fresh
-// rather than empty.
+// Social-proof "Completed by N people" from the pulse backend — how many OTHERS
+// have finished this lab. This is the ONE place a cumulative number is shown
+// (the catalog, not inside a running lab), and only when at least one person has
+// finished, so a new lab reads as fresh rather than empty. Deliberately styled
+// as a neutral stat with a people icon — not a green personal "you completed
+// this" check.
 function LabCompletedCount({ tracking }) {
   const [count, setCount] = useState(null);
   useEffect(() => {
@@ -28,9 +30,9 @@ function LabCompletedCount({ tracking }) {
 
   if (!count || count < 1) return null;
   return (
-    <span className="catalog-chip catalog-chip-completed">
-      <span className="material-symbols-outlined">check_circle</span>
-      {count} completed
+    <span className="catalog-card-completed">
+      <span className="material-symbols-outlined">group</span>
+      Completed by {count} {count === 1 ? "person" : "people"}
     </span>
   );
 }
@@ -69,9 +71,7 @@ export function Catalog({ labs }) {
                 {lab.description && (
                   <span className="catalog-card-desc">{lab.description}</span>
                 )}
-                {(lab.tags.length > 0 ||
-                  lab.estimatedMinutes != null ||
-                  lab.tracking) && (
+                {(lab.tags.length > 0 || lab.estimatedMinutes != null) && (
                   <span className="catalog-card-meta">
                     {lab.estimatedMinutes != null && (
                       <span className="catalog-chip catalog-chip-time">
@@ -86,23 +86,14 @@ export function Catalog({ labs }) {
                         {tag}
                       </span>
                     ))}
-                    <LabCompletedCount tracking={lab.tracking} />
                   </span>
                 )}
+                <LabCompletedCount tracking={lab.tracking} />
               </span>
               <span className="catalog-card-arrow material-symbols-outlined">
                 arrow_forward
               </span>
             </Link>
-            {lab.tracking && (
-              <Link
-                to={`/labs/${lab.id}/insights`}
-                className="catalog-card-insights"
-              >
-                <span className="material-symbols-outlined">bar_chart</span>
-                Insights
-              </Link>
-            )}
           </li>
         ))}
       </ul>
