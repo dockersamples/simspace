@@ -1,8 +1,9 @@
 # pulse — presence & analytics for Simspace labs
 
 `pulse` is the **optional** backend for Simspace labs. Labs are static and
-server-free; a lab only talks to `pulse` if its `labspace.yaml` declares a
-`tracking:` block. One deployment serves many labs (bucketed by `labId`).
+server-free; a deployment connects them to `pulse` by pointing the app's
+`config.json` at it (one endpoint for the whole deployment, bucketed per lab).
+With no such config the app makes no network calls.
 
 It does two things from one anonymous event stream:
 
@@ -25,16 +26,24 @@ npm run dev            # builds + starts on :8888
 docker compose up --build
 ```
 
-Then point a lab at it:
+Then point the app at it via `config.json` (served next to `labs.json`). The
+repo commits a dev default already pointing here, so `docker compose up` works
+out of the box:
 
-```yaml
-# labspace.yaml
-tracking:
-  endpoint: http://localhost:8888
-  labId: my-lab          # defaults to the catalog id
-  presence: true
-  identity: optional-name # anonymous | optional-name
+```json
+// app/public/config.json
+{
+  "tracking": {
+    "endpoint": "http://localhost:8888",
+    "presence": true,
+    "identity": "optional-name"
+  }
+}
 ```
+
+Every lab is then tracked automatically; a lab opts out with `tracking: false`
+in its `labspace.yaml` (see `spec/labspace.md` §10.2). In production the deploy
+pipeline writes this `config.json` with the real endpoint.
 
 ## Endpoints
 
@@ -73,8 +82,8 @@ presence liveness; `leave` only removes a session.
 Events are anonymous: `sessionId`/`actor.id` are random per-browser handles, not
 identities. A learner-entered display name is the only optional PII and appears
 only if the lab enables `identity: optional-name` and the learner opts in.
-Presence is ephemeral (TTL); the durable log stores anonymous events. A lab with
-no `tracking:` block sends nothing.
+Presence is ephemeral (TTL); the durable log stores anonymous events. With no
+`config.json` tracking endpoint (and no per-lab override), the app sends nothing.
 
 ## Verify
 

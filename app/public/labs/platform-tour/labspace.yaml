@@ -10,16 +10,13 @@ catalog:
   estimatedMinutes: 15
   order: 1
 
-# OPTIONAL presence + analytics backend. The lab stays static and only talks to
-# this endpoint; omit the whole block and no network calls are made. Here it
-# points at the pulse service from the repo's dev compose (`docker compose up`);
-# point it at your own deployment in production. In-lab this only surfaces LIVE
-# presence — cumulative data lives in the instructor dashboard (see the Insights
-# link on the catalog card, or #/labs/platform-tour/insights).
-tracking:
-  endpoint: http://localhost:8888
-  presence: true
-  identity: optional-name # anonymous | optional-name
+# Presence + analytics tracking is configured ONCE per deployment in the app's
+# config.json (the pulse endpoint), so this lab is tracked automatically — no
+# `tracking:` block needed here. In-lab it only surfaces LIVE presence;
+# cumulative data lives in the instructor dashboard (#/labs/platform-tour/insights).
+#
+# To opt THIS lab out:            tracking: false
+# To tweak just this lab:         tracking: { presence: false }   # etc.
 
 # Version string. Progress (completed milestones) is stored per lab and per
 # version, so bumping this when you add/rename steps invalidates stale progress.

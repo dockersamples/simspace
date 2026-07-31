@@ -42,7 +42,6 @@ export function buildCatalog(labsDir) {
       throw new Error(`labs/${id}/labspace.yaml does not parse: ${e.message}`);
     }
     const cat = (doc && typeof doc === "object" && doc.catalog) || {};
-    const track = (doc && typeof doc === "object" && doc.tracking) || null;
     labs.push({
       id,
       path: `labs/${id}/labspace.yaml`,
@@ -54,12 +53,14 @@ export function buildCatalog(labsDir) {
       tags: Array.isArray(cat.tags) ? cat.tags : [],
       estimatedMinutes: cat.estimatedMinutes ?? null,
       order: typeof cat.order === "number" ? cat.order : null,
-      // Public tracking coordinates (endpoint + bucket id) so the landing page
-      // can show a cumulative "N completed" per lab and link to its dashboard.
-      // Only the non-sensitive bits; omitted entirely when a lab opts out.
+      // The lab's raw tracking DIRECTIVE, not a resolved endpoint: `false`
+      // (opt-out), an overrides object, or null (inherit the deployment default
+      // from config.json). The app resolves it against that default at runtime,
+      // so the landing page can still show a per-lab "Completed by N" and link
+      // to the dashboard without the endpoint being duplicated into every lab.
       tracking:
-        track && track.endpoint
-          ? { endpoint: track.endpoint, labId: track.labId || id }
+        doc && typeof doc === "object" && "tracking" in doc
+          ? doc.tracking
           : null,
     });
   }

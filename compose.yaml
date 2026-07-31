@@ -10,16 +10,9 @@
 # they use the prebuilt authoring image (see simspace-starter/compose.yaml).
 #
 # The two services don't talk to each other directly: the browser calls pulse,
-# so both ports are published to the host. To exercise presence/analytics, point
-# a lab at pulse by adding to its app/public/labs/<id>/labspace.yaml:
-#
-#   tracking:
-#     endpoint: http://localhost:8888
-#     labId: <the lab id>
-#     presence: true
-#
-# The sample labs ship WITHOUT tracking (they also deploy to GitHub Pages, which
-# has no backend), so out of the box pulse simply runs idle until a lab opts in.
+# so both ports are published to the host. The committed app/public/config.json
+# already points every lab at http://localhost:8888, so presence/analytics work
+# out of the box here. A lab opts out with `tracking: false` in its labspace.yaml.
 
 name: simspace
 

@@ -4,6 +4,7 @@ import AppRoute from "./AppRoute";
 import ExportRoute from "./ExportRoute";
 import InsightsRoute from "./InsightsRoute";
 import Home from "./Home";
+import { AppConfigProvider } from "./context/AppConfigContext";
 import { CatalogProvider } from "./context/CatalogContext";
 
 // HashRouter keeps routing entirely client-side (routes live in the URL hash),
@@ -18,18 +19,20 @@ import { CatalogProvider } from "./context/CatalogContext";
 function App() {
   return (
     <HashRouter>
-      <CatalogProvider>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="export" element={<ExportRoute />} />
-          <Route path="insights" element={<InsightsRoute />} />
-          <Route path="labs/:labId/export" element={<ExportRoute />} />
-          <Route path="labs/:labId/insights" element={<InsightsRoute />} />
-          <Route path="labs/:labId/:sectionId?" element={<AppRoute />} />
-          <Route path=":sectionId" element={<AppRoute />} />
-          <Route path="*" element={<Home />} />
-        </Routes>
-      </CatalogProvider>
+      <AppConfigProvider>
+        <CatalogProvider>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="export" element={<ExportRoute />} />
+            <Route path="insights" element={<InsightsRoute />} />
+            <Route path="labs/:labId/export" element={<ExportRoute />} />
+            <Route path="labs/:labId/insights" element={<InsightsRoute />} />
+            <Route path="labs/:labId/:sectionId?" element={<AppRoute />} />
+            <Route path=":sectionId" element={<AppRoute />} />
+            <Route path="*" element={<Home />} />
+          </Routes>
+        </CatalogProvider>
+      </AppConfigProvider>
     </HashRouter>
   );
 }

@@ -38,6 +38,12 @@ on:
         description: "Image tag for BOTH images. Pin to a version for stable labs."
         type: string
         default: "latest"
+      pulse-endpoint:
+        description: "Base URL of the pulse presence/analytics backend. Set to
+          enable tracking for all labs (opt out per lab with `tracking: false`);
+          leave empty to disable tracking entirely."
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -85,6 +91,21 @@ jobs:
             -v "${{ github.workspace }}:/work" \
             "${{ inputs.authoring-image }}:${{ inputs.runtime-tag }}" \
             npm run generate-catalog -- "/work/${{ inputs.labs-dir }}" /work/site/labs.json
+      - name: Configure the tracking endpoint (config.json)
+        # The runtime image ships a dev config.json (localhost); replace it with
+        # this deployment's pulse endpoint, or remove it to disable tracking.
+        env:
+          PULSE_ENDPOINT: ${{ inputs.pulse-endpoint }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PULSE_ENDPOINT}" ]; then
+            printf '{\n  "tracking": {\n    "endpoint": "%s",\n    "presence": true,\n    "identity": "optional-name"\n  }\n}\n' \
+              "${PULSE_ENDPOINT}" > site/config.json
+            echo "Tracking enabled → ${PULSE_ENDPOINT}"
+          else
+            rm -f site/config.json
+            echo "No pulse-endpoint set; tracking disabled."
+          fi
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: site

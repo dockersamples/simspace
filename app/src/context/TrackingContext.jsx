@@ -9,6 +9,8 @@ import {
 } from "react";
 import { useActiveSection, useWorkshop } from "../WorkshopContext";
 import { useTerminal } from "./TerminalContext";
+import { useAppConfig } from "./AppConfigContext";
+import { resolveTracking } from "../labspace/tracking";
 import * as progress from "../labspace/progress";
 
 // Records the learner's progress through a lab's author-defined steps, exposes
@@ -22,10 +24,12 @@ import * as progress from "../labspace/progress";
 // TWO layers, each independently optional:
 //   1. Local progress — works with ONLY a step catalog in labspace.yaml, no
 //      network. Powers the learner's own check-marks and resume.
-//   2. Backend reporting — layered on top and gated ENTIRELY on
-//      `workshop.tracking?.endpoint`. With no tracking config, this context
-//      makes zero network calls. Events go out fire-and-forget (sendBeacon,
-//      with a keepalive fetch fallback); presence is polled back.
+//   2. Backend reporting — layered on top and gated on the RESOLVED tracking
+//      config (the deployment default from config.json merged with this lab's
+//      directive; see labspace/tracking.js). With no endpoint resolved — no
+//      default and no lab override, or the lab opted out with `tracking: false`
+//      — this context makes zero network calls. Events go out fire-and-forget
+//      (sendBeacon, with a keepalive fetch fallback); presence is polled back.
 
 const TrackingContext = createContext(null);
 
@@ -38,13 +42,17 @@ export function TrackingContextProvider({ children }) {
   const { activeSection } = useActiveSection();
 
   const labKey = workshop.labKey || "";
-  const tracking = workshop.tracking || null;
-  const endpoint = tracking?.endpoint
-    ? tracking.endpoint.replace(/\/+$/, "")
-    : null;
-  const presenceEnabled = Boolean(endpoint) && tracking?.presence !== false;
-  const allowName = tracking?.identity !== "anonymous";
-  const labId = tracking?.labId || labKey;
+  const appConfig = useAppConfig();
+  // Resolve the lab's effective tracking config: the deployment default
+  // (config.json) merged with this lab's directive (opt-out / overrides).
+  const resolved = useMemo(
+    () => resolveTracking(appConfig?.tracking, workshop.tracking, labKey),
+    [appConfig, workshop.tracking, labKey],
+  );
+  const endpoint = resolved?.endpoint || null;
+  const presenceEnabled = Boolean(endpoint) && resolved?.presence !== false;
+  const allowName = resolved?.identity !== "anonymous";
+  const labId = resolved?.labId || labKey;
   const labVersion = workshop.version || null;
   const meta = useMemo(() => ({ labId, labVersion }), [labId, labVersion]);
 

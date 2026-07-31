@@ -2,6 +2,8 @@ import "./App.scss";
 import Spinner from "react-bootstrap/Spinner";
 import { Link, useParams } from "react-router";
 import { useCatalog } from "./context/CatalogContext";
+import { useAppConfig } from "./context/AppConfigContext";
+import { resolveTracking } from "./labspace/tracking";
 import { InsightsDashboard } from "./components/Insights/InsightsDashboard";
 
 // Instructor-only insights route. Resolves the lab (from the catalog) and its
@@ -13,8 +15,9 @@ import { InsightsDashboard } from "./components/Insights/InsightsDashboard";
 export default function InsightsRoute() {
   const { labId } = useParams();
   const catalog = useCatalog();
+  const appConfig = useAppConfig();
 
-  if (catalog.status === "loading") {
+  if (catalog.status === "loading" || appConfig.status === "loading") {
     return (
       <div className="loading text-center mt-5 w-100">
         <Spinner />
@@ -41,7 +44,8 @@ export default function InsightsRoute() {
     );
   }
 
-  if (!lab.tracking?.endpoint) {
+  const tracking = resolveTracking(appConfig.tracking, lab.tracking, lab.id);
+  if (!tracking?.endpoint) {
     return (
       <div className="loading text-center mt-5 w-100">
         <h1 className="h4">Insights not available</h1>
@@ -53,5 +57,5 @@ export default function InsightsRoute() {
     );
   }
 
-  return <InsightsDashboard lab={lab} />;
+  return <InsightsDashboard lab={{ ...lab, tracking }} />;
 }

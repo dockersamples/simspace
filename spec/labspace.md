@@ -104,11 +104,7 @@ features:                                    # OPTIONAL. Feature flags (e.g. CI 
     title: CI
     icon: rocket_launch
 
-tracking:                                    # OPTIONAL. Presence/analytics backend. §10.2
-  endpoint: https://pulse.example.com
-  labId: my-lab
-  presence: true
-  identity: optional-name
+tracking: false                              # OPTIONAL. Per-lab override/opt-out. §10.2
 ```
 
 Field summary:
@@ -125,7 +121,7 @@ Field summary:
 | `variables`   | no       | Initial values for `$$variable$$` substitution in content      |
 | `services`    | no       | External-URL tabs (iframes) in the right-hand pane             |
 | `features`    | no       | Feature flags that add built-in tabs (e.g. `ci`) (§10)        |
-| `tracking`    | no       | Optional presence/analytics backend config (§10.2)            |
+| `tracking`    | no       | Per-lab tracking override; `false` opts out (§10.2)           |
 
 A `labspace.yaml` that does not parse to a mapping, or that omits `simulator`,
 is a hard load error surfaced to the learner.
@@ -426,28 +422,41 @@ Behaviour:
 - With no `features.ci` block, no CI tab is shown and `then.ci` effects still
   write `state.ci.runs` but have no visible surface.
 
-### 10.2 `tracking` — presence & analytics backend
+### 10.2 `tracking` — presence & analytics
 
-`tracking` optionally connects a lab to a **`pulse`** backend (see the `pulse/`
-directory) for **live presence** ("who's here now") and cumulative analytics.
-The lab stays a static asset: it only ever talks to the endpoint declared here,
-and **omitting `tracking:` entirely means the app makes no network calls at
-all.** One backend serves many labs, keyed by `labId`.
+Live **presence** ("who's here now") and cumulative analytics are powered by a
+**`pulse`** backend (see the `pulse/` directory). Because one backend serves a
+whole deployment, the connection is configured **once, deployment-wide**, in the
+app's `config.json` — NOT per lab:
 
-```yaml
-tracking:
-  endpoint: https://pulse.example.com # REQUIRED to enable; the pulse base URL
-  labId: my-lab # OPTIONAL bucket key (default: catalog id)
-  presence: true # OPTIONAL show live presence (default true when endpoint set)
-  identity: optional-name # OPTIONAL anonymous | optional-name (default optional-name)
+```json
+// config.json (served next to labs.json; the deploy pipeline writes it)
+{
+  "tracking": {
+    "endpoint": "https://pulse.example.com",
+    "presence": true,
+    "identity": "optional-name"
+  }
+}
 ```
 
-| Field      | Required | Purpose                                                            |
-| ---------- | -------- | ------------------------------------------------------------------ |
-| `endpoint` | **yes**  | Base URL of the `pulse` service. Absent → tracking off, no network |
-| `labId`    | no       | Bucket key on a shared backend (defaults to the catalog lab id)    |
-| `presence` | no       | Show live presence UI (default `true` when `endpoint` is set)      |
-| `identity` | no       | `anonymous` (never send a name) or `optional-name` (default)       |
+When that default is set, **every lab is tracked automatically** (bucketed by its
+catalog id) — a lab needs no `tracking:` field at all. With no `config.json`
+tracking default and no per-lab endpoint, the app makes **no network calls**.
+
+The per-lab **`tracking:` field is only an override**, for the exceptions:
+
+| Value                      | Effect                                                          |
+| -------------------------- | -------------------------------------------------------------- |
+| _(omitted)_                | Inherit the deployment default (tracked when one is set)       |
+| `tracking: false`          | **Opt this lab out** — no presence, no events                  |
+| `tracking: { presence: false }` | Tracked, but hide the live-presence UI (still records analytics) |
+| `tracking: { identity: anonymous }` | Never offer a display name for this lab                  |
+| `tracking: { endpoint: … }` | Point this lab at a different backend (rarely needed)         |
+
+An override object is merged over the deployment default; `labId` still defaults
+to the catalog id. See `README.md` (Deploying) for how `config.json` is provided
+in dev vs. production, and `pulse/README.md` for the backend.
 
 Behaviour:
 

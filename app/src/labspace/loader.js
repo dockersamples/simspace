@@ -136,11 +136,13 @@ export async function loadLabspace(labUrl) {
     // Optional feature flags (e.g. `features.ci` enables the mock CI tab). Kept
     // as-is so presentation code can read per-feature config (title, icon).
     features: raw.features || {},
-    // Optional progress/presence tracking config. When absent the app records
-    // nothing and makes no network calls; when present it points at a `pulse`
-    // backend (endpoint), buckets events under labId, and controls the live
-    // presence UI and identity mode. Kept as-is for the tracking layer to read.
-    tracking: raw.tracking || null,
+    // The lab's raw tracking DIRECTIVE, resolved against the deployment default
+    // (config.json) at runtime by the tracking layer:
+    //   undefined → null → inherit the default (tracked when one is set)
+    //   false            → explicit opt-out (no tracking for this lab)
+    //   { ... }          → overrides merged over the default
+    // `?? null` (not `|| null`) so an explicit `false` opt-out is preserved.
+    tracking: raw.tracking ?? null,
     simulatorSpec,
   };
 }

@@ -30,6 +30,23 @@ jobs:
           cache-dependency-path: app/package-lock.json
       - run: npm ci
         working-directory: app
+      - name: Configure the tracking endpoint (config.json)
+        # The repo commits a dev config.json (localhost). For the public demo,
+        # point it at a real pulse via the PULSE_ENDPOINT repo variable, or remove
+        # it so the demo tracks nothing (rather than shipping localhost).
+        working-directory: app
+        env:
+          PULSE_ENDPOINT: ${{ vars.PULSE_ENDPOINT }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PULSE_ENDPOINT}" ]; then
+            printf '{\n  "tracking": {\n    "endpoint": "%s",\n    "presence": true,\n    "identity": "optional-name"\n  }\n}\n' \
+              "${PULSE_ENDPOINT}" > public/config.json
+            echo "Tracking enabled → ${PULSE_ENDPOINT}"
+          else
+            rm -f public/config.json
+            echo "No PULSE_ENDPOINT set; tracking disabled for the demo."
+          fi
       - run: npm run build
         working-directory: app
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

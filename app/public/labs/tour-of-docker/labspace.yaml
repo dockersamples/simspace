@@ -14,16 +14,11 @@ catalog:
 # when you add or rename steps invalidates stale completion records.
 version: "1.0.0"
 
-# OPTIONAL presence + analytics backend. The lab stays a static asset and only
-# talks to this endpoint; omit the whole block and no network calls are made.
-# `http://localhost:8888` is the pulse service from the repo's dev compose
-# (`docker compose up`); point it at your own deployment in production. In-lab
-# this only ever surfaces LIVE presence — cumulative data lives in the
-# instructor dashboard (#/labs/tour-of-docker/insights).
-tracking:
-  endpoint: http://localhost:8888
-  presence: true
-  identity: optional-name # anonymous | optional-name
+# Presence + analytics tracking is configured ONCE per deployment in the app's
+# config.json (the pulse endpoint), so this lab is tracked automatically — no
+# `tracking:` block needed here. In-lab it only surfaces LIVE presence;
+# cumulative data lives in the instructor dashboard (#/labs/tour-of-docker/insights).
+# Opt this lab out with `tracking: false`; tweak it with `tracking: { presence: false }`.
 
 # Path to the simulator scenario spec (relative to this file). All terminals
 # below share this one spec, and one shared state + filesystem.

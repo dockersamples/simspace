@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { isLabComplete } from "../../labspace/progress";
+import { resolveTracking } from "../../labspace/tracking";
+import { useAppConfig } from "../../context/AppConfigContext";
 import "./Catalog.scss";
 
 // Social-proof "Completed by N people" from the pulse backend — how many OTHERS
@@ -42,6 +44,8 @@ function LabCompletedCount({ tracking }) {
 // `#/labs/:id`. Home renders it only when the catalog has two or more labs (a
 // single lab is entered directly, with no landing page).
 export function Catalog({ labs }) {
+  const appConfig = useAppConfig();
+
   useEffect(() => {
     document.title = "Labspace — Choose a lab";
   }, []);
@@ -65,6 +69,13 @@ export function Catalog({ labs }) {
           // Personal completion: has THIS browser finished all the lab's steps?
           // Read from the local progress store — no backend needed.
           const done = isLabComplete(lab.id);
+          // Effective backend config (deployment default + this lab's directive)
+          // for the social "Completed by N people" count.
+          const tracking = resolveTracking(
+            appConfig?.tracking,
+            lab.tracking,
+            lab.id,
+          );
           return (
             <li key={lab.id}>
               <Link to={`/labs/${lab.id}`} className="catalog-card">
@@ -103,7 +114,7 @@ export function Catalog({ labs }) {
                       ))}
                     </span>
                   )}
-                  <LabCompletedCount tracking={lab.tracking} />
+                  <LabCompletedCount tracking={tracking} />
                 </span>
                 <span className="catalog-card-arrow material-symbols-outlined">
                   arrow_forward

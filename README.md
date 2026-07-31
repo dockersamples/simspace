@@ -37,7 +37,8 @@ app/                  the consolidated static app (build + deploy this)
     labs/             sample labs — labs/<id>/ (labspace.yaml + simulator.yaml + *.md)
   scripts/            validate-lab + catalog generation
 pulse/                OPTIONAL presence + analytics backend (Node/TS). Labs stay
-                      static; a lab opts in via a `tracking:` block. See pulse/README.md
+                      static; the deployment points app/public/config.json at it.
+                      See pulse/README.md
 spec/                 specifications for the YAML formats + catalog
 AGENTS.md             onboarding guide for agentic coding sessions
 Dockerfile            builds app/ and serves it with nginx (optional)
@@ -82,10 +83,18 @@ docker compose up --build
 #   pulse → http://localhost:8888   (presence + analytics API)
 ```
 
-The sample labs ship without a backend (they also deploy to GitHub Pages, which
-has none), so `pulse` runs idle until a lab opts in with a `tracking:` block
-pointing at `http://localhost:8888` (see [`spec/labspace.md`](spec/labspace.md)
-§10.2). Lab authors don't need this — they use the prebuilt authoring image (see
+Tracking is configured **once per deployment** in `app/public/config.json` (the
+`pulse` endpoint), and every lab is then tracked automatically; a lab opts out
+with `tracking: false` in its `labspace.yaml` (see
+[`spec/labspace.md`](spec/labspace.md) §10.2). The repo commits a dev default
+pointing at `http://localhost:8888`, so `docker compose up` lights up presence
+out of the box.
+
+**Dev vs. production endpoint.** The committed `config.json` is the dev default.
+The deploy pipeline overwrites it with the production `pulse` URL — set a repo
+variable `PULSE_ENDPOINT` and the publish workflow writes `config.json` from it
+(and removes it when unset, so a demo with no backend simply tracks nothing).
+Lab authors don't need the compose — they use the prebuilt authoring image (see
 `simspace-starter`).
 
 ## Authoring a lab

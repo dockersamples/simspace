@@ -1,0 +1,7 @@
+{
+  "tracking": {
+    "endpoint": "http://localhost:8888",
+    "presence": true,
+    "identity": "optional-name"
+  }
+}
