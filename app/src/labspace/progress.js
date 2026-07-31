@@ -125,6 +125,7 @@ export function loadProgress(labKey, { labId, labVersion } = {}) {
   // Invalidate completion when the lab version changed (steps may differ).
   if (labVersion != null && store.labVersion !== labVersion) {
     store.completed = {};
+    store.completedAt = undefined;
     store.labVersion = labVersion;
   }
   if (labId) store.labId = labId;
@@ -184,7 +185,24 @@ export function resetProgress(labKey) {
   const store = read(labKey);
   if (!store) return {};
   store.completed = {};
+  store.completedAt = undefined;
   store.lastActiveAt = nowIso();
   write(labKey, store);
   return store.completed;
+}
+
+// Marks the whole lab finished (all steps done). Idempotent — records the first
+// completion timestamp. Used to show a personal "Completed" badge on the
+// catalog, independent of any backend.
+export function markLabComplete(labKey) {
+  const store = loadProgress(labKey);
+  if (!store.completedAt) {
+    store.completedAt = nowIso();
+    write(labKey, store);
+  }
+}
+
+// Whether this browser has finished the lab (all steps completed at least once).
+export function isLabComplete(labKey) {
+  return Boolean(read(labKey)?.completedAt);
 }

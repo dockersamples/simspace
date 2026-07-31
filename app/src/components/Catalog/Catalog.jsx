@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { isLabComplete } from "../../labspace/progress";
 import "./Catalog.scss";
 
 // Social-proof "Completed by N people" from the pulse backend — how many OTHERS
@@ -60,42 +61,57 @@ export function Catalog({ labs }) {
       </header>
 
       <ul className="catalog-grid">
-        {labs.map((lab) => (
-          <li key={lab.id}>
-            <Link to={`/labs/${lab.id}`} className="catalog-card">
-              <span className="catalog-card-icon material-symbols-outlined">
-                {lab.icon}
-              </span>
-              <span className="catalog-card-body">
-                <span className="catalog-card-title">{lab.title}</span>
-                {lab.description && (
-                  <span className="catalog-card-desc">{lab.description}</span>
-                )}
-                {(lab.tags.length > 0 || lab.estimatedMinutes != null) && (
-                  <span className="catalog-card-meta">
-                    {lab.estimatedMinutes != null && (
-                      <span className="catalog-chip catalog-chip-time">
-                        <span className="material-symbols-outlined">
-                          schedule
+        {labs.map((lab) => {
+          // Personal completion: has THIS browser finished all the lab's steps?
+          // Read from the local progress store — no backend needed.
+          const done = isLabComplete(lab.id);
+          return (
+            <li key={lab.id}>
+              <Link to={`/labs/${lab.id}`} className="catalog-card">
+                <span className="catalog-card-icon material-symbols-outlined">
+                  {lab.icon}
+                </span>
+                <span className="catalog-card-body">
+                  <span className="catalog-card-title">{lab.title}</span>
+                  {lab.description && (
+                    <span className="catalog-card-desc">{lab.description}</span>
+                  )}
+                  {(lab.tags.length > 0 ||
+                    lab.estimatedMinutes != null ||
+                    done) && (
+                    <span className="catalog-card-meta">
+                      {done && (
+                        <span className="catalog-chip catalog-chip-done">
+                          <span className="material-symbols-outlined">
+                            check_circle
+                          </span>
+                          Completed
                         </span>
-                        ~{lab.estimatedMinutes} min
-                      </span>
-                    )}
-                    {lab.tags.map((tag) => (
-                      <span key={tag} className="catalog-chip">
-                        {tag}
-                      </span>
-                    ))}
-                  </span>
-                )}
-                <LabCompletedCount tracking={lab.tracking} />
-              </span>
-              <span className="catalog-card-arrow material-symbols-outlined">
-                arrow_forward
-              </span>
-            </Link>
-          </li>
-        ))}
+                      )}
+                      {lab.estimatedMinutes != null && (
+                        <span className="catalog-chip catalog-chip-time">
+                          <span className="material-symbols-outlined">
+                            schedule
+                          </span>
+                          ~{lab.estimatedMinutes} min
+                        </span>
+                      )}
+                      {lab.tags.map((tag) => (
+                        <span key={tag} className="catalog-chip">
+                          {tag}
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                  <LabCompletedCount tracking={lab.tracking} />
+                </span>
+                <span className="catalog-card-arrow material-symbols-outlined">
+                  arrow_forward
+                </span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

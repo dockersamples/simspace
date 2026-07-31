@@ -139,6 +139,18 @@
   background: rgba(37, 96, 255, 0.1);
 }
 
+// Personal "you finished this lab" badge (local progress). A green check is the
+// right read here — it IS the current learner's own completion, distinct from
+// the neutral "Completed by N people" social stat at the bottom of the card.
+.catalog-chip-done {
+  color: #2d9568;
+  background: rgba(45, 149, 104, 0.12);
+
+  .material-symbols-outlined {
+    font-variation-settings: "FILL" 1;
+  }
+}
+
 // "Completed by N people" — a neutral social-proof stat pinned to the bottom of
 // the card, separated from the tag/time chips above. `margin-top: auto` pushes
 // it to the bottom of the flex-column card body (cards stretch to equal height

@@ -142,6 +142,9 @@ export function TrackingContextProvider({ children }) {
         !labCompleteSentRef.current
       ) {
         labCompleteSentRef.current = true;
+        // Persist a local "finished this lab" marker (drives the catalog's
+        // personal Completed badge) and report it to the backend if configured.
+        progress.markLabComplete(labKey);
         emit("lab_completed");
       }
     });
