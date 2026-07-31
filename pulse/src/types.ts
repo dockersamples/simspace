@@ -55,6 +55,8 @@ export interface PresenceAvatar {
 
 /** Live presence for one lab: who's here now, and where. */
 export interface PresenceAggregate {
+  /** The deployment origin this lab's data is namespaced under. */
+  origin: string;
   labId: string;
   total: number;
   /** Active sessions by reading position (current section). */

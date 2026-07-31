@@ -52,9 +52,10 @@ export function ingestEvent(
   log: EventLog,
   presence: PresenceStore,
   tsServer: string,
+  origin: string,
 ): void {
   // Durable analytics log.
-  if (isDurable(e.event)) log.append(e, tsServer);
+  if (isDurable(e.event)) log.append(e, tsServer, origin);
 
   // Live presence projection.
   const identity = {
@@ -65,10 +66,10 @@ export function ingestEvent(
 
   switch (e.event) {
     case "leave":
-      presence.remove(e.labId, e.sessionId);
+      presence.remove(origin, e.labId, e.sessionId);
       return;
     case "step_completed":
-      presence.touch(e.labId, e.sessionId, {
+      presence.touch(origin, e.labId, e.sessionId, {
         ...identity,
         sectionId: e.sectionId,
         // A completed step advances the learner's milestone position.
@@ -76,7 +77,7 @@ export function ingestEvent(
       });
       return;
     case "section_viewed":
-      presence.touch(e.labId, e.sessionId, {
+      presence.touch(origin, e.labId, e.sessionId, {
         ...identity,
         sectionId: e.sectionId,
       });
@@ -84,7 +85,7 @@ export function ingestEvent(
     case "lab_started":
     case "heartbeat":
     case "lab_completed":
-      presence.touch(e.labId, e.sessionId, {
+      presence.touch(origin, e.labId, e.sessionId, {
         ...identity,
         sectionId: e.sectionId,
       });

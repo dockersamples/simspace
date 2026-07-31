@@ -26,7 +26,10 @@ export const config = {
 
   /**
    * Allowed CORS origin(s). "*" (default) suits a public, anonymous, append-only
-   * ingest. Set to a specific origin to lock it down.
+   * ingest. Set to a single origin, or a comma-separated allowlist, to lock it
+   * down — the server then reflects a request's Origin only if it's on the list
+   * (and adds `Vary: Origin`). Handy when one endpoint serves several
+   * deployments (see origin namespacing).
    */
   corsOrigin: process.env.CORS_ORIGIN || "*",
 
