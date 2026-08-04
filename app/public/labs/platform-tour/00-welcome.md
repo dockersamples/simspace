@@ -38,14 +38,14 @@ you'll just get a friendly nudge — try setting a name and running it again.
 
 ## What's ahead
 
-| Section | Feature |
-| --- | --- |
-| Running commands | Scripted commands, shared state, output pacing |
-| The virtual filesystem | `ls` / `cat`, file links, saving files |
-| Interactive content | Buttons, conditional content, OS detection |
-| Multiple terminals | Two shells, one shared machine |
-| Settings and controls | Toggles that change behavior |
-| The assistant | An interactive, scripted agent session |
-| CI pipelines | A mock GitHub-Actions-style pipeline |
+| Section                | Feature                                        |
+| ---------------------- | ---------------------------------------------- |
+| Running commands       | Scripted commands, shared state, output pacing |
+| The virtual filesystem | `ls` / `cat`, file links, saving files         |
+| Interactive content    | Buttons, conditional content, OS detection     |
+| Multiple terminals     | Two shells, one shared machine                 |
+| Settings and controls  | Toggles that change behavior                   |
+| The assistant          | An interactive, scripted agent session         |
+| CI pipelines           | A mock GitHub-Actions-style pipeline           |
 
 Head to the next section when you're ready.

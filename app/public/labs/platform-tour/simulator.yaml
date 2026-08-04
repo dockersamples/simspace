@@ -89,12 +89,15 @@ workflows:
 # ── Defaults ──────────────────────────────────────────────────────────────────
 defaults:
   unmatched:
-    stderr: ["Command not simulated in this lab. Try the commands in the instructions on the left."]
+    stderr:
+      [
+        "Command not simulated in this lab. Try the commands in the instructions on the left.",
+      ]
     exit: 127
   unmatchedAgent:
     output:
-      - "I only know the prompts this tour scripted. Try asking me to \"add a health check\""
-      - "or to \"tell me a joke\"."
+      - 'I only know the prompts this tour scripted. Try asking me to "add a health check"'
+      - 'or to "tell me a joke".'
 
 scenarios:
   # ══════════════════════════════════════════════════════════════════════════
@@ -234,7 +237,7 @@ scenarios:
     then:
       stderr:
         - "Deploy blocked: no deploy target configured."
-        - "Open the Settings tab (top-right) and turn on \"Configure a deploy target\", then try again."
+        - 'Open the Settings tab (top-right) and turn on "Configure a deploy target", then try again.'
       exit: 1
 
   # `sbx secret set <name>` demonstrates interactive input (then.input, §7.5): the
@@ -280,7 +283,7 @@ scenarios:
         prompt: "assistant> "
         intro:
           - "Hi! I'm a scripted assistant. Every reply is defined by an agent scenario."
-          - "Try: \"add a health check to the greeting service\" or \"tell me a joke\"."
+          - 'Try: "add a health check to the greeting service" or "tell me a joke".'
           - "Run a normal command with a ! prefix (e.g. !status). Type /exit to leave."
         outro:
           - "Assistant session ended. (It was all data — no real model involved.)"

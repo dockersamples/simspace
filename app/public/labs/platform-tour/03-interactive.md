@@ -19,12 +19,14 @@ The `:conditionalDisplay` directive shows or hides a block based on a variable's
 value. Your current style is **$$style$$**, so:
 
 :::conditionalDisplay{variable="style" requiredValue="friendly"}
+
 > 👋 **Friendly mode.** Greetings will look like `Hey there!` — casual and warm.
-:::
+> :::
 
 :::conditionalDisplay{variable="style" requiredValue="formal"}
+
 > 🎩 **Formal mode.** Greetings will look like `Good day.` — buttoned-up and polite.
-:::
+> :::
 
 Click the other style button above and watch this section swap — no reload, no
 command.
