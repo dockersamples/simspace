@@ -19,7 +19,10 @@
 # The static output is platform-independent, so build it on the build platform.
 FROM --platform=$BUILDPLATFORM dhi.io/node:24-alpine-dev AS build
 WORKDIR /usr/local/app
+# The simulator engine + terminal live in an npm workspace under packages/, so
+# its manifest has to be present for `npm ci` to resolve the workspace link.
 COPY app/package*.json ./
+COPY app/packages/simulator/package.json ./packages/simulator/
 RUN npm ci
 COPY app/ ./
 RUN npm run build
@@ -43,6 +46,7 @@ EXPOSE 80
 FROM dhi.io/node:24-alpine-dev AS authoring
 WORKDIR /usr/local/app
 COPY app/package*.json ./
+COPY app/packages/simulator/package.json ./packages/simulator/
 RUN npm ci
 COPY app/ ./
 EXPOSE 5173

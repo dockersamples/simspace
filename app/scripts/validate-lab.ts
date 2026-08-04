@@ -32,7 +32,7 @@ import {
   Lab,
   Scenario,
   StateValue,
-} from "../src/engine/index.ts";
+} from "@dockersamples/simspace-simulator";
 import { buildCatalog, findLabDirs, catalogJson } from "./catalog.mjs";
 
 // ── Reporting ─────────────────────────────────────────────────────────────────

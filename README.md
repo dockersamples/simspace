@@ -28,10 +28,13 @@ authors control exactly what happens.
 
 ```
 app/                  the consolidated static app (build + deploy this)
+  packages/
+    simulator/        @dockersamples/simspace-simulator — the reusable core:
+                      the scenario engine + the <MockTerminal> React component,
+                      with its own tests. Embeddable outside this app (docs
+                      pages, slides, www). See its README.
   src/
     labspace/         fetches + parses labspace.yaml, variable substitution
-    engine/           in-browser scenario engine (TypeScript)
-    terminal/         <SbxTerminal> mock terminal component
     components/       instructions panel, terminal panel, markdown renderer
   public/
     labs/             sample labs — labs/<id>/ (labspace.yaml + simulator.yaml + *.md)

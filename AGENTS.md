@@ -22,8 +22,8 @@ The YAML formats and catalog that drive everything are fully specified in `spec/
 - **[`spec/simulator.md`](spec/simulator.md)** — the `simulator.yaml` format:
   scenarios (`when`/`then`), the state store, arg matchers, templating, built-in
   `ls`/`cat`, MCP mocking, `controls`, agent sessions, and terminal scoping
-  (`when.terminal`). This is the contract the engine in `app/src/engine/`
-  implements.
+  (`when.terminal`). This is the contract the engine in
+  `app/packages/simulator/src/engine/` implements.
 - **[`spec/labspace.md`](spec/labspace.md)** — the `labspace.yaml` format: the
   top-level lab config (title, optional `catalog:` block, `simulator:` reference,
   `terminals`, `files` seed, `sections`, `variables`, `services`) plus the
@@ -38,13 +38,18 @@ When changing engine behaviour or the YAML shapes, **keep these specs in sync**.
 
 ```
 app/                 THE PRODUCT — the consolidated static React app
-  src/
-    engine/          in-browser scenario engine (TypeScript). Entry: index.ts
+  packages/
+    simulator/       THE REUSABLE CORE — @dockersamples/simspace-simulator, an
+                     npm workspace. Own README, tests, and typecheck.
+      src/engine/    in-browser scenario engine (TypeScript). Entry: index.ts
                      — manifest.ts (parse), match.ts, run.ts, apply.ts,
                        state.ts, filesystem.ts, template.ts, ci.ts (mock CI
                        runs), simulator.ts (facade)
+      src/react/     <MockTerminal> (over a Simulator you own) and <SimTerminal>
+                     (one terminal from a spec string) + MockTerminal.css
+      test/          vitest suite — engine unit tests + React component tests
+  src/
     labspace/        fetch + parse labspace.yaml; slug + $$variable$$ substitution
-    terminal/        <MockTerminal> mock terminal component
     components/       WorkshopPanel (instructions + markdown), TerminalPanel, ExportView
     context/          React contexts (Workshop, Tab, Terminal, PrintMode)
   public/
@@ -65,6 +70,35 @@ Dockerfile           two images: `production` (nginx runtime) + `authoring`
 docker-bake.hcl      bake targets: app / app-local, authoring / authoring-local
 compose.yaml         local dev stack (app Vite + pulse); `docker compose up --build`
 ```
+
+## The simulator is a package, not app code
+
+`app/packages/simulator/` (`@dockersamples/simspace-simulator`) holds the engine
+and the terminal component. It's a separate package because the terminal is
+wanted in **more surfaces than the lab app** — docs pages, the www site, and
+in-slide live demos all want a scripted terminal without the instructions pane,
+progress tracking, or catalog. The app is simply its first consumer.
+
+Rules that keep that real:
+
+- **The dependency runs one way.** The package never imports from `app/src/` —
+  `tsconfig.json` sets `rootDir: src`, so `npm run typecheck` fails on any import
+  that escapes. This matters because the app consumes the package's TypeScript
+  **source** (no build step), so nothing else would catch it.
+- **The engine stays pure.** No DOM, browser API, network, clock, randomness, or
+  timers — that's what makes "same commands ⇒ same output" true and lets the same
+  machine run in a lab, a docs page, and a test. `test/engine/purity.test.ts`
+  asserts it by scanning the source, so a convenience `Date.now()` fails CI.
+- **Lab vocabulary stays in the app.** The package knows about specs, terminals,
+  and state; it knows nothing about labs, sections, steps, progress, or pulse.
+  Persistence is the example: the terminal takes an opaque `storageKey` (and
+  persists nothing without one), and the app composes the lab-namespaced key.
+- **New app features consume the public API** (`.` and `./react`), rather than
+  reaching into `src/engine/*` — if a feature needs something the API doesn't
+  expose, widen the API deliberately.
+
+Only `TerminalPanel` (component) and `TerminalContext` (Simulator instance) in
+the app, plus `scripts/validate-lab.ts` (engine, for linting labs), import it.
 
 ## Two images, one lab-as-data model
 
@@ -88,18 +122,24 @@ from the separate **`dockersamples/simspace-starter`** template — is just thei
 ## Commands
 
 This is a **JavaScript/React (Vite) project** — all work happens in `app/`.
-There is currently **no unit-test suite** (no `test` script); verify engine/UI
-changes by running the app and exercising the lab, plus lint. Verify **lab
-content** (the `labspace.yaml` / `simulator.yaml` / markdown) with
-`npm run validate-lab` — always run it after editing a lab.
+
+**The `simulator` package is unit-tested; the app UI is not.** Changes to the
+engine or the terminal component must keep `npm test` green (add cases for new
+behaviour). For the React app around them there's no suite yet — verify those by
+running the app and exercising the lab, plus lint. Verify **lab content** (the
+`labspace.yaml` / `simulator.yaml` / markdown) with `npm run validate-lab` —
+always run it after editing a lab.
 
 ```bash
 cd app
-npm install
+npm install             # also links the packages/simulator workspace
 npm run dev             # local dev server (0.0.0.0), serves app/public/labs/
 npm run build           # static build → app/dist (emits labs.json)
 npm run preview         # serve the production build
-npm run lint            # ESLint
+npm test                # vitest — the simulator package's suite
+npm run test:watch      # the same suite in watch mode
+npm run typecheck       # tsc on the simulator package (also enforces its boundary)
+npm run lint            # ESLint (JS/JSX only — the package is covered by typecheck)
 npm run prettier-check  # Prettier (use `npm run prettier` to auto-format)
 npm run validate-lab    # validate every lab under public/labs + regenerate labs.json
 npm run generate-catalog -- public/labs public/labs.json   # write labs.json only
@@ -117,17 +157,20 @@ from each `labspace.yaml` via `scripts/catalog.mjs`, so it can't drift. Scripts
 run via `scripts/run-ts.mjs`, which esbuild-bundles a TS entry so Node can import
 the engine directly (no `tsx`/`ts-node`).
 
-The engine (`app/src/engine/`) is written in TypeScript and consumed directly by
-Vite; `app/src/engine/index.ts` is its public surface for embedding or testing.
+The engine is TypeScript and consumed as **source** — Vite compiles it as part of
+the app, with no build step for the package. `@dockersamples/simspace-simulator`
+(and `/react`) is its public surface for embedding or testing; see
+`app/packages/simulator/README.md`.
 
 ## Conventions
 
 - Match the surrounding style; run `npm run prettier` before finishing and
   `npm run lint` to check.
-- Engine code is TypeScript; the React UI is `.jsx`/`.scss`. Keep the engine
-  free of React/DOM dependencies — it is a pure state machine.
+- The simulator package is TypeScript; the app's React UI is `.jsx`/`.scss`. Keep
+  the engine free of React/DOM dependencies — it is a pure state machine.
 - The engine must stay **deterministic**: no time, randomness, network, or LLM
   calls in scenario evaluation (streaming/pacing in `settings` is cosmetic only).
+  `npm test` enforces this — see "The simulator is a package" above.
 - Each lab lives in its own directory under `app/public/labs/` (`labs/<id>/`);
   the app discovers them via the generated `labs.json` catalog. Keeping labs
   self-contained lets a Docker dev environment mount just the `labs/` directory.

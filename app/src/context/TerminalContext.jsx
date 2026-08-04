@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useRef } from "react";
-import { Simulator } from "../engine/simulator";
+import { Simulator } from "@dockersamples/simspace-simulator";
 import { useVariables, useWorkshop } from "../WorkshopContext";
 import { scopedKey } from "../labspace/storage";
 
@@ -41,7 +41,9 @@ export function TerminalContextProvider({ children }) {
           restoredState = parsed.state;
           restoredFiles = parsed.files;
         }
-      } catch { /* ignore storage errors */ }
+      } catch {
+        /* ignore storage errors */
+      }
       return {
         simulator: new Simulator({
           spec: workshop.simulatorSpec,
@@ -63,23 +65,35 @@ export function TerminalContextProvider({ children }) {
     listenersRef.current.add(fn);
     return () => listenersRef.current.delete(fn);
   }, []);
-  const broadcast = useCallback((event) => {
-    listenersRef.current.forEach((fn) => fn(event));
-    if (event.type === "state" && simulator) {
-      try {
-        localStorage.setItem(engineKey, JSON.stringify({
-          state: simulator.state(),
-          files: simulator.files(),
-        }));
-      } catch { /* storage may be full or unavailable */ }
-    }
-  }, [simulator, engineKey]);
+  const broadcast = useCallback(
+    (event) => {
+      listenersRef.current.forEach((fn) => fn(event));
+      if (event.type === "state" && simulator) {
+        try {
+          localStorage.setItem(
+            engineKey,
+            JSON.stringify({
+              state: simulator.state(),
+              files: simulator.files(),
+            }),
+          );
+        } catch {
+          /* storage may be full or unavailable */
+        }
+      }
+    },
+    [simulator, engineKey],
+  );
 
   // Reset re-seeds the shared machine once, then tells every terminal to clear
   // its transcript and re-greet.
   const resetAll = useCallback(() => {
     if (!simulator) return;
-    try { localStorage.removeItem(engineKey); } catch { /* ignore */ }
+    try {
+      localStorage.removeItem(engineKey);
+    } catch {
+      /* ignore */
+    }
     resetVariables();
     simulator.reset();
     broadcast({ type: "reset" });

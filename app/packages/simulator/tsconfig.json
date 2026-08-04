@@ -1,0 +1,23 @@
+{
+  // Typechecking config for the package. `rootDir` is load-bearing beyond types:
+  // any import that escapes the package (back into the app) resolves to a file
+  // outside rootDir and fails the build — which is what keeps this boundary real
+  // while the app consumes the package's TypeScript source directly.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "rootDir": "src",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": false,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": []
+  },
+  "include": ["src"]
+}

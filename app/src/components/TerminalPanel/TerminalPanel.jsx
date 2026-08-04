@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef } from "react";
-import { MockTerminal } from "../../terminal/MockTerminal";
+import { MockTerminal } from "@dockersamples/simspace-simulator/react";
 import { SettingsPanel } from "./SettingsPanel";
 import { CIPanel } from "./CIPanel";
 import { useWorkshop } from "../../WorkshopContext";
 import { useTabs, CI_TAB_ID } from "../../TabContext";
 import { useTerminal } from "../../context/TerminalContext";
+import { scopedKey } from "../../labspace/storage";
 import "./TerminalPanel.scss";
 
 // The pane owns the framing (tab bar + border). It hosts one <MockTerminal> per
@@ -146,7 +147,13 @@ export function TerminalPanel() {
             simulator={simulator}
             error={error}
             terminalId={terminal.id}
-            labKey={workshop.labKey}
+            // A lab RESUMES: the transcript is restored on reload, namespaced per
+            // terminal and per lab. Embedded terminals elsewhere omit this prop
+            // and start clean on every mount.
+            storageKey={scopedKey(
+              `simspace:terminal:${terminal.id}`,
+              workshop.labKey,
+            )}
             onChange={handleChange}
             subscribe={subscribe}
             className="flex-fill"

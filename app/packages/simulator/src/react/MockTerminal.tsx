@@ -17,8 +17,7 @@ import {
   useState,
 } from "react";
 import type { InputRequest, Session } from "../engine/types";
-import { Simulator } from "../engine/simulator";
-import { scopedKey } from "../labspace/storage";
+import { Simulator, type AgentOutcome } from "../engine/simulator";
 import "./MockTerminal.css";
 
 /** A cross-terminal event broadcast so peers can refresh shared UI. */
@@ -57,8 +56,18 @@ export interface MockTerminalProps {
   error?: string | null;
   /** This terminal's id — passed to the engine for `when.terminal` matching. */
   terminalId?: string;
-  /** Lab key that namespaces this terminal's saved transcript across labs. */
-  labKey?: string;
+  /**
+   * `localStorage` key under which this terminal's transcript, prompt mode, and
+   * history are saved and restored across reloads.
+   *
+   * Omit it (the default) and the terminal keeps nothing: every mount starts
+   * from the greeting. That's what an embedded terminal on a docs or marketing
+   * page wants — a reload should reset the demo, not resume a stranger's
+   * half-finished session. Callers that DO want persistence own the whole key,
+   * so they can namespace it however suits them (a lab passes something like
+   * `simspace:terminal:host:tour-of-docker`).
+   */
+  storageKey?: string | null;
   /** Shell prompt shown in command mode. Defaults to "$ ". */
   shellPrompt?: string;
   /** Override streaming; defaults to the lab's `settings.streaming`. */
@@ -161,7 +170,7 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
       simulator,
       error,
       terminalId,
-      labKey,
+      storageKey,
       shellPrompt = "$ ",
       streaming,
       streamDelayMs,
@@ -174,10 +183,6 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     },
     ref,
   ) {
-    const storageKey = terminalId
-      ? scopedKey(`simspace:terminal:${terminalId}`, labKey)
-      : null;
-
     const savedSession = useMemo(() => {
       if (!storageKey) return null;
       try {
@@ -386,10 +391,10 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     );
 
     // Render an agent turn: indent non-empty lines and tag stderr distinctly.
+    // Takes the engine's AgentOutcome rather than a hand-written line shape, so
+    // the pacing fields (delayMs/pause) it carries stay part of the contract.
     const emitAgentTurn = useCallback(
-      async (outcome: {
-        lines: { text: string; stream: "stdout" | "stderr" }[];
-      }) => {
+      async (outcome: AgentOutcome) => {
         await emit(
           outcome.lines.map((l) => ({
             text: l.text && l.stream === "stdout" ? "  " + l.text : l.text,
