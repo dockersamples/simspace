@@ -10,12 +10,15 @@ import { ExternalLink } from "./ExternalLink";
 import { RenderedImage } from "./RenderedImage";
 import { RenderedSvg } from "./RenderedSvg";
 import { tabDirective } from "./reactDirective";
+import { remarkFragmentIndexer } from "./fragmentIndexer";
 import { TabLink } from "./TabLink";
 import { FileLink } from "./FileLink";
 import { VariableDefinition } from "./VariableDefinition";
 import { VariableSetButton } from "./VariableSetButton";
 import { ConditionalDisplay } from "./ConditionalDisplay";
 import { MarkdownBaseUrlContext } from "./markdownBaseUrl";
+import { SlideTerminal } from "../../Deck/SlideTerminal";
+import { Fragment } from "../../Deck/Fragment";
 
 export function MarkdownRenderer({ children, baseUrl }) {
   return (
@@ -26,6 +29,9 @@ export function MarkdownRenderer({ children, baseUrl }) {
           remarkCodeIndexer,
           remarkDirective,
           tabDirective,
+          // After tabDirective: it replaces hProperties wholesale, and this
+          // merges the fragment index into whatever it left there.
+          remarkFragmentIndexer,
         ]}
         rehypePlugins={[rehypeRaw, rehypeMermaid, rehypeGithubAlerts]}
         components={{
@@ -44,6 +50,13 @@ export function MarkdownRenderer({ children, baseUrl }) {
           variabledefinition: VariableDefinition,
           variablesetbutton: VariableSetButton,
           conditionaldisplay: ConditionalDisplay,
+          // Deck directives. Registered here rather than in a separate renderer
+          // so slides get the whole authoring surface — Run buttons, mermaid,
+          // alerts, $$variables$$ — for free. Both degrade sanely outside a
+          // deck: `::terminal` renders a terminal on the shared simulator (or
+          // says there isn't one), and a `:::fragment` renders fully revealed.
+          terminal: SlideTerminal,
+          fragment: Fragment,
         }}
       >
         {children}

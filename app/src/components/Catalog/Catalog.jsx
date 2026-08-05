@@ -46,9 +46,27 @@ function LabCompletedCount({ tracking }) {
 export function Catalog({ labs }) {
   const appConfig = useAppConfig();
 
+  // The catalog can hold labs, slide decks, or both, so the copy adapts rather
+  // than calling a deck a lab. "Choose a lab" stays the wording for a lab-only
+  // deployment, which is the common case and the one people have bookmarked.
+  const hasDecks = labs.some((lab) => lab.kind === "slides");
+  const hasLabs = labs.some((lab) => lab.kind !== "slides");
+  const heading =
+    hasDecks && hasLabs
+      ? "Start here"
+      : hasDecks
+        ? "Choose a deck"
+        : "Choose a lab";
+  const subtitle =
+    hasDecks && hasLabs
+      ? "Slides and hands-on labs. Everything runs right in your browser — no setup required."
+      : hasDecks
+        ? "Pick a deck below. Everything runs right in your browser — no setup required."
+        : "Pick a hands-on lab below. Everything runs right in your browser — no setup required.";
+
   useEffect(() => {
-    document.title = "Labspace — Choose a lab";
-  }, []);
+    document.title = `Labspace — ${heading}`;
+  }, [heading]);
 
   return (
     <div className="catalog">
@@ -57,11 +75,8 @@ export function Catalog({ labs }) {
           <img src="docker.svg" alt="" className="catalog-brand-logo" />
           <span className="catalog-eyebrow">Labspace</span>
         </div>
-        <h1 className="catalog-title">Choose a lab</h1>
-        <p className="catalog-subtitle">
-          Pick a hands-on lab below. Everything runs right in your browser — no
-          setup required.
-        </p>
+        <h1 className="catalog-title">{heading}</h1>
+        <p className="catalog-subtitle">{subtitle}</p>
       </header>
 
       <ul className="catalog-grid">

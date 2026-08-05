@@ -1,0 +1,284 @@
+// ---------------------------------------------------------------------------
+// Slide-deck design tokens. Scoped to .deck (like .workshop-panel) so a deck
+// never restyles the lab, and overridden under [data-bs-theme="dark"].
+//
+// A deck is presented, often on a projector, so the type scale here is much
+// larger than the instructions pane and sized in `vmin` — the slide has to fill
+// whatever it's shown on, from a laptop to a hall screen, without the author
+// tuning sizes per venue.
+// ---------------------------------------------------------------------------
+.deck {
+  --deck-bg: #ffffff;
+  --deck-surface: #f6f8fc;
+  --deck-border: #e7ebf3;
+  --deck-text: #1b2130;
+  --deck-heading: #0d1220;
+  --deck-muted: #64708a;
+  --deck-accent: #2560ff;
+  --deck-chrome-h: 44px;
+
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--deck-bg);
+  color: var(--deck-text);
+}
+
+[data-bs-theme="dark"] .deck {
+  --deck-bg: #0d1117;
+  --deck-surface: #161b22;
+  --deck-border: #262c36;
+  --deck-text: #d5dae3;
+  --deck-heading: #f2f5fa;
+  --deck-muted: #8b95a7;
+  --deck-accent: #6b9bff;
+}
+
+// ── The stage ──────────────────────────────────────────────────────────────
+// One slide at a time, centred, with generous margins. `cursor: pointer` would
+// be wrong (most of the slide isn't a button) so the click-to-advance affordance
+// is left implicit, as in every other presentation tool.
+.deck-stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 4vmin 6vmin;
+  overflow: hidden;
+}
+
+.deck-slide {
+  width: 100%;
+  max-width: 1100px;
+  max-height: 100%;
+  overflow-y: auto;
+  font-size: clamp(1rem, 2.1vmin, 1.6rem);
+  line-height: 1.5;
+
+  // Kill the top margin on a leading heading so a title slide sits optically
+  // centred rather than pushed low by its own margin.
+  > :first-child {
+    margin-top: 0;
+  }
+  > :last-child {
+    margin-bottom: 0;
+  }
+
+  // App.scss styles headings globally as DOCUMENT headings — underlined, with
+  // generous top margin. On a slide that reads as a page title inside a page, so
+  // reset it here (the instructions pane does the same for itself).
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--deck-heading);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.6em;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 6vmin, 4rem);
+    line-height: 1.1;
+  }
+  h2 {
+    font-size: clamp(1.5rem, 4.2vmin, 2.75rem);
+    line-height: 1.15;
+  }
+  h3 {
+    font-size: clamp(1.2rem, 3vmin, 1.9rem);
+  }
+
+  p,
+  ul,
+  ol {
+    margin-bottom: 0.8em;
+  }
+
+  li {
+    margin-bottom: 0.35em;
+  }
+
+  // Slides are read at a distance: keep bullets from sprawling to the full
+  // width of a wide screen, where the eye loses the line.
+  ul,
+  ol {
+    padding-left: 1.4em;
+    max-width: 34em;
+  }
+
+  img,
+  svg {
+    max-width: 100%;
+    max-height: 60vh;
+    height: auto;
+  }
+
+  code {
+    font-size: 0.92em;
+  }
+
+  // The lab's code-block chrome is sized for the instructions pane; on a slide
+  // it needs to breathe without dominating.
+  .code-block {
+    font-size: clamp(0.75rem, 1.6vmin, 1rem);
+    text-align: left;
+  }
+
+  blockquote {
+    border-left: 3px solid var(--deck-accent);
+    padding-left: 0.8em;
+    color: var(--deck-muted);
+    margin-bottom: 0.8em;
+  }
+
+  table {
+    font-size: 0.9em;
+  }
+}
+
+// ── Fragments ──────────────────────────────────────────────────────────────
+// Hidden with `visibility`, not `display`, so revealing one doesn't reflow what
+// is already on screen. Text shifting mid-sentence is what makes a build look
+// amateurish.
+.deck-fragment {
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 180ms ease-out,
+    visibility 180ms;
+
+  &.revealed {
+    visibility: visible;
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-fragment {
+    transition: none;
+  }
+}
+
+// ── Chrome ─────────────────────────────────────────────────────────────────
+// Deliberately quiet: a thin bar that reads as part of the room's furniture
+// rather than competing with the content. It stays visible (rather than
+// auto-hiding) because the slide counter is genuinely useful to a presenter and
+// a hidden control is a control nobody finds mid-talk.
+.deck-chrome {
+  position: relative;
+  flex: 0 0 auto;
+  height: var(--deck-chrome-h);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.75rem;
+  border-top: 1px solid var(--deck-border);
+  background: var(--deck-surface);
+  font-size: 13px;
+}
+
+.deck-chrome-left,
+.deck-chrome-center,
+.deck-chrome-right {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.deck-chrome-right {
+  justify-content: flex-end;
+}
+
+.deck-title {
+  color: var(--deck-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 0.25rem;
+}
+
+.deck-counter {
+  color: var(--deck-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 4.5em;
+  text-align: center;
+}
+
+.deck-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--deck-muted);
+  text-decoration: none;
+  cursor: pointer;
+
+  .material-symbols-outlined {
+    font-size: 20px;
+  }
+
+  &:hover:not(:disabled) {
+    background: rgba(127, 127, 127, 0.14);
+    color: var(--deck-text);
+  }
+
+  &:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  &.active {
+    color: var(--deck-accent);
+    background: rgba(37, 96, 255, 0.12);
+  }
+}
+
+// A hairline at the very bottom of the chrome — position without a number to
+// read, which is what you want in peripheral vision while presenting.
+.deck-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: transparent;
+}
+
+.deck-progress-bar {
+  height: 100%;
+  background: var(--deck-accent);
+  transition: width 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-progress-bar {
+    transition: none;
+  }
+}
+
+// ── Empty state ────────────────────────────────────────────────────────────
+.deck-empty {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: 2rem;
+  color: var(--deck-muted, #64708a);
+}
+
+.deck-empty-hint {
+  font-size: 0.9em;
+  max-width: 30em;
+}

@@ -11,7 +11,24 @@ import { parse } from "yaml";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-export const DEFAULT_ICON = "science";
+/** Entry kinds the catalog understands. `lab` is the default when `kind:` is absent. */
+export const KINDS = ["lab", "slides"];
+
+/** Default card icon per kind, so a deck reads as a deck without configuration. */
+export const DEFAULT_ICONS = { lab: "science", slides: "slideshow" };
+
+export const DEFAULT_ICON = DEFAULT_ICONS.lab;
+
+/**
+ * The entry's kind, defaulting to "lab" so every pre-existing labspace.yaml is
+ * unchanged. An unrecognized value falls back to "lab" here and is reported as
+ * an error by validate-lab — a typo shouldn't make an entry vanish from the
+ * catalog with no explanation.
+ */
+export function entryKind(doc) {
+  const raw = doc && typeof doc === "object" ? doc.kind : undefined;
+  return typeof raw === "string" && KINDS.includes(raw) ? raw : "lab";
+}
 
 /**
  * Immediate subdirectories of `labsDir` that contain a `labspace.yaml`, sorted.
@@ -42,14 +59,19 @@ export function buildCatalog(labsDir) {
       throw new Error(`labs/${id}/labspace.yaml does not parse: ${e.message}`);
     }
     const cat = (doc && typeof doc === "object" && doc.catalog) || {};
+    const kind = entryKind(doc);
     labs.push({
       id,
       path: `labs/${id}/labspace.yaml`,
+      // What this entry IS, which decides how the app opens it: a lab runs in
+      // the instructions + terminal split, a deck runs as slides. The card looks
+      // the same either way apart from its default icon.
+      kind,
       // Card text defaults to the lab's own title/description; a `catalog:` block
       // may override either for the landing page without duplicating the rest.
       title: cat.title || doc.title || id,
       description: cat.description ?? doc.description ?? "",
-      icon: cat.icon || DEFAULT_ICON,
+      icon: cat.icon || DEFAULT_ICONS[kind],
       tags: Array.isArray(cat.tags) ? cat.tags : [],
       estimatedMinutes: cat.estimatedMinutes ?? null,
       order: typeof cat.order === "number" ? cat.order : null,

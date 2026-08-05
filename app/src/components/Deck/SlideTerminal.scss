@@ -1,0 +1,131 @@
+// An in-slide demo terminal. The terminal component brings its own dark surface
+// and monospace stack, so this file only supplies the frame around it: a title
+// bar with the terminal's id and the reset / pop-out controls.
+.slide-terminal {
+  display: flex;
+  flex-direction: column;
+  min-height: 120px;
+  margin: 1em 0;
+  border: 1px solid #262c36;
+  border-radius: 8px;
+  overflow: hidden;
+  // Slide type is scaled up with vmin; the terminal must NOT inherit that or a
+  // demo becomes unreadably chunky on a big screen. Pin it back to a fixed size.
+  font-size: 13.5px;
+  text-align: left;
+
+  // The wrapper is focusable so keystrokes stay with the terminal while its input
+  // row is hidden (see SlideTerminal.jsx). Suppress the ring for the resulting
+  // programmatic/click focus, but keep it for keyboard focus, which is the case
+  // that actually needs the affordance.
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--deck-accent, #2560ff);
+    outline-offset: 2px;
+  }
+}
+
+.slide-terminal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  background: #161b22;
+  border-bottom: 1px solid #262c36;
+  color: #8b95a7;
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+
+.slide-terminal-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: "Roboto Mono Variable", "Roboto Mono", ui-monospace, monospace;
+
+  .material-symbols-outlined {
+    font-size: 16px;
+  }
+}
+
+.slide-terminal-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+// Only shown once the terminal has focus — which is exactly when the deck's
+// arrow keys stop working and someone needs to know how to get them back.
+.slide-terminal-hint {
+  margin-right: 0.35rem;
+  font-size: 11px;
+  color: #6b7688;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.slide-terminal:focus-within .slide-terminal-hint,
+.slide-terminal:focus .slide-terminal-hint {
+  opacity: 1;
+}
+
+.slide-terminal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #8b95a7;
+  cursor: pointer;
+
+  .material-symbols-outlined {
+    font-size: 16px;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #d5dae3;
+  }
+}
+
+// The terminal fills the rest of the frame. min-height: 0 lets this flex child
+// shrink below its content height so the terminal's own body becomes the scroll
+// container — without it, streamed output is clipped invisibly (the same trap
+// TerminalPanel documents).
+.slide-terminal-term {
+  flex: 1;
+  min-height: 0;
+}
+
+.slide-terminal-placeholder {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: #0d1117;
+  color: #8b95a7;
+  font-size: 13px;
+  text-align: center;
+}
+
+// Shown when the deck declares no `simulator:` — an explanation rather than an
+// inert black rectangle the author would file a bug about.
+.slide-terminal-missing {
+  display: block;
+  padding: 1rem 1.25rem;
+  background: var(--deck-surface, #f6f8fc);
+  color: var(--deck-muted, #64708a);
+  font-size: 13px;
+
+  p {
+    margin: 0;
+  }
+}

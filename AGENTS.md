@@ -7,9 +7,13 @@ Agent-oriented guide to this repository. Read this first to load context quickly
 A **static, server-free learning runtime**. Authors write a lab (instructional
 markdown + a scenario spec); learners get a browser-based **mock terminal** that
 responds to any command deterministically — no backend, no AI API keys, no
-network, no real Docker. The whole thing is a React app that fetches its lab
-config at startup and simulates every command in-browser, deployable to any
-static host.
+network, no real Docker. The whole thing is a React app that fetches its config at
+startup and simulates every command in-browser, deployable to any static host.
+
+Authors can also ship a **slide deck** (`kind: slides`) from the same repo, so the
+slides and the hands-on lab for one workshop are a single build and a single
+deploy. Decks are markdown too, and a slide can embed a live demo terminal driven
+by the same simulator.
 
 The simulator is a config-driven, in-memory **state machine**: each command the
 learner types is matched against author-declared scenarios (first-match-wins)
@@ -29,8 +33,11 @@ The YAML formats and catalog that drive everything are fully specified in `spec/
   `terminals`, `files` seed, `sections`, `variables`, `services`) plus the
   section-markdown authoring surface (code-fence meta, `$$variable$$`, directives).
 - **[`spec/catalog.md`](spec/catalog.md)** — the `labs/<id>/` layout and the
-  generated `labs.json` catalog (one lab opens directly; several show a landing
-  page).
+  generated `labs.json` catalog (one entry opens directly; several show a landing
+  page), plus `kind` — what an entry IS.
+- **[`spec/slidedeck.md`](spec/slidedeck.md)** — `kind: slides`: splitting markdown
+  into slides on `---`, `Note:` speaker notes, `:::fragment` reveals, and
+  `::terminal` live demos.
 
 When changing engine behaviour or the YAML shapes, **keep these specs in sync**.
 
@@ -50,12 +57,17 @@ app/                 THE PRODUCT — the consolidated static React app
       test/          vitest suite — engine unit tests + React component tests
   src/
     labspace/        fetch + parse labspace.yaml; slug + $$variable$$ substitution
-    components/       WorkshopPanel (instructions + markdown), TerminalPanel, ExportView
-    context/          React contexts (Workshop, Tab, Terminal, PrintMode)
+    deck/            splitSlides.js — chapter markdown -> slides (fence-aware `---`)
+    components/       WorkshopPanel (instructions + markdown), TerminalPanel,
+                      Deck (DeckView, SlideTerminal, SpeakerNotesWindow), ExportView
+    context/          React contexts (Workshop, Tab, Terminal, Deck, PrintMode)
+    EntryRoute.jsx   reads the entry's `kind` and dispatches: AppRoute or DeckRoute
   public/
-    labs/            SAMPLE LABS — labs/<id>/ (labspace.yaml + simulator.yaml + *.md).
-                     The app reads a generated labs.json catalog: one lab opens
-                     directly, several show a landing page. labs.json is git-ignored.
+    labs/            SAMPLE ENTRIES — labs/<id>/ (labspace.yaml + *.md, plus a
+                     simulator.yaml for labs). Includes a slide deck
+                     (tour-of-docker-slides) paired with its lab. The app reads a
+                     generated labs.json: one entry opens directly, several show a
+                     landing page. labs.json is git-ignored.
   scripts/           Node tooling: validate-lab.ts (linter + catalog regen),
                      catalog.mjs + generate-catalog.mjs (build labs.json), run-ts.mjs
   dist/              build output — generated, do not edit
@@ -123,10 +135,11 @@ from the separate **`dockersamples/simspace-starter`** template — is just thei
 
 This is a **JavaScript/React (Vite) project** — all work happens in `app/`.
 
-**The `simulator` package is unit-tested; the app UI is not.** Changes to the
-engine or the terminal component must keep `npm test` green (add cases for new
-behaviour). For the React app around them there's no suite yet — verify those by
-running the app and exercising the lab, plus lint. Verify **lab content** (the
+**The `simulator` package and the app's pure logic are unit-tested; the React UI
+is not.** `npm test` runs both suites (the package's, then the app's) and must stay
+green — add cases for new behaviour. The app suite covers the pieces where a subtle
+bug wouldn't be obvious on screen, above all slide splitting. For the React UI
+there's no suite: verify that by running the app and exercising it, plus lint. Verify **lab content** (the
 `labspace.yaml` / `simulator.yaml` / markdown) with `npm run validate-lab` —
 always run it after editing a lab.
 
@@ -186,7 +199,14 @@ the app, with no build step for the package. `@dockersamples/simspace-simulator`
 - **All terminals share one simulator instance** — one state tree and one
   virtual filesystem. A command in one terminal is visible in the others.
   Scenarios scope to a terminal with `when.terminal: <id>`; ids come from
-  `labspace.yaml`'s `terminals:`.
+  `labspace.yaml`'s `terminals:`. This holds across a deck's slides too: a
+  container started on slide 4 is still running on slide 9.
+- **A deck's demo terminal owns its keystrokes.** While focus is inside
+  `.slide-terminal`, DeckView's keyboard handler stands down — otherwise typing
+  `docker ps` would flip slides on the space. `Esc` hands control back. If you
+  touch either side of this, re-check it in a browser: the trap is that
+  MockTerminal *unmounts its input row while output streams*, so focus lands on a
+  wrapper rather than an input.
 - **`app/dist/` is generated** by `npm run build` — never edit it. Edit the lab
   sources under `app/public/labs/`. `app/public/labs.json` is generated too
   (git-ignored) — never hand-edit it; change a lab's `labspace.yaml` instead.

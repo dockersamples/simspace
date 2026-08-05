@@ -10,6 +10,7 @@ import {
 import { useActiveSection, useWorkshop } from "../WorkshopContext";
 import { useTerminal } from "./TerminalContext";
 import { useAppConfig } from "./AppConfigContext";
+import { useDeck } from "./DeckContext";
 import { resolveTracking } from "../labspace/tracking";
 import * as progress from "../labspace/progress";
 
@@ -40,6 +41,10 @@ export function TrackingContextProvider({ children }) {
   const workshop = useWorkshop();
   const { subscribe } = useTerminal();
   const { activeSection } = useActiveSection();
+  // Present only inside a deck (DeckRoute mounts DeckContext above this one);
+  // null in a lab. A deck's "position" is its current SLIDE, not the chapter file
+  // the slide came from, so it reports that instead — see activeSectionId below.
+  const deck = useDeck();
 
   const labKey = workshop.labKey || "";
   const appConfig = useAppConfig();
@@ -68,7 +73,11 @@ export function TrackingContextProvider({ children }) {
   );
   const [presence, setPresence] = useState(null);
 
-  const activeSectionId = activeSection?.id;
+  // The learner's current position, reported as `sectionId` on every event. For a
+  // lab that's the instruction section; for a deck it's the slide. Both are "the
+  // one thing they're looking at", so pulse needs no new event shape and the
+  // insights dashboard reads decks and labs with the same query.
+  const activeSectionId = deck ? deck.current?.id : activeSection?.id;
   const activeSectionRef = useRef(activeSectionId);
   activeSectionRef.current = activeSectionId;
 
@@ -163,6 +172,21 @@ export function TrackingContextProvider({ children }) {
     if (!endpoint) return;
     emit("lab_started", { sectionId: activeSectionRef.current });
   }, [endpoint, emit]);
+
+  // A deck has no steps to complete, so "finished" is reaching the last slide.
+  // Recording it through the same markLabComplete path a lab uses is what makes
+  // the catalog's Completed badge and pulse's lab_completed work for decks
+  // without either of them learning what a deck is.
+  //
+  // Note this fires on REACHING the final slide, not on reading it — there's no
+  // honest signal for the latter, and requiring an extra press past the end
+  // would mean most decks never registered as complete.
+  useEffect(() => {
+    if (!deck || !deck.isLast || labCompleteSentRef.current) return;
+    labCompleteSentRef.current = true;
+    progress.markLabComplete(labKey);
+    emit("lab_completed");
+  }, [deck, labKey, emit]);
 
   // section_viewed whenever the active section changes.
   useEffect(() => {

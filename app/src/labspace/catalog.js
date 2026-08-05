@@ -10,6 +10,7 @@
 //       {
 //         "id": "tour-of-docker",              // directory name — keys saved state
 //         "path": "labs/tour-of-docker/labspace.yaml",
+//         "kind": "lab",                       // "lab" | "slides" (default "lab")
 //         "title": "A Tour of Docker",         // from labspace title / catalog.title
 //         "description": "One-line summary.",  // from labspace description
 //         "icon": "sailing",                   // material-symbols name
@@ -31,9 +32,12 @@ export function resolveCatalogUrl() {
 function normalize(lab) {
   return {
     id: lab.id,
+    // What this entry is: "lab" (instructions + terminal) or "slides" (a deck).
+    // Absent → "lab", so an older generated catalog still works.
+    kind: lab.kind === "slides" ? "slides" : "lab",
     title: lab.title || lab.id,
     description: lab.description || "",
-    icon: lab.icon || "science",
+    icon: lab.icon || (lab.kind === "slides" ? "slideshow" : "science"),
     tags: Array.isArray(lab.tags) ? lab.tags : [],
     estimatedMinutes: lab.estimatedMinutes ?? null,
     // Raw tracking directive: false (opt-out), an overrides object, or null

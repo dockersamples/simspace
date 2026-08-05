@@ -33,7 +33,13 @@ import {
   Scenario,
   StateValue,
 } from "@dockersamples/simspace-simulator";
-import { buildCatalog, findLabDirs, catalogJson } from "./catalog.mjs";
+import {
+  buildCatalog,
+  findLabDirs,
+  catalogJson,
+  entryKind,
+  KINDS,
+} from "./catalog.mjs";
 
 // ── Reporting ─────────────────────────────────────────────────────────────────
 
@@ -214,10 +220,37 @@ function validateLab(labDir: string): {
     return { errors, warnings };
   }
 
+  // "lab" or "slides". Recognized here rather than trusted, so a typo'd kind is
+  // reported instead of silently making the entry open as a lab.
+  const kindRaw = labspace.kind;
+  if (kindRaw !== undefined && !KINDS.includes(kindRaw as string)) {
+    err(
+      "labspace.yaml",
+      `unknown kind "${kindRaw}" — expected one of: ${KINDS.join(", ")}`,
+    );
+  }
+  const kind = entryKind(labspace);
+  const isDeck = kind === "slides";
+
   const simulatorRel = labspace.simulator as string | undefined;
-  if (!simulatorRel) {
+  // A lab is defined by its simulated commands, so the spec is required. A deck
+  // only needs one for live demos, so there it's optional.
+  if (!simulatorRel && !isDeck) {
     err("labspace.yaml", "missing required `simulator:` field");
   }
+
+  // Whether the simulator spec lives OUTSIDE this entry's own directory — the
+  // recommended pattern for a deck, which points at its sibling lab's spec so the
+  // demos and the exercise can't drift apart.
+  //
+  // A shared spec's terminal ids and `completes:` step ids belong to the entry
+  // that OWNS it, and are validated there. Cross-checking them against this
+  // entry would report an error on every deck that correctly reuses a lab's
+  // spec, which would train authors to ignore the validator.
+  const sharedSimulator = Boolean(
+    simulatorRel &&
+    (simulatorRel.startsWith("../") || simulatorRel.startsWith("/")),
+  );
 
   // Parse the simulator with the real engine parser so manifest errors surface.
   let lab: Lab | undefined;
@@ -241,12 +274,30 @@ function validateLab(labDir: string): {
     (labspace.terminals as { id?: string; title?: string }[]) ?? [];
   const services =
     (labspace.services as { id?: string; title?: string }[]) ?? [];
+  // A deck writes `slides:`; a lab writes `sections:`. They're the same list, so
+  // everything below — dangling contentPath, Run-button reachability, :filelink
+  // targets, {{ state }} refs — checks a deck's markdown exactly as a lab's.
+  type SectionDef = {
+    title?: string;
+    contentPath?: string;
+    steps?: { id?: string; title?: string }[];
+  };
   const sections =
-    (labspace.sections as {
-      title?: string;
-      contentPath?: string;
-      steps?: { id?: string; title?: string }[];
-    }[]) ?? [];
+    (labspace.slides as SectionDef[]) ??
+    (labspace.sections as SectionDef[]) ??
+    [];
+  if (labspace.slides && labspace.sections) {
+    warn(
+      "labspace.yaml",
+      "declares both `slides:` and `sections:` — they are aliases, so only `slides:` is read",
+    );
+  }
+  if (labspace.slides && !isDeck) {
+    warn(
+      "labspace.yaml",
+      "uses `slides:` without `kind: slides` — it will run as a lab, as one continuous page",
+    );
+  }
 
   // slugify mirrors the labspace loader so terminal/service default ids match.
   const slugify = (s: string) =>
@@ -340,7 +391,15 @@ function validateLab(labDir: string): {
     for (const sc of lab.scenarios) {
       const at = `scenario "${sc.id}"`;
 
-      if (sc.when.terminal && !terminalIds.has(sc.when.terminal)) {
+      // Only meaningful for a spec this entry owns. In a shared spec the ids
+      // belong to the owning entry (see sharedSimulator) — a deck reusing a
+      // lab's spec simply never fires the scenarios scoped to the lab's other
+      // terminals, which is intended, not a mistake.
+      if (
+        sc.when.terminal &&
+        !terminalIds.has(sc.when.terminal) &&
+        !sharedSimulator
+      ) {
         err(
           at,
           `when.terminal "${sc.when.terminal}" is not a declared terminal id`,
@@ -460,7 +519,10 @@ function validateLab(labDir: string): {
     for (const sc of lab.scenarios) {
       if (!sc.completes) continue;
       completedStepIds.add(sc.completes);
-      if (!catalogStepIds.has(sc.completes)) {
+      // Same reasoning as when.terminal above: in a shared spec the step ids
+      // belong to the entry that owns it. An entry that declares no steps at all
+      // simply doesn't track progress, which is already opt-in.
+      if (!catalogStepIds.has(sc.completes) && !sharedSimulator) {
         err(
           `scenario "${sc.id}"`,
           `completes "${sc.completes}" is not a step id in any section's steps: catalog`,

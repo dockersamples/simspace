@@ -1,6 +1,7 @@
-# Lab catalog (`labs.json`)
+# Catalog (`labs.json`)
 
-Every Labspace lab lives in its own directory under `labs/`:
+Every Labspace **entry** — a lab or a slide deck — lives in its own directory under
+`labs/`:
 
 ```
 labs/
@@ -22,8 +23,9 @@ lists, the app either:
 - **two or more** — shows a landing page to pick one, then runs it under
   `#/labs/<id>/…`.
 
-Each lab keeps its own saved progress, variables, and terminal transcripts,
-namespaced by its id (`simspace:engine:<id>`), so labs never cross-contaminate.
+Each entry keeps its own saved progress, variables, and terminal transcripts,
+namespaced by its id (`simspace:engine:<id>`), so entries never cross-contaminate —
+including a deck and the lab it introduces.
 
 ## The catalog is generated — you don't write it
 
@@ -64,16 +66,32 @@ Each entry in the generated `labs.json` looks like:
 
 | Field              | Source                                                            |
 | ------------------ | ---------------------------------------------------------------- |
-| `id`               | the lab's directory name (its URL segment + storage namespace)   |
+| `id`               | the entry's directory name (its URL segment + storage namespace) |
 | `path`             | `labs/<id>/labspace.yaml`                                        |
+| `kind`             | `kind` → `"lab"`                                                 |
 | `title`            | `catalog.title` → `title` → `id`                                 |
 | `description`      | `catalog.description` → `description` → `""`                     |
-| `icon`             | `catalog.icon` → `"science"`                                     |
+| `icon`             | `catalog.icon` → `"science"` (lab) / `"slideshow"` (slides)      |
 | `tags`             | `catalog.tags` → `[]`                                            |
 | `estimatedMinutes` | `catalog.estimatedMinutes` → `null`                             |
 
-A directory is a lab iff it contains a `labspace.yaml`. Ordering: `catalog.order`
-ascending, then title.
+A directory is an entry iff it contains a `labspace.yaml`. Ordering:
+`catalog.order` ascending, then title.
+
+### `kind` — what the entry is
+
+| Value              | Opens as                                                      |
+| ------------------ | ------------------------------------------------------------- |
+| _(omitted)_        | a lab — so every pre-existing `labspace.yaml` is unchanged     |
+| `lab`              | a lab: instructions pane + terminal (`labspace.md`)           |
+| `slides`           | a slide deck (`slidedeck.md`)                                 |
+
+Both kinds share the `#/labs/<id>/…` URL shape, and the app picks the view from
+`kind`. That's deliberate: the id is also the storage namespace and pulse's
+`labId`, and every deployed deep link resolves against this shape, so a separate
+`#/decks/…` space would fork all of it to express something only the landing page
+cares about. An unrecognized `kind` opens as a lab and is reported as an error by
+`validate-lab`.
 
 ## Validation
 

@@ -26,9 +26,20 @@
 // All terminals share ONE simulator instance (state + filesystem), so a change
 // made in one is visible in the others — like two shells on the same machine.
 // Scenarios can scope themselves to a terminal with `when.terminal: <id>`.
+//
+// A SLIDE DECK is the same file with `kind: slides`, and differs in three ways:
+//
+//   kind: slides
+//   simulator: ../containers-101/simulator.yaml   # OPTIONAL for a deck
+//   slides:                                        # alias of `sections:`
+//     - contentPath: 01-why-containers.md          # split into slides on `---`
+//
+// Everything else (title, variables, files, terminals, tracking) means exactly
+// the same thing, which is why one loader serves both.
 
 import { parse } from "yaml";
 import { slugify } from "./slugify";
+import { parseSlides } from "../deck/splitSlides";
 
 async function fetchText(url) {
   const res = await fetch(url);
@@ -53,21 +64,46 @@ export async function loadLabspace(labUrl) {
 
   const labBaseUrl = new URL(".", labUrl).toString();
 
-  const sectionDefs = Array.isArray(raw.sections) ? raw.sections : [];
+  // What this entry is. A deck reads the same as a lab apart from three things:
+  // `slides:` reads better than `sections:` (they're the same list), `simulator:`
+  // is optional (a deck without a live demo needs no scenarios), and each
+  // section's markdown is split into slides on `---`.
+  const kind = raw.kind === "slides" ? "slides" : "lab";
+
+  const sectionDefs = Array.isArray(raw.slides)
+    ? raw.slides
+    : Array.isArray(raw.sections)
+      ? raw.sections
+      : [];
   const sectionContentUrls = sectionDefs.map((sec) =>
     sec.contentPath ? resolve(sec.contentPath) : null,
   );
   const sections = await Promise.all(
     sectionDefs.map(async (sec, i) => {
       const contentUrl = sectionContentUrls[i];
+      // A deck's chapters are frequently untitled (the slides carry the
+      // headings), so fall back to a positional id rather than the empty string
+      // slugify would return.
+      const id = slugify(sec.title) || `chapter-${i + 1}`;
+      const baseUrl = contentUrl
+        ? new URL(".", contentUrl).toString()
+        : labBaseUrl;
+      const contentRaw = contentUrl ? await fetchText(contentUrl) : "";
       return {
-        id: slugify(sec.title),
+        id,
         title: sec.title,
         // Directory the section's markdown lives in. Relative asset paths in
         // that file (`images/diagram.png`, `../shared/logo.svg`, …) resolve
         // against this, so images load no matter how sections are nested.
-        baseUrl: contentUrl ? new URL(".", contentUrl).toString() : labBaseUrl,
-        contentRaw: contentUrl ? await fetchText(contentUrl) : "",
+        baseUrl,
+        contentRaw,
+        // For a deck, the chapter's markdown is further split into individual
+        // slides on `---` (see deck/splitSlides.js). Labs get an empty list and
+        // read `contentRaw` as one continuous page, exactly as before.
+        slides:
+          kind === "slides"
+            ? parseSlides(contentRaw, { chapterId: id, baseUrl })
+            : [],
         // Optional progress-tracking checkpoints for this section. A step's id
         // is referenced by a scenario's `completes:` in simulator.yaml; it
         // defaults to slugify(title) so authors can omit it. Absent → the
@@ -89,10 +125,15 @@ export async function loadLabspace(labUrl) {
     }),
   );
 
-  if (!raw.simulator) {
+  // A lab is defined by its simulated commands, so a missing `simulator:` is a
+  // hard error. A deck only needs one if some slide runs a live demo, so there it
+  // is optional and the terminal layer simply has no simulator to offer.
+  if (!raw.simulator && kind !== "slides") {
     throw new Error("labspace.yaml is missing a `simulator` path");
   }
-  const simulatorSpec = await fetchText(resolve(raw.simulator));
+  const simulatorSpec = raw.simulator
+    ? await fetchText(resolve(raw.simulator))
+    : null;
 
   // Terminals become tabs in the right-hand pane. They all share the single
   // simulator above, so commands run in any terminal act on the same state and
@@ -120,9 +161,13 @@ export async function loadLabspace(labUrl) {
     // pre-populate the service worker cache with all lab content.
     offlineUrls: [
       labUrl,
-      resolve(raw.simulator),
+      // A deck may have no simulator at all — don't resolve a null path into a
+      // bogus URL the service worker would then try to cache.
+      ...(raw.simulator ? [resolve(raw.simulator)] : []),
       ...sectionContentUrls.filter(Boolean),
     ],
+    // "lab" or "slides" — which view runs this entry. See EntryRoute.
+    kind,
     title: raw.title || "Labspace",
     subtitle: raw.description || "",
     // Optional lab version, used to namespace/invalidate stored progress when a

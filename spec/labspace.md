@@ -12,6 +12,11 @@ Where `simulator.yaml` (see the companion `simulator.md` specification) defines
 learner reads, how many terminals they see, what files the lab ships with, and
 which simulator spec drives those terminals.
 
+The same file also describes a **slide deck**, via `kind: slides`. Everything in
+this document applies to both; the three differences (`slides:` as an alias of
+`sections:`, an optional `simulator:`, and markdown split into slides on `---`) are
+specified in the companion **`slidedeck.md`**.
+
 The lab is **fully static and server-free**: the browser fetches
 `labspace.yaml` and everything it references (the simulator spec, section
 markdown, and any seed content) as static assets, and runs the whole lab
@@ -73,6 +78,7 @@ to the app's base URI, so subpath deploys (e.g. GitHub Pages) work unchanged.
 ## 3. Top-level `labspace.yaml` shape
 
 ```yaml
+kind: lab                                    # OPTIONAL. `lab` (default) or `slides`. See slidedeck.md
 title: "Getting Started (Simulated)"        # OPTIONAL. Document / header title.
 description: "A fully in-browser lab."       # OPTIONAL. Sub-title / summary.
 version: "1.0.0"                             # OPTIONAL. Lab version (progress invalidation). §4.1
@@ -111,10 +117,11 @@ Field summary:
 
 | Field         | Required | Purpose                                                        |
 | ------------- | -------- | -------------------------------------------------------------- |
+| `kind`        | no       | `lab` (default) or `slides` — which view runs it (`slidedeck.md`) |
 | `title`       | no       | Header title; also sets `document.title` (default `"Labspace"`) |
 | `description` | no       | Shown as the sub-title (default empty)                         |
 | `version`     | no       | Lab version string; namespaces/invalidates stored progress (§4.1) |
-| `simulator`   | **yes**  | Path (relative to this file) to the `simulator.yaml` spec      |
+| `simulator`   | **yes**\* | Path (relative to this file) to the `simulator.yaml` spec. \*Optional when `kind: slides` |
 | `terminals`   | no       | Terminal tabs, all sharing one simulator (default: one tab)    |
 | `files`       | no       | Seed files for the shared virtual filesystem                   |
 | `sections`    | no       | Ordered instruction pages rendered in the left-hand panel      |
@@ -123,8 +130,8 @@ Field summary:
 | `features`    | no       | Feature flags that add built-in tabs (e.g. `ci`) (§10)        |
 | `tracking`    | no       | Per-lab tracking override; `false` opts out (§10.2)           |
 
-A `labspace.yaml` that does not parse to a mapping, or that omits `simulator`,
-is a hard load error surfaced to the learner.
+A `labspace.yaml` that does not parse to a mapping, or that omits `simulator`
+(for a lab — a deck may omit it), is a hard load error surfaced to the learner.
 
 ---
 
@@ -552,6 +559,8 @@ commands operate on.
 
 ## 13. Open questions / deferred
 
+- ~~Presenting this content as slides rather than a scrolling page.~~ Implemented
+  as `kind: slides` — see `slidedeck.md`.
 - Per-terminal (non-shared) simulator instances or isolated filesystems.
 - Declaring initial state / variable overrides per section.
 - Schema `version` field for `labspace.yaml` itself (currently unversioned).

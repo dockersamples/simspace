@@ -1,0 +1,146 @@
+// The presenter view, rendered into a second browser window. It is read at a
+// glance, mid-sentence, often in a dark room — so: dark by default regardless of
+// the opener's theme, large type, and the notes given far more room than the
+// preview of what's next.
+.notes {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: #0d1117;
+  color: #d5dae3;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow: hidden;
+}
+
+.notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #262c36;
+}
+
+.notes-position {
+  color: #8b95a7;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+// Tabular numerals and a fixed width so the timer doesn't jitter as digits
+// change — movement in peripheral vision is distracting while you're talking.
+.notes-timer {
+  border: none;
+  background: transparent;
+  color: #d5dae3;
+  font-family: "Roboto Mono Variable", "Roboto Mono", ui-monospace, monospace;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  border-radius: 4px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.notes-label {
+  margin: 0 0 0.4rem;
+  color: #8b95a7;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+// The notes take the available space; "up next" is a fixed, smaller glance.
+.notes-current {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.notes-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  font-size: 18px;
+
+  > :first-child {
+    margin-top: 0;
+  }
+}
+
+.notes-next {
+  flex: 0 0 auto;
+  max-height: 28vh;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0.75rem;
+  border-top: 1px solid #262c36;
+}
+
+// Scaled down and de-emphasised: it's a reminder of what's coming, not something
+// to read out.
+.notes-preview {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  color: #8b95a7;
+  font-size: 13px;
+
+  h1,
+  h2,
+  h3 {
+    font-size: 15px;
+    margin: 0 0 0.3rem;
+    color: #b9c1cf;
+  }
+
+  > :first-child {
+    margin-top: 0;
+  }
+
+  // A demo terminal in the next slide is noise here — the presenter needs to
+  // know it's coming, not to see it render twice.
+  .slide-terminal {
+    display: none;
+  }
+}
+
+.notes-empty {
+  margin: 0;
+  color: #6b7688;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.notes-footer {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #262c36;
+}
+
+// Big targets: hit without looking, from a lectern.
+.notes-btn {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border: 1px solid #262c36;
+  border-radius: 6px;
+  background: #161b22;
+  color: #d5dae3;
+  font-size: 15px;
+  cursor: pointer;
+
+  &:hover {
+    background: #1d242e;
+    border-color: #39414d;
+  }
+}

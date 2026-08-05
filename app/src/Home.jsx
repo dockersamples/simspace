@@ -1,13 +1,16 @@
 import Spinner from "react-bootstrap/Spinner";
-import AppRoute from "./AppRoute";
+import EntryRoute from "./EntryRoute";
 import { Catalog } from "./components/Catalog/Catalog";
 import { useCatalog } from "./context/CatalogContext";
 
-// The landing route. Every lab comes from the catalog (labs.json, generated from
-// labs/*/labspace.yaml). Once it resolves:
-//   - no labs        → an error (nothing to serve)
-//   - exactly one    → enter it directly, with no lab id in the URL
-//   - two or more    → show the lab-selection page
+// The landing route. Every entry comes from the catalog (labs.json, generated
+// from labs/*/labspace.yaml). Once it resolves:
+//   - nothing        → an error (nothing to serve)
+//   - exactly one    → enter it directly, with no id in the URL
+//   - two or more    → show the selection page
+//
+// A workshop that ships a slide deck AND its lab lands in the third case, which
+// is the point: two cards, ordered by `catalog.order`.
 export default function Home() {
   const catalog = useCatalog();
 
@@ -33,10 +36,10 @@ export default function Home() {
     );
   }
 
-  // A single lab needs no landing page — go straight in. AppRoute has no `labId`
-  // param here, so WorkshopContext loads the sole catalog entry and keeps the URL
-  // clean (`#/`, `#/<section>`).
-  if (catalog.labs.length === 1) return <AppRoute />;
+  // A single entry needs no landing page — go straight in. EntryRoute has no
+  // `labId` param here, so it resolves the sole catalog entry, and the loaders
+  // below keep the URL clean (`#/`, `#/<section>`).
+  if (catalog.labs.length === 1) return <EntryRoute />;
 
   return <Catalog labs={catalog.labs} />;
 }

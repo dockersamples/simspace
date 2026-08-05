@@ -1,6 +1,6 @@
 import "./App.scss";
 import { HashRouter, Route, Routes } from "react-router";
-import AppRoute from "./AppRoute";
+import EntryRoute from "./EntryRoute";
 import ExportRoute from "./ExportRoute";
 import InsightsRoute from "./InsightsRoute";
 import Home from "./Home";
@@ -14,8 +14,11 @@ import { CatalogProvider } from "./context/CatalogContext";
 // Every lab comes from the catalog (labs.json, generated from labs/*/). Home
 // decides at `#/`: one lab is entered directly (clean URL, no id), several show
 // the selection page. The routes:
-//   - `#/:sectionId`, `#/export` — the single-lab case (no id in the URL).
-//   - `#/labs/:labId/:sectionId?`, `#/labs/:labId/export` — a chosen catalog lab.
+//   - `#/:sectionId`, `#/export` — the single-entry case (no id in the URL).
+//   - `#/labs/:labId/:sectionId?`, `#/labs/:labId/export` — a chosen entry.
+//
+// Both kinds of entry (labs and slide decks) share the `#/labs/…` shape;
+// EntryRoute reads the entry's `kind` from the catalog and picks the view.
 function App() {
   return (
     <HashRouter>
@@ -27,8 +30,8 @@ function App() {
             <Route path="insights" element={<InsightsRoute />} />
             <Route path="labs/:labId/export" element={<ExportRoute />} />
             <Route path="labs/:labId/insights" element={<InsightsRoute />} />
-            <Route path="labs/:labId/:sectionId?" element={<AppRoute />} />
-            <Route path=":sectionId" element={<AppRoute />} />
+            <Route path="labs/:labId/:sectionId?" element={<EntryRoute />} />
+            <Route path=":sectionId" element={<EntryRoute />} />
             <Route path="*" element={<Home />} />
           </Routes>
         </CatalogProvider>

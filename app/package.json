@@ -16,8 +16,9 @@
     "generate-catalog": "node scripts/generate-catalog.mjs",
     "prettier": "prettier --write .",
     "prettier-check": "prettier --check .",
-    "test": "npm run test --workspace @dockersamples/simspace-simulator",
-    "test:watch": "npm run test:watch --workspace @dockersamples/simspace-simulator",
+    "test": "npm run test --workspace @dockersamples/simspace-simulator && vitest run",
+    "test:app": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "npm run typecheck --workspace @dockersamples/simspace-simulator"
   },
   "dependencies": {

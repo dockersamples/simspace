@@ -1,0 +1,71 @@
+# A SLIDE DECK — the same manifest format as a lab, with `kind: slides`.
+#
+# This is the deck that goes in front of the `tour-of-docker` lab: the two
+# together are one workshop, shown as two cards on the landing page (ordered by
+# `catalog.order`).
+kind: slides
+
+title: "A Tour of Docker"
+description: "The 10-minute version, before you get your hands on it."
+
+catalog:
+  title: "A Tour of Docker — Slides"
+  description: "Start here. Slides with live, scripted demos."
+  icon: slideshow
+  tags: ["docker", "slides"]
+  estimatedMinutes: 10
+  # Deck first, lab second.
+  order: 1
+
+version: "1.0.0"
+
+# Point at the SIBLING LAB's simulator spec rather than a copy. The demos on
+# these slides then run the exact same scripted commands the learners will run
+# themselves in the lab, so the two can't drift apart. Paths resolve relative to
+# this file, so `../` works.
+#
+# `simulator:` is OPTIONAL for a deck — omit it for slides with no live demo.
+simulator: ../tour-of-docker/simulator.yaml
+
+# The demo terminal on the slides. Its id is what `::terminal{id=demo}` and a
+# code fence's `terminal-id=demo` refer to.
+#
+# NOTE: this spec's agent-session scenarios scope themselves to `when.terminal:
+# sandbox`, so they only fire in a terminal with that id — a deliberate example
+# of why terminal ids are part of the contract between the two files.
+terminals:
+  - id: demo
+    title: Demo
+    icon: terminal
+
+# Seed the same project files the lab uses, so `ls` and `cat` in a demo show the
+# same tree the learners will explore.
+files:
+  Dockerfile: |
+    FROM node:20-alpine
+    WORKDIR /app
+    COPY package.json package-lock.json ./
+    RUN npm ci --omit=dev
+    COPY . .
+    EXPOSE 3000
+    CMD ["node", "server.js"]
+  server.js: |
+    const express = require("express");
+    const app = express();
+
+    app.get("/", (_, res) => res.send("Hello from the lab!"));
+
+    app.listen(3000, () => console.log("listening on :3000"));
+
+# `slides:` is an alias of `sections:` — one file per chapter, each split into
+# individual slides on a `---` line.
+slides:
+  - title: Opening
+    contentPath: 00-opening.md
+  - title: The CLI
+    contentPath: 01-cli.md
+  - title: Handover
+    contentPath: 02-handover.md
+
+variables:
+  containerName: web

@@ -32,6 +32,10 @@ export function TerminalContextProvider({ children }) {
   // object with identical contents doesn't force a needless rebuild.
   const filesKey = JSON.stringify(workshop.files ?? {});
   const { simulator, error } = useMemo(() => {
+    // A slide deck with no live demo declares no `simulator:`, so there is
+    // nothing to build. That's not an error — it just means no terminal is on
+    // offer, and `::terminal` in a slide says so rather than crashing the deck.
+    if (!workshop.simulatorSpec) return { simulator: null, error: null };
     try {
       let restoredState, restoredFiles;
       try {

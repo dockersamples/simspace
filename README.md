@@ -35,14 +35,17 @@ app/                  the consolidated static app (build + deploy this)
                       pages, slides, www). See its README.
   src/
     labspace/         fetches + parses labspace.yaml, variable substitution
-    components/       instructions panel, terminal panel, markdown renderer
+    deck/             splits chapter markdown into slides
+    components/       instructions panel, terminal panel, markdown renderer,
+                      slide deck (view, in-slide terminal, speaker notes)
   public/
-    labs/             sample labs — labs/<id>/ (labspace.yaml + simulator.yaml + *.md)
+    labs/             sample entries — labs/<id>/ (labspace.yaml + *.md, plus a
+                      simulator.yaml for labs); includes a slide deck + its lab
   scripts/            validate-lab + catalog generation
 pulse/                OPTIONAL presence + analytics backend (Node/TS). Labs stay
                       static; the deployment points app/public/config.json at it.
                       See pulse/README.md
-spec/                 specifications for the YAML formats + catalog
+spec/                 specifications for the YAML formats, catalog, slide decks
 AGENTS.md             onboarding guide for agentic coding sessions
 Dockerfile            builds app/ and serves it with nginx (optional)
 docker-bake.hcl       bake targets for the static-app image
@@ -56,7 +59,9 @@ formats it consumes are specified under [`spec/`](spec):
 - [`spec/labspace.md`](spec/labspace.md) — the `labspace.yaml` lab config.
 - [`spec/simulator.md`](spec/simulator.md) — the `simulator.yaml` scenario spec.
 - [`spec/catalog.md`](spec/catalog.md) — the `labs/` layout and the generated
-  `labs.json` catalog.
+  `labs.json` catalog, including `kind` (what an entry is).
+- [`spec/slidedeck.md`](spec/slidedeck.md) — `kind: slides`: slide splitting,
+  speaker notes, fragments, and in-slide demo terminals.
 
 ## The `app/`
 
@@ -136,8 +141,47 @@ services:                        # optional external-URL tabs (iframes)
   code blocks (a Run button), `save-as=<path>` blocks (a Save button), file
   links, variable prompts, and OS-conditional content.
 
-The sample labs under [`app/public/labs/`](app/public/labs) are complete, working
-examples — copy one as a starting point.
+The sample entries under [`app/public/labs/`](app/public/labs) are complete,
+working examples — copy one as a starting point.
+
+## Authoring a slide deck
+
+Workshops usually pair slides with the hands-on part. A deck is the **same
+`labspace.yaml`** with `kind: slides`, so it lives beside the lab, ships in the
+same build, and shows up as its own card on the landing page:
+
+```yaml
+kind: slides
+title: "Containers 101"
+catalog:
+  order: 1                                    # deck first, lab second
+simulator: ../containers-101/simulator.yaml   # OPTIONAL — reuse the lab's spec
+                                              # so demos can't drift from the lab
+terminals:
+  - id: demo
+slides:                                       # alias of `sections:`
+  - contentPath: 00-opening.md
+```
+
+Each chapter file is ordinary markdown split into slides on a `---` line, with
+`Note:` for speaker notes, `:::fragment` for incremental reveals, and
+`::terminal{id=demo}` to drop a live, scripted demo terminal into a slide:
+
+````markdown
+## Start a container
+
+```bash terminal-id=demo
+docker run -d --name web -p 8080:80 nginx
+```
+
+::terminal{id=demo height=300}
+
+Note: Click Run rather than typing — the output is paced deliberately.
+````
+
+Press `s` for the presenter window (notes, next slide, timer), `f` for
+fullscreen. See [`spec/slidedeck.md`](spec/slidedeck.md) for the full reference,
+and `app/public/labs/tour-of-docker-slides/` for a working example.
 
 ## Deploying
 
