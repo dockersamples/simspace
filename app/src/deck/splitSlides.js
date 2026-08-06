@@ -17,6 +17,8 @@
 // Speaker notes use reveal's convention too: a `Note:` line, and everything
 // after it, belongs to the presenter rather than the slide.
 
+import { parse as parseYaml } from "yaml";
+
 /** A line that is exactly `---` (optionally indented) — the slide separator. */
 const SEPARATOR = /^\s*---\s*$/;
 
@@ -25,6 +27,34 @@ const FENCE = /^\s*(`{3,}|~{3,})/;
 
 /** The speaker-notes marker. Everything from here to the end of the slide. */
 const NOTE = /^\s*Note:\s?(.*)$/;
+
+/**
+ * A slide's leading config block: an HTML comment holding YAML.
+ *
+ *   <!-- layout: split -->
+ *   <!--
+ *   layout: split
+ *   theme: dark
+ *   eyebrow: Local dev with Docker Compose
+ *   -->
+ *
+ * A comment rather than front matter because `---` is already the slide
+ * separator, and a comment rather than a magic `Layout:` line because config then
+ * can't collide with prose that happens to start the same way. It's also what
+ * Prettier and every other markdown renderer leave alone — see `.prettierignore`
+ * for the formatting hazard this avoids.
+ *
+ * Anchored to the start: only a comment that OPENS the slide is config, so an
+ * ordinary comment further down stays ordinary.
+ */
+const CONFIG = /^\s*<!--([\s\S]*?)-->/;
+
+/**
+ * Splits a slide into regions — the columns of a `split` layout. A comment again,
+ * so there is one metadata mechanism rather than two. `***` would have read
+ * better but Prettier rewrites it to `---`, which is the slide separator.
+ */
+const REGION = /^\s*<!--\s*region\s*-->\s*$/;
 
 /**
  * Splits chapter markdown into slide chunks on `---` lines that are not inside a
@@ -92,6 +122,86 @@ export function extractNotes(chunk) {
 }
 
 /**
+ * Pulls a leading config comment off a slide, returning the parsed config and the
+ * remaining content.
+ *
+ * A malformed config block is reported rather than thrown: a typo in one slide's
+ * YAML must not take down the whole deck mid-presentation. `configError` is
+ * surfaced by validate-lab so it's caught at authoring time instead.
+ */
+export function extractConfig(chunk) {
+  const match = CONFIG.exec(chunk);
+  if (!match) return { config: {}, content: chunk, configError: null };
+
+  const body = match[1];
+  // A region marker is a comment too — don't eat it as this slide's config (which
+  // would happen on a slide whose first line is `<!-- region -->`).
+  if (REGION.test(body.trim() ? `<!--${body}-->` : "")) {
+    return { config: {}, content: chunk, configError: null };
+  }
+
+  const content = chunk.slice(match[0].length);
+  let parsed;
+  try {
+    parsed = parseYaml(body);
+  } catch (e) {
+    return { config: {}, content, configError: e.message };
+  }
+  if (parsed == null) return { config: {}, content, configError: null };
+  if (typeof parsed !== "object" || Array.isArray(parsed)) {
+    return {
+      config: {},
+      content,
+      configError: "slide config must be a mapping of key: value pairs",
+    };
+  }
+  return { config: parsed, content, configError: null };
+}
+
+/**
+ * Splits a slide's content into regions on `<!-- region -->`.
+ *
+ * Fence-aware for the same reason slide splitting is: a region marker inside a
+ * code block is content. Returns a single region when no marker is present, so
+ * every layout can read `regions` uniformly.
+ */
+export function splitRegions(content) {
+  const lines = (content ?? "").split("\n");
+  const regions = [];
+  let current = [];
+  let fence = null;
+
+  for (const line of lines) {
+    const fenceMatch = FENCE.exec(line);
+    if (fence) {
+      if (
+        fenceMatch &&
+        fenceMatch[1][0] === fence[0] &&
+        fenceMatch[1].length >= fence.length
+      ) {
+        fence = null;
+      }
+      current.push(line);
+      continue;
+    }
+    if (fenceMatch) {
+      fence = fenceMatch[1];
+      current.push(line);
+      continue;
+    }
+    if (REGION.test(line)) {
+      regions.push(current.join("\n").trim());
+      current = [];
+      continue;
+    }
+    current.push(line);
+  }
+  regions.push(current.join("\n").trim());
+
+  return regions;
+}
+
+/**
  * Parses one chapter of deck markdown into slides.
  *
  * Each slide gets a STABLE id — `<chapterId>-<n>`, numbered from 1 — used as the
@@ -112,8 +222,13 @@ export function extractNotes(chunk) {
 export function parseSlides(markdown, { chapterId, baseUrl } = {}) {
   return (
     splitChunks(markdown)
-      .map((chunk) => extractNotes(chunk))
-      .map(({ content, notes }) => ({ content: content.trim(), notes }))
+      // Notes first, then config: notes run to the end of the chunk, so pulling
+      // them off leaves a body whose LEADING comment is unambiguously config.
+      .map((chunk) => {
+        const { content: body, notes } = extractNotes(chunk);
+        const { config, content, configError } = extractConfig(body);
+        return { config, configError, notes, content: content.trim() };
+      })
       // A chunk with no body AND no notes is nothing at all — drop it. One with
       // only notes is kept: a deliberate "say this, show nothing" beat.
       .filter((slide) => slide.content !== "" || slide.notes !== "")
@@ -121,6 +236,9 @@ export function parseSlides(markdown, { chapterId, baseUrl } = {}) {
         id: `${chapterId}-${index + 1}`,
         chapterId,
         baseUrl,
+        // The columns of a `split` layout. Every other layout reads regions[0],
+        // so the shape is uniform and no layout needs to know about markers.
+        regions: splitRegions(slide.content),
         ...slide,
       }))
   );

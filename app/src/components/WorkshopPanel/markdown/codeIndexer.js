@@ -43,6 +43,18 @@ export function remarkCodeIndexer() {
         ? terminalIdMeta.split("=").slice(1).join("=")
         : "";
 
+      // `filename="compose.yaml"` labels the block's header with a filename
+      // instead of the language — the code-window look a deck wants. Purely a
+      // label: unlike `save-as`, it writes nothing to the virtual filesystem.
+      // Quotes are optional and stripped, since a filename may contain spaces
+      // (`Dockerfile · optimized`).
+      const filenameMeta = /filename=("[^"]*"|'[^']*'|\S+)/.exec(
+        node.meta || "",
+      );
+      node.data.hProperties["data-filename"] = filenameMeta
+        ? filenameMeta[1].replace(/^["']|["']$/g, "")
+        : "";
+
       const saveAsMeta = codeBlockMeta.find((m) => m.startsWith("save-as"));
       node.data.hProperties["data-display-save-as-button"] = saveAsMeta
         ? "true"

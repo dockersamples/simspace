@@ -25,7 +25,13 @@ export function SlideTerminal({ node }) {
   // `when.terminal` in the simulator spec line up. An unknown id falls back to
   // the primary terminal rather than rendering a dead panel.
   const terminalId = terminal?.resolveTerminalId?.(props.id) ?? props.id;
-  const height = props.height ? Number(props.height) : 320;
+
+  // `height` is authored in the theme's reference units — pixels on a 1920-wide
+  // canvas, the same scale every size in DeckView.scss is derived from — and
+  // converted to `cqi` so the panel scales with the slide instead of staying a
+  // fixed pixel block that is enormous on a laptop and a stamp on a projector.
+  const authored = Number(props.height) || 320;
+  const height = `${(authored / 19.2).toFixed(2)}cqi`;
 
   const [poppedOut, setPoppedOut] = useState(false);
   const dockBack = useCallback(() => setPoppedOut(false), []);

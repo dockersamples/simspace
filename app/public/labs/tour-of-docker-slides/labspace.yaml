@@ -17,7 +17,19 @@ catalog:
   # Deck first, lab second.
   order: 1
 
-version: "1.0.0"
+version: "1.1.0"
+
+# Default surface for every slide. Individual slides override with `theme:` in
+# their config block; `title` and `section` layouts pick their own default.
+theme: light
+
+# Branded chrome, set once here rather than repeated on every slide. A slide can
+# override `eyebrow`/`source`, or opt out of the bands entirely with
+# `chrome: false`.
+brand:
+  logo: assets/docker-logo-deep-blue.svg
+  eyebrow: "A Tour of Docker"
+  source: "DOCKER DEVELOPER PLATFORM · 2026"
 
 # Point at the SIBLING LAB's simulator spec rather than a copy. The demos on
 # these slides then run the exact same scripted commands the learners will run

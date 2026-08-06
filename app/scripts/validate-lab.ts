@@ -40,6 +40,8 @@ import {
   entryKind,
   KINDS,
 } from "./catalog.mjs";
+import { parseSlides } from "../src/deck/splitSlides.js";
+import { LAYOUTS, THEMES } from "../src/context/DeckContext.jsx";
 
 // ── Reporting ─────────────────────────────────────────────────────────────────
 
@@ -350,6 +352,60 @@ function validateLab(labDir: string): {
     }
     const raw = readFileSync(p, "utf8");
     fences.push(...extractFences(raw, label));
+
+    // ── Slide config (deck only) ─────────────────────────────────────────────
+    // Parsed with the SAME splitter the app uses, so what's checked here is
+    // exactly what will render. A slide's config is deliberately forgiving at
+    // runtime (a typo'd layout falls back to `default` rather than blanking the
+    // slide mid-talk), which is precisely why it has to be strict here.
+    if (isDeck) {
+      const chapterId = slugify(s.title ?? "") || `chapter-${i + 1}`;
+      for (const slide of parseSlides(raw, { chapterId })) {
+        const at = `slide "${slide.id}"`;
+        if (slide.configError) {
+          err(at, `config block does not parse: ${slide.configError}`);
+          continue;
+        }
+        const { layout, theme } = slide.config;
+        if (layout !== undefined && !LAYOUTS.includes(layout)) {
+          err(
+            at,
+            `unknown layout "${layout}" — expected one of: ${LAYOUTS.join(", ")}`,
+          );
+        }
+        if (theme !== undefined && !THEMES.includes(theme)) {
+          err(
+            at,
+            `unknown theme "${theme}" — expected one of: ${THEMES.join(", ")}`,
+          );
+        }
+        // A region marker only means something to `split`; anywhere else the
+        // regions are joined back together, so the break silently does nothing.
+        if (slide.regions.length > 1 && layout !== "split") {
+          warn(
+            at,
+            `has ${slide.regions.length} regions but layout is "${layout ?? "default"}" — only \`layout: split\` renders columns`,
+          );
+        }
+        if (layout === "split" && slide.regions.length < 2) {
+          warn(
+            at,
+            "`layout: split` with no `<!-- region -->` marker renders a single column",
+          );
+        }
+        // A logo path is relative to the slide's own directory.
+        if (
+          typeof slide.config.logo === "string" &&
+          !/^([a-z]+:)?\/\//i.test(slide.config.logo) &&
+          !slide.config.logo.startsWith("/")
+        ) {
+          const logoPath = join(dirname(p), slide.config.logo);
+          if (!existsSync(logoPath)) {
+            err(at, `logo not found: ${slide.config.logo}`);
+          }
+        }
+      }
+    }
 
     // :filelink paths referenced in prose.
     for (const fm of raw.matchAll(

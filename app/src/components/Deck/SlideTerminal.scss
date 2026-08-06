@@ -5,13 +5,15 @@
   display: flex;
   flex-direction: column;
   min-height: 120px;
-  margin: 1em 0;
+  margin: 0 0 1cqi;
   border: 1px solid #262c36;
-  border-radius: 8px;
+  border-radius: 0.5cqi;
   overflow: hidden;
-  // Slide type is scaled up with vmin; the terminal must NOT inherit that or a
-  // demo becomes unreadably chunky on a big screen. Pin it back to a fixed size.
-  font-size: 13.5px;
+  // Scale with the slide canvas like everything else, so a demo keeps its
+  // proportion on a projector — but with a floor, because a terminal that scales
+  // below ~11px stops being readable at the back of a room. Real font-size, not a
+  // transform, so the text stays crisp and the caret lands where it should.
+  font-size: max(11px, 1cqi);
   text-align: left;
 
   // The wrapper is focusable so keystrokes stay with the terminal while its input
@@ -33,11 +35,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.25rem 0.5rem;
+  padding: 0.35cqi 0.7cqi;
   background: #161b22;
   border-bottom: 1px solid #262c36;
   color: #8b95a7;
-  font-size: 12px;
+  font-size: max(10px, 0.8cqi);
   flex: 0 0 auto;
 }
 

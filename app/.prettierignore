@@ -1,0 +1,19 @@
+# Generated
+dist
+.vite
+public/labs.json
+
+# LAB AND DECK CONTENT — authored prose, not source code.
+#
+# Prettier rewrites markdown constructs it considers equivalent, and slide
+# markdown has load-bearing syntax it knows nothing about. The concrete case that
+# forced this: Prettier normalizes `***` and `___` to `---`, and `---` is the
+# SLIDE SEPARATOR — so a formatting pass could silently split one slide into two.
+#
+# The syntax this repo actually uses (HTML-comment config, `<!-- region -->`,
+# `:::` directives) survives Prettier today, but relying on that is a standing
+# bet on an external formatter's opinions about someone else's content. Authors
+# in their own repos never run our Prettier anyway, so formatting here bought
+# consistency we can't enforce in exchange for a risk we can't see.
+public/labs/**/*.md
+public/labs/**/*.yaml

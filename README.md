@@ -61,7 +61,8 @@ formats it consumes are specified under [`spec/`](spec):
 - [`spec/catalog.md`](spec/catalog.md) — the `labs/` layout and the generated
   `labs.json` catalog, including `kind` (what an entry is).
 - [`spec/slidedeck.md`](spec/slidedeck.md) — `kind: slides`: slide splitting,
-  speaker notes, fragments, and in-slide demo terminals.
+  layouts, the Docker theme, components, speaker notes, fragments, and in-slide
+  demo terminals.
 
 ## The `app/`
 
@@ -179,9 +180,37 @@ docker run -d --name web -p 8080:80 nginx
 Note: Click Run rather than typing — the output is paced deliberately.
 ````
 
+A slide opens with an optional config comment choosing one of six layouts
+(`default`, `title`, `section`, `split`, `stats`, `quote`) and a surface
+(`light`/`dark`/`tint`), with `<!-- region -->` splitting a `split` into columns:
+
+```markdown
+<!--
+layout: split
+theme: dark
+eyebrow: Multi-stage builds
+-->
+
+# Every layer you skip is time you get back
+
+:::stat{value="10×"}
+faster build-test cycles with Docker Build Cloud
+:::
+
+<!-- region -->
+
+:::card{label="After" accent=green}
+Runtime image is ~8 MB, deps cached across builds.
+:::
+```
+
+The slide is a fluid 16:9 canvas sized in container-query units, so a designed
+layout keeps its proportions from a laptop to a hall projector — and the live demo
+terminal stays crisp, which a scaled canvas wouldn't.
+
 Press `s` for the presenter window (notes, next slide, timer), `f` for
 fullscreen. See [`spec/slidedeck.md`](spec/slidedeck.md) for the full reference,
-and `app/public/labs/tour-of-docker-slides/` for a working example.
+and `app/public/labs/tour-of-docker-slides/` for a working example of every layout.
 
 ## Deploying
 

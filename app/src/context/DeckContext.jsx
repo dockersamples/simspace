@@ -26,6 +26,20 @@ import { substituteVariables } from "../labspace/slugify";
 
 const DeckContext = createContext(null);
 
+/** Layouts a slide may name. An unknown value falls back to `default` and is
+ * reported by validate-lab, so a typo shows a plain slide rather than nothing. */
+export const LAYOUTS = [
+  "default",
+  "title",
+  "section",
+  "split",
+  "stats",
+  "quote",
+];
+
+/** Surface variants of the Docker theme. */
+export const THEMES = ["light", "dark", "tint"];
+
 export function DeckContextProvider({ children }) {
   const workshop = useWorkshop();
   const { variables } = useVariables();
@@ -118,6 +132,60 @@ export function DeckContextProvider({ children }) {
     () => (current ? substituteVariables(current.notes, variables || {}) : ""),
     [current, variables],
   );
+  // The slide's regions (the columns of a `split`), substituted the same way.
+  // Every layout reads this; non-split layouts simply use the first entry.
+  const regions = useMemo(
+    () =>
+      (current?.regions ?? []).map((region) =>
+        substituteVariables(region, variables || {}),
+      ),
+    [current, variables],
+  );
+
+  // Presentation config: the slide's own settings layered over the deck's
+  // defaults, so an author sets the brand once in labspace.yaml and overrides
+  // per slide only where a slide differs.
+  const layout = useMemo(() => {
+    const raw = current?.config?.layout;
+    return LAYOUTS.includes(raw) ? raw : "default";
+  }, [current]);
+
+  // Precedence: the slide's own theme, then the layout's default, then the deck
+  // default, then light.
+  //
+  // The layout default deliberately outranks the DECK default. A deck-wide
+  // `theme: light` means "content slides are light" — read as outranking the
+  // layout it would flatten every chapter marker back to white, which is the one
+  // thing a divider slide exists not to be. An author who genuinely wants a light
+  // divider says so on that slide, where it's visible.
+  const theme = useMemo(() => {
+    const fromSlide = current?.config?.theme;
+    if (THEMES.includes(fromSlide)) return fromSlide;
+    if (layout === "title") return "dark";
+    if (layout === "section") return "tint";
+    return THEMES.includes(workshop.theme) ? workshop.theme : "light";
+  }, [current, workshop.theme, layout]);
+
+  // Chrome text. An explicit empty string suppresses a band the deck default
+  // would otherwise supply, which is why this checks for undefined rather than
+  // falsiness.
+  const chrome = useMemo(() => {
+    const config = current?.config ?? {};
+    const brand = workshop.brand ?? {};
+    const pick = (key) =>
+      config[key] !== undefined ? config[key] : brand[key];
+    return {
+      eyebrow: pick("eyebrow") ?? "",
+      source: pick("source") ?? "",
+      byline: config.byline ?? "",
+      // Overridable per slide because a dark surface needs the reversed mark —
+      // the one piece of brand that legitimately varies slide to slide. A slide's
+      // own value is lab-relative (the loader already resolved `brand.logo`), so
+      // resolve it here against the slide's directory.
+      logo: resolveAsset(pick("logo"), current?.baseUrl) ?? null,
+      showChrome: config.chrome !== false && brand.chrome !== false,
+    };
+  }, [current, workshop.brand]);
 
   const value = useMemo(
     () => ({
@@ -126,7 +194,11 @@ export function DeckContextProvider({ children }) {
       total: slides.length,
       current,
       content,
+      regions,
       notes,
+      layout,
+      theme,
+      chrome,
       fragment,
       fragmentCount,
       next,
@@ -140,7 +212,11 @@ export function DeckContextProvider({ children }) {
       indexFromUrl,
       current,
       content,
+      regions,
       notes,
+      layout,
+      theme,
+      chrome,
       fragment,
       fragmentCount,
       next,
@@ -150,6 +226,22 @@ export function DeckContextProvider({ children }) {
   );
 
   return <DeckContext.Provider value={value}>{children}</DeckContext.Provider>;
+}
+
+/**
+ * Resolves a slide-relative asset path against the slide's directory, so a config
+ * value like `logo: assets/docker-logo-white.svg` behaves like every other path in
+ * a lab. Absolute paths, full URLs, and already-resolved values pass through.
+ */
+function resolveAsset(path, baseUrl) {
+  if (!path || typeof path !== "string") return path;
+  if (/^([a-z]+:)?\/\//i.test(path) || path.startsWith("/")) return path;
+  if (!baseUrl) return path;
+  try {
+    return new URL(path, baseUrl).toString();
+  } catch {
+    return path;
+  }
 }
 
 /**

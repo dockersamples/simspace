@@ -19,6 +19,7 @@ import { ConditionalDisplay } from "./ConditionalDisplay";
 import { MarkdownBaseUrlContext } from "./markdownBaseUrl";
 import { SlideTerminal } from "../../Deck/SlideTerminal";
 import { Fragment } from "../../Deck/Fragment";
+import { Card, Stat, Tag } from "../../Deck/SlideParts";
 
 export function MarkdownRenderer({ children, baseUrl }) {
   return (
@@ -57,6 +58,9 @@ export function MarkdownRenderer({ children, baseUrl }) {
           // says there isn't one), and a `:::fragment` renders fully revealed.
           terminal: SlideTerminal,
           fragment: Fragment,
+          stat: Stat,
+          card: Card,
+          tag: Tag,
         }}
       >
         {children}

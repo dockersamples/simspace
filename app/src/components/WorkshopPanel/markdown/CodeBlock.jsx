@@ -23,6 +23,9 @@ export function CodeBlock({ node, inline, className, children, ...props }) {
 
   // These properties are populated by the codeIndexer remark plugin
   const saveAsPath = node.properties.dataSaveAsPath;
+  // A display-only label for the header (`filename=` in the fence meta). Used by
+  // deck slides for the code-window look; writes nothing, unlike `save-as`.
+  const filename = node.properties.dataFilename;
   // The terminal the Run/Save buttons target. Resolves to the primary terminal
   // when unset or when the id doesn't match a declared terminal.
   const targetTerminalId = terminal.resolveTerminalId(
@@ -86,10 +89,10 @@ export function CodeBlock({ node, inline, className, children, ...props }) {
       <div className="code-block-header">
         <span className="code-block-label">
           <span className="material-symbols-outlined code-block-label-icon">
-            {saveAsPath ? "draft" : "terminal"}
+            {saveAsPath || filename ? "draft" : "terminal"}
           </span>
-          {saveAsPath ? (
-            <span title={saveAsPath}>{saveAsPath}</span>
+          {saveAsPath || filename ? (
+            <span title={saveAsPath || filename}>{saveAsPath || filename}</span>
           ) : (
             <span>{language}</span>
           )}

@@ -36,8 +36,9 @@ The YAML formats and catalog that drive everything are fully specified in `spec/
   generated `labs.json` catalog (one entry opens directly; several show a landing
   page), plus `kind` — what an entry IS.
 - **[`spec/slidedeck.md`](spec/slidedeck.md)** — `kind: slides`: splitting markdown
-  into slides on `---`, `Note:` speaker notes, `:::fragment` reveals, and
-  `::terminal` live demos.
+  into slides on `---`, `Note:` speaker notes, `:::fragment` reveals, `::terminal`
+  live demos, plus per-slide config, the six layouts, the `:::stat`/`:::card`/`:tag`
+  components, and the Docker theme.
 
 When changing engine behaviour or the YAML shapes, **keep these specs in sync**.
 
@@ -57,9 +58,12 @@ app/                 THE PRODUCT — the consolidated static React app
       test/          vitest suite — engine unit tests + React component tests
   src/
     labspace/        fetch + parse labspace.yaml; slug + $$variable$$ substitution
-    deck/            splitSlides.js — chapter markdown -> slides (fence-aware `---`)
+    deck/            splitSlides.js — chapter markdown -> slides (fence-aware
+                     `---`), per-slide config, and `<!-- region -->` columns
     components/       WorkshopPanel (instructions + markdown), TerminalPanel,
-                      Deck (DeckView, SlideTerminal, SpeakerNotesWindow), ExportView
+                      Deck (DeckView + DeckView.scss carries the layouts and the
+                      Docker theme, SlideParts, SlideTerminal, SpeakerNotesWindow),
+                      ExportView
     context/          React contexts (Workshop, Tab, Terminal, Deck, PrintMode)
     EntryRoute.jsx   reads the entry's `kind` and dispatches: AppRoute or DeckRoute
   public/
@@ -201,6 +205,13 @@ the app, with no build step for the package. `@dockersamples/simspace-simulator`
   Scenarios scope to a terminal with `when.terminal: <id>`; ids come from
   `labspace.yaml`'s `terminals:`. This holds across a deck's slides too: a
   container started on slide 4 is still running on slide 9.
+- **Slide sizes are in `cqi`, and `app/.prettierignore` covers lab content.** Two
+  deck decisions that are easy to undo by accident. The slide canvas is a 16:9
+  container and every type size is a percentage of its width, so a stray `px` in
+  `DeckView.scss` stops scaling with the slide — see the header comment there for
+  the 1920÷19.2 conversion. And Prettier is kept away from `public/labs/**` because
+  it rewrites `***`/`___` to `---`, which is the slide separator; re-enabling it
+  would let a formatting pass split a slide in two.
 - **A deck's demo terminal owns its keystrokes.** While focus is inside
   `.slide-terminal`, DeckView's keyboard handler stands down — otherwise typing
   `docker ps` would flip slides on the space. `Esc` hands control back. If you

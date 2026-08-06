@@ -24,7 +24,7 @@ export function DeckView() {
   const [notesOpen, setNotesOpen] = useState(false);
   const stageRef = useRef(null);
 
-  const { next, previous, goTo, index, total, content, current } = deck;
+  const { next, previous, goTo, index, total, current } = deck;
 
   // Keyboard navigation, scoped so it never steals a keystroke meant for
   // something else. An in-slide terminal is a real text input: if space or the
@@ -108,13 +108,23 @@ export function DeckView() {
   return (
     <div className="deck">
       <div className="deck-stage" ref={stageRef} onClick={onStageClick}>
-        <article className="deck-slide" key={current.id}>
+        {/* The canvas is a 16:9 box that is also a size container, so every type
+            scale below can be expressed in `cqi` and stay proportional at any
+            display size — the fidelity a fixed 1920×1080 canvas would give,
+            without `transform: scale()` blurring the live demo terminal or
+            turning overflow into a hard clip. */}
+        <article
+          className={`deck-canvas deck-canvas--${deck.layout} deck-canvas--${deck.theme}`}
+          key={current.id}
+        >
           {/* Fragments are revealed by CSS driven from context, so the markdown
               renderer stays unaware of presentation state. */}
           <FragmentContext.Provider value={deck.fragment}>
-            <MarkdownRenderer baseUrl={current.baseUrl}>
-              {content}
-            </MarkdownRenderer>
+            <SlideChrome position="top" />
+            <div className="deck-body">
+              <SlideRegions />
+            </div>
+            <SlideChrome position="bottom" />
           </FragmentContext.Provider>
         </article>
       </div>
@@ -189,6 +199,89 @@ export function DeckView() {
 
       {notesOpen && <SpeakerNotesWindow onClose={() => setNotesOpen(false)} />}
     </div>
+  );
+}
+
+/**
+ * The slide's content, arranged by layout.
+ *
+ * Every layout reads the same `regions` array, which is what keeps the layout set
+ * cheap: only `split` cares that there is more than one region. The rest is CSS.
+ *
+ * `split` with THREE or more regions treats the first as a full-width header band
+ * and the rest as columns; with two, both are columns. That one rule covers every
+ * design in the reference deck — a spanning headline over two columns, and a
+ * headline that lives *inside* the left column — without inspecting content or
+ * adding a second layout name.
+ */
+function SlideRegions() {
+  const { layout, regions, current } = useDeck();
+  const baseUrl = current?.baseUrl;
+
+  const render = (markdown, key, className) => (
+    <div className={className} key={key}>
+      <MarkdownRenderer baseUrl={baseUrl}>{markdown}</MarkdownRenderer>
+    </div>
+  );
+
+  if (layout === "split" && regions.length > 1) {
+    const hasHeader = regions.length > 2;
+    const header = hasHeader ? regions[0] : null;
+    const columns = hasHeader ? regions.slice(1) : regions;
+    return (
+      <>
+        {header && render(header, "header", "deck-region deck-region--header")}
+        <div
+          className="deck-columns"
+          style={{ "--deck-columns": columns.length }}
+        >
+          {columns.map((region, i) => render(region, i, "deck-region"))}
+        </div>
+      </>
+    );
+  }
+
+  // Any other layout ignores region markers and renders the whole slide. Joining
+  // rather than dropping the extras means a stray marker loses the column break,
+  // not the content.
+  return render(regions.join("\n\n"), "only", "deck-region");
+}
+
+/**
+ * The branded top and bottom bands: logo + eyebrow above, source + page number
+ * below. Driven entirely by config (deck-level `brand`, overridable per slide),
+ * so a deck opts into the full Docker chrome without any slide markup.
+ */
+function SlideChrome({ position }) {
+  const { chrome, index, total, layout } = useDeck();
+  if (!chrome.showChrome) return null;
+
+  if (position === "top") {
+    if (!chrome.logo && !chrome.eyebrow) return null;
+    return (
+      <header className="deck-topbar">
+        {chrome.logo ? (
+          <img className="deck-logo" src={chrome.logo} alt="" />
+        ) : (
+          <span />
+        )}
+        {chrome.eyebrow && (
+          <span className="deck-eyebrow">{chrome.eyebrow}</span>
+        )}
+      </header>
+    );
+  }
+
+  // A title slide carries a byline where a content slide carries its source.
+  const left =
+    layout === "title" && chrome.byline ? chrome.byline : chrome.source;
+  return (
+    <footer className="deck-footer">
+      <span className="deck-source">{left}</span>
+      <span className="deck-pagenum">
+        {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+      </span>
+    </footer>
   );
 }
 

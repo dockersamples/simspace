@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { extractNotes, parseSlides, splitChunks } from "./splitSlides";
+import {
+  extractConfig,
+  extractNotes,
+  parseSlides,
+  splitChunks,
+  splitRegions,
+} from "./splitSlides";
 
 describe("splitChunks", () => {
   it("splits on a --- line", () => {
@@ -168,5 +174,166 @@ describe("parseSlides", () => {
     });
     const after = parseSlides("# New title\n---\n# Second", { chapterId: "c" });
     expect(after.map((s) => s.id)).toEqual(before.map((s) => s.id));
+  });
+});
+
+describe("extractConfig", () => {
+  it("parses a one-line config comment", () => {
+    const { config, content } = extractConfig("<!-- layout: split -->\n\n# Hi");
+    expect(config).toEqual({ layout: "split" });
+    expect(content.trim()).toBe("# Hi");
+  });
+
+  it("parses a multi-line config comment as YAML", () => {
+    const md = [
+      "<!--",
+      "layout: title",
+      "theme: dark",
+      "eyebrow: Developer Platform",
+      "-->",
+      "",
+      "# Build. Ship. Run.",
+    ].join("\n");
+    const { config, content } = extractConfig(md);
+    expect(config).toEqual({
+      layout: "title",
+      theme: "dark",
+      eyebrow: "Developer Platform",
+    });
+    expect(content.trim()).toBe("# Build. Ship. Run.");
+  });
+
+  it("returns empty config when there is no comment", () => {
+    const { config, content, configError } = extractConfig("# Hi");
+    expect(config).toEqual({});
+    expect(content).toBe("# Hi");
+    expect(configError).toBeNull();
+  });
+
+  it("only treats a LEADING comment as config", () => {
+    // A comment further down is ordinary content — otherwise an author could
+    // never write a comment in a slide.
+    const md = "# Hi\n\n<!-- layout: split -->";
+    const { config, content } = extractConfig(md);
+    expect(config).toEqual({});
+    expect(content).toBe(md);
+  });
+
+  it("does not mistake a leading region marker for config", () => {
+    // A slide whose first line is a region marker (an empty first column) must
+    // keep the marker, or the region split would silently lose it.
+    const { config, content } = extractConfig("<!-- region -->\n\nright only");
+    expect(config).toEqual({});
+    expect(content).toContain("<!-- region -->");
+  });
+
+  it("reports malformed YAML instead of throwing", () => {
+    // One slide's typo must not take down a deck mid-presentation.
+    const { config, configError } = extractConfig("<!--\na: [1\n-->\n\n# Hi");
+    expect(config).toEqual({});
+    expect(configError).toBeTruthy();
+  });
+
+  it("reports a non-mapping config", () => {
+    const { configError } = extractConfig("<!--\n- a\n- b\n-->\n\n# Hi");
+    expect(configError).toMatch(/mapping/);
+  });
+
+  it("treats an empty comment as no config", () => {
+    const { config, configError } = extractConfig("<!-- -->\n\n# Hi");
+    expect(config).toEqual({});
+    expect(configError).toBeNull();
+  });
+});
+
+describe("splitRegions", () => {
+  it("returns one region when there is no marker", () => {
+    expect(splitRegions("# Hi\n\nbody")).toEqual(["# Hi\n\nbody"]);
+  });
+
+  it("splits on a region marker and trims each region", () => {
+    expect(splitRegions("left\n\n<!-- region -->\n\nright")).toEqual([
+      "left",
+      "right",
+    ]);
+  });
+
+  it("supports three regions (header + two columns)", () => {
+    const md = "# Head\n<!-- region -->\nleft\n<!-- region -->\nright";
+    expect(splitRegions(md)).toEqual(["# Head", "left", "right"]);
+  });
+
+  it("ignores a region marker inside a fenced code block", () => {
+    const md = ["```html", "<!-- region -->", "```", "after"].join("\n");
+    expect(splitRegions(md)).toHaveLength(1);
+  });
+
+  it("tolerates whitespace variations in the marker", () => {
+    expect(splitRegions("a\n<!--region-->\nb")).toHaveLength(2);
+    expect(splitRegions("a\n  <!--  region  -->  \nb")).toHaveLength(2);
+  });
+
+  it("keeps an empty leading region so columns stay aligned", () => {
+    expect(splitRegions("<!-- region -->\nright")).toEqual(["", "right"]);
+  });
+
+  it("handles empty input", () => {
+    expect(splitRegions("")).toEqual([""]);
+    expect(splitRegions(undefined)).toEqual([""]);
+  });
+});
+
+describe("parseSlides with config and regions", () => {
+  it("attaches config, regions, and notes to each slide", () => {
+    const md = [
+      "<!-- layout: split -->",
+      "",
+      "# Head",
+      "",
+      "<!-- region -->",
+      "",
+      "left",
+      "",
+      "<!-- region -->",
+      "",
+      "right",
+      "",
+      "Note: say this",
+    ].join("\n");
+    const [slide] = parseSlides(md, { chapterId: "c" });
+    expect(slide.config).toEqual({ layout: "split" });
+    expect(slide.regions).toEqual(["# Head", "left", "right"]);
+    expect(slide.notes).toBe("say this");
+  });
+
+  it("gives every slide a regions array even with no markers", () => {
+    const slides = parseSlides("a\n---\nb", { chapterId: "c" });
+    expect(slides.map((s) => s.regions)).toEqual([["a"], ["b"]]);
+  });
+
+  it("defaults config to an empty object", () => {
+    expect(parseSlides("# Hi", { chapterId: "c" })[0].config).toEqual({});
+  });
+
+  it("keeps config per-slide rather than leaking to the next", () => {
+    const md = "<!-- layout: title -->\n# A\n---\n# B";
+    const slides = parseSlides(md, { chapterId: "c" });
+    expect(slides[0].config).toEqual({ layout: "title" });
+    expect(slides[1].config).toEqual({});
+  });
+
+  it("strips the config comment from the rendered content", () => {
+    const [slide] = parseSlides("<!-- layout: title -->\n\n# A", {
+      chapterId: "c",
+    });
+    expect(slide.content).not.toContain("<!--");
+    expect(slide.regions[0]).not.toContain("<!--");
+  });
+
+  it("does not drop a slide that has only config and notes", () => {
+    const [slide] = parseSlides("<!-- layout: title -->\n\nNote: talk", {
+      chapterId: "c",
+    });
+    expect(slide.notes).toBe("talk");
   });
 });

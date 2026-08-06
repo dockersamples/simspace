@@ -42,12 +42,13 @@ they're all in §2.
 
 ## 2. What differs from a lab
 
-| Concern           | Lab                            | Deck                                        |
-| ----------------- | ------------------------------ | ------------------------------------------- |
-| `kind:`           | absent (or `lab`)              | `slides`                                    |
-| Content list      | `sections:`                    | `slides:` (an alias — either is accepted)   |
-| `simulator:`      | **required**                   | **optional** — only needed for live demos   |
-| Content rendering | one continuous scrolling page  | split into slides on `---`                  |
+| Concern           | Lab                           | Deck                                      |
+| ----------------- | ----------------------------- | ----------------------------------------- |
+| `kind:`           | absent (or `lab`)             | `slides`                                  |
+| Content list      | `sections:`                   | `slides:` (an alias — either is accepted) |
+| `simulator:`      | **required**                  | **optional** — only needed for live demos |
+| Content rendering | one continuous scrolling page | split into slides on `---`                |
+| Presentation      | —                             | `theme:` and `brand:` (§9), per-slide config (§3.4) |
 
 Everything else is identical, which is why one loader and one provider stack serve
 both. In particular `variables`, `files`, `terminals`, `services`, `tracking`, and
@@ -67,6 +68,12 @@ catalog:
   estimatedMinutes: 20
 
 version: "1.0.0"
+
+theme: light # default surface for every slide (§9)
+brand: # branded chrome, set once (§9)
+  logo: assets/docker-logo-deep-blue.svg
+  eyebrow: "Containers 101"
+  source: "DOCKER DEVELOPER PLATFORM · 2026"
 
 # OPTIONAL. Point at the SIBLING LAB's spec so the demos on these slides run the
 # exact commands the learners will run themselves — see §5.
@@ -139,7 +146,7 @@ you do, so stale progress is invalidated rather than mis-attributed (§4.1 of
 
 A line beginning `Note:` and everything after it, to the end of the slide, is
 speaker notes. It never renders on the slide; it appears in the presenter window
-(§6).
+(§8).
 
 ```markdown
 ## Three primitives
@@ -188,6 +195,78 @@ Behaviour:
 
 ---
 
+### 3.4 Per-slide config
+
+A slide may open with an **HTML comment containing YAML**. It never renders, and
+it configures how that slide is presented:
+
+```markdown
+<!--
+layout: split
+theme: dark
+eyebrow: Multi-stage builds
+logo: assets/docker-logo-white.svg
+-->
+
+# Every layer you skip is time you get back
+```
+
+The one-line form works too: `<!-- layout: split -->`.
+
+| Key       | Purpose                                                                   |
+| --------- | ------------------------------------------------------------------------- |
+| `layout`  | One of §5's layouts. Default `default`.                                    |
+| `theme`   | `light` · `dark` · `tint`. See §9 for how the default is chosen.            |
+| `eyebrow` | Top-right label. `""` suppresses the deck default.                         |
+| `source`  | Bottom-left citation. `""` suppresses the deck default.                    |
+| `byline`  | Replaces `source` in the footer on a `title` layout.                       |
+| `logo`    | Overrides the deck logo — a dark surface needs the reversed mark. Slide-relative. |
+| `chrome`  | `false` hides both bands entirely on this slide.                           |
+
+Why a comment and not the obvious alternatives:
+
+- **Not YAML front matter.** `---` is already the slide separator.
+- **Not a `Layout:` magic line.** Config would then collide with prose that
+  happens to begin the same way.
+- A comment is invisible to every other markdown renderer, and it is one of the
+  few forms Prettier provably leaves alone — see the warning in §3.5.
+
+Only a comment that **opens** the slide is config, so ordinary comments further
+down stay ordinary. A malformed block is reported by `validate-lab` and ignored at
+runtime: a typo must not blank a slide mid-presentation.
+
+### 3.5 `<!-- region -->` — splitting a slide into columns
+
+`layout: split` divides a slide at each `<!-- region -->` marker:
+
+```markdown
+<!-- layout: split -->
+
+# Where developer time actually goes
+
+<!-- region -->
+
+### The problem
+
+<!-- region -->
+
+### The fix
+```
+
+- With **two** regions, both are columns.
+- With **three or more**, the first is a full-width **header band** and the rest
+  are columns. That one rule covers both a spanning headline above two columns and
+  a headline that lives inside the left column.
+- A marker inside a fenced code block is content, not a break.
+- On any layout other than `split`, regions are joined back together — the break
+  does nothing, and `validate-lab` warns.
+
+> [!IMPORTANT]
+> The region marker is a comment rather than markdown's other thematic break,
+> `***`, because **Prettier rewrites `***` and `___` to `---`** — the slide
+> separator. A formatting pass would silently split one slide into two. For the
+> same reason `app/.prettierignore` excludes lab and deck content entirely.
+
 ## 4. Navigation
 
 | Input                              | Action                                    |
@@ -204,7 +283,111 @@ terminal is that element's own business.
 
 ---
 
-## 5. `::terminal` — live demos on a slide
+## 5. Layouts
+
+`layout:` in a slide's config selects one of six arrangements. Everything else
+about the slide is ordinary markdown.
+
+| Layout    | Shape                                                            | Default theme |
+| --------- | ---------------------------------------------------------------- | ------------- |
+| `default` | Heading, then content flowing beneath it. The workhorse.          | deck default  |
+| `title`   | The opener: vertically centred, largest type, byline in the footer | `dark`        |
+| `section` | A chapter divider: eyebrow, oversized title, one supporting line   | `tint`        |
+| `split`   | Regions as equal columns, optionally under a header band (§3.5)    | deck default  |
+| `stats`   | Heading, then the slide's `:::stat` blocks side by side            | deck default  |
+| `quote`   | A pull quote at billboard size, with attribution                   | deck default  |
+
+Notes on the ones with conventions attached:
+
+- **`title` and `section`** treat the paragraph directly after the `#` heading as a
+  standfirst — larger than body copy, and on a `section` in the accent colour.
+- **`quote`** renders an ordinary markdown blockquote; the quote mark is generated.
+  The paragraph after it is the attribution, so `**Name**` on its own line becomes
+  the emphasised first line.
+- **`stats`** gives each `:::stat` an equal share of the row whatever the count,
+  wrapping when there are too many to read.
+
+An unrecognised layout falls back to `default` and is an error from
+`validate-lab` — a typo shows a plain slide rather than nothing.
+
+### 5.1 Sizing: a fluid 16:9 canvas
+
+The slide is a 16:9 box that fills whichever viewport axis binds first, and every
+type size in the theme is expressed in **`cqi`** (container query units — 1cqi is
+1% of the slide's width). A designed layout therefore holds its proportions at any
+display size, from a laptop to a hall projector.
+
+This is deliberately **not** the fixed-canvas-plus-`transform: scale()` approach a
+slide tool usually takes. Scaling a transformed subtree renders text blurry at
+non-integer scales and makes the caret and text selection unreliable inside the
+live demo terminal — and it turns content that doesn't fit into a hard clip rather
+than something that can scroll.
+
+Practical consequence for authors: sizes in this theme are derived from a
+1920px-wide reference canvas divided by 19.2. `::terminal{height=300}` means "300px
+on a 1920 canvas", not 300 physical pixels.
+
+## 6. Components
+
+Three container/text directives cover the non-code blocks on a slide. They're
+deliberately few: the nine archetypes a design system would enumerate are the same
+shape wearing different paint — a label, a body, an accent — so they collapse into
+one card with variants.
+
+### 6.1 `:::stat` — a headline number
+
+```markdown
+:::stat{value="20B+"}
+Docker Hub pulls per month across every language and stack
+:::
+```
+
+| Attribute | Purpose                                   |
+| --------- | ----------------------------------------- |
+| `value`   | The oversized number                      |
+| `label`   | Optional small uppercase label above it   |
+| `accent`  | Accent colour (§6.4)                      |
+
+### 6.2 `:::card` — a panel
+
+```markdown
+:::card{label="sync action" accent=green variant=fill}
+Copies changed files into the running container without rebuilding the image.
+:::
+```
+
+| Attribute | Purpose                                                         |
+| --------- | --------------------------------------------------------------- |
+| `label`   | Small uppercase label above the body                            |
+| `accent`  | Accent colour (§6.4)                                            |
+| `variant` | `rule` (default — accent bar on the left) · `fill` · `outline`   |
+
+`rule` is the default because it's the lightest: a slide of filled boxes reads as
+a form. Inside a card, list bullets become arrows.
+
+### 6.3 `:tag` — an inline pill
+
+```markdown
+:tag[Before]{accent=red}
+```
+
+A text directive (single colon), so it sits in a paragraph — which is how a
+before/after slide labels each code sample.
+
+### 6.4 Accents
+
+`blue` (default) · `green` · `red` · `amber` · `neutral`. Each resolves to a line,
+fill, and text colour, and each has a brighter variant applied automatically on a
+dark surface. An unrecognised value falls back to `blue`.
+
+### 6.5 `filename=` on a code fence
+
+```` ```yaml filename=compose.yaml highlight=4-11 ```` labels the block's header
+with a filename instead of its language — the code-window look. Purely a label:
+unlike `save-as`, it writes nothing to the virtual filesystem. Quotes are optional
+and allow spaces (`filename="Dockerfile · optimized"`).
+
+## 7. `::terminal` — live demos on a slide
 
 `::terminal{id=demo height=340}` embeds a simulated terminal in a slide.
 
@@ -242,7 +425,7 @@ Behaviour:
 - With no `simulator:` declared, the directive renders an explanation instead of
   an inert black box.
 
-### 5.1 Keyboard ownership
+### 7.1 Keyboard ownership
 
 While focus is inside a demo terminal, **the terminal owns every keystroke** —
 otherwise typing `docker ps` would flip slides on the space. The consequence is
@@ -250,7 +433,7 @@ that the arrow keys stop advancing the deck, so `Esc` hands control back (the
 panel shows an "Esc to leave" hint while focused), and clicking the slide
 background also works.
 
-### 5.2 Sharing the lab's simulator
+### 7.2 Sharing the lab's simulator
 
 The recommended pattern is to point at the sibling lab's spec:
 
@@ -277,7 +460,7 @@ already running. Only the spec is reused.
 
 ---
 
-## 6. Speaker notes (the presenter window)
+## 8. Speaker notes (the presenter window)
 
 `s`, or the notes button in the chrome, opens a second browser window with the
 current slide's notes, a preview of the next slide, and an elapsed timer (click to
@@ -292,7 +475,48 @@ un-toggles.
 
 ---
 
-## 7. Progress and tracking
+## 9. Theme and brand chrome
+
+There is one theme — Docker — with three surfaces. A deck sets its defaults once in
+`labspace.yaml`:
+
+```yaml
+kind: slides
+theme: light # surface every slide starts from
+
+brand:
+  logo: assets/docker-logo-deep-blue.svg # slide-relative
+  eyebrow: "A Tour of Docker" # top-right label
+  source: "DOCKER DEVELOPER PLATFORM · 2026" # bottom-left citation
+```
+
+| Surface | Use                                                                 |
+| ------- | ------------------------------------------------------------------- |
+| `light` | Body-copy white. Content slides.                                     |
+| `dark`  | Deep blue with the brand wave background. Openers, quotes, emphasis.  |
+| `tint`  | Light blue. Chapter dividers.                                        |
+
+**Theme precedence** is: the slide's own `theme:`, then the **layout's** default
+(§5), then the deck default, then `light`. The layout default deliberately
+outranks the deck default — a deck-wide `theme: light` means "content slides are
+light", and letting it outrank the layout would flatten every chapter divider back
+to white, which is the one thing a divider exists not to be.
+
+**Chrome.** The top band carries the logo and eyebrow; the bottom band carries the
+source (or a `title` slide's `byline`) and an automatic zero-padded page number.
+A slide overrides any of them, suppresses one with `""`, or drops both bands with
+`chrome: false`.
+
+**Brand assets are slide-relative**, like every other path in a lab, so a deck
+carries its own logo and stays a portable, self-contained bundle. Absolute paths
+and full URLs pass through untouched.
+
+**Fonts.** The theme sets display type in **Inter** and mono in **Roboto Mono**,
+both of which the app already ships. The reference design uses ABC Repro, a
+licensed face; using what's already bundled means the theme carries no font
+licensing question and no extra download.
+
+## 10. Progress and tracking
 
 A deck is tracked **exactly like a lab**, so the catalog badge and the instructor
 dashboard need no per-kind logic:
@@ -308,18 +532,18 @@ dashboard need no per-kind logic:
 
 ---
 
-## 8. Relationship to the other specs
+## 11. Relationship to the other specs
 
 | Concern                                  | Owned by                             |
 | ---------------------------------------- | ------------------------------------ |
 | `kind`, and the generated card metadata  | `catalog.md`                         |
 | Title, variables, files, terminals, tracking | `labspace.md`                    |
-| Slide splitting, `Note:`, `:::fragment`, `::terminal` | this document           |
+| Slide splitting, config, regions, layouts, components, theme | this document    |
 | Command matching + effects               | `simulator.md` (`scenarios`)         |
 
 ---
 
-## 9. Open questions / deferred
+## 12. Open questions / deferred
 
 - **Collections.** `catalog.order` already puts the deck before its lab, but there
   is no first-class "this deck and this lab are one workshop" grouping — no
@@ -330,6 +554,15 @@ dashboard need no per-kind logic:
 - **Transitions and an overview mode.** Neither exists. The slide layer is
   hand-rolled — see `docs/slidedeck-exploration.md` §6 for why — and these are the
   two things a library would have given us.
-- **Per-slide configuration** (background, layout, theme) has no syntax yet.
+- **A second theme.** The theme is Docker-only and its tokens are hard-coded in
+  `DeckView.scss`. They're already CSS custom properties scoped to `.deck-canvas`,
+  so an author-selectable theme is a matter of where the values come from, not a
+  restructure.
+- **Three equal prose columns.** `split` reads 3+ regions as "header + columns", so
+  a header-less three-column slide can't be expressed. No design in the reference
+  needs one.
+- **Overflow is invisible until it happens.** A region scrolls rather than clipping,
+  but nothing warns an author at validate time that a slide's content doesn't fit —
+  it depends on the viewport. A dev-mode overlay would be the cheap fix.
 - **Slide ids shift** when a slide is inserted mid-chapter (§3.1). A stable
   author-assigned id per slide would fix it at the cost of authoring noise.

@@ -1,63 +1,681 @@
 // ---------------------------------------------------------------------------
-// Slide-deck design tokens. Scoped to .deck (like .workshop-panel) so a deck
-// never restyles the lab, and overridden under [data-bs-theme="dark"].
+// Slide deck: the Docker theme, six layouts, and the component vocabulary.
 //
-// A deck is presented, often on a projector, so the type scale here is much
-// larger than the instructions pane and sized in `vmin` — the slide has to fill
-// whatever it's shown on, from a laptop to a hall screen, without the author
-// tuning sizes per venue.
+// ── The canvas ─────────────────────────────────────────────────────────────
+// `.deck-canvas` is a 16:9 box that is ALSO a size container, and every type
+// scale below is expressed in `cqi` (1cqi = 1% of the canvas width). That gives
+// the proportional fidelity of a fixed 1920×1080 canvas — a designed layout holds
+// its relationships at any display size — without `transform: scale()`, which
+// would blur the live demo terminal and make its caret and text selection
+// unreliable. Overflow can still scroll instead of being clipped.
+//
+// Every size here is derived from the reference deck by dividing its 1920px-canvas
+// value by 19.2 (so the reference's 112px title is 5.83cqi). If you are matching a
+// new comp, that's the conversion.
+//
+// ── Theme ──────────────────────────────────────────────────────────────────
+// One theme (Docker) with three surfaces: light, dark, tint. Tokens are scoped to
+// `.deck-canvas` so the deck never restyles the lab, matching the pattern in
+// WorkshopPanel.scss.
 // ---------------------------------------------------------------------------
+
 .deck {
-  --deck-bg: #ffffff;
-  --deck-surface: #f6f8fc;
-  --deck-border: #e7ebf3;
-  --deck-text: #1b2130;
-  --deck-heading: #0d1220;
-  --deck-muted: #64708a;
-  --deck-accent: #2560ff;
   --deck-chrome-h: 44px;
+  --deck-shell-bg: #eef1f6;
 
   position: fixed;
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: var(--deck-bg);
-  color: var(--deck-text);
+  background: var(--deck-shell-bg);
 }
 
 [data-bs-theme="dark"] .deck {
-  --deck-bg: #0d1117;
-  --deck-surface: #161b22;
-  --deck-border: #262c36;
-  --deck-text: #d5dae3;
-  --deck-heading: #f2f5fa;
-  --deck-muted: #8b95a7;
-  --deck-accent: #6b9bff;
+  --deck-shell-bg: #05070c;
 }
 
-// ── The stage ──────────────────────────────────────────────────────────────
-// One slide at a time, centred, with generous margins. `cursor: pointer` would
-// be wrong (most of the slide isn't a button) so the click-to-advance affordance
-// is left implicit, as in every other presentation tool.
+// ── The stage: centres the canvas and letterboxes it ───────────────────────
+// Two nested containers, and the nesting is the point. The STAGE is a size
+// container, so the canvas can be sized against both of the stage's axes and pick
+// whichever binds — that's the letterboxing. The CANVAS is then an inline-size
+// container of its own, so the `cqi` type scale inside resolves against the slide
+// rather than the viewport.
 .deck-stage {
   flex: 1;
   min-height: 0;
+  container-type: size;
   display: grid;
   place-items: center;
-  padding: 4vmin 6vmin;
+  padding: 1.5vmin;
   overflow: hidden;
 }
 
-.deck-slide {
-  width: 100%;
-  max-width: 1100px;
-  max-height: 100%;
-  overflow-y: auto;
-  font-size: clamp(1rem, 2.1vmin, 1.6rem);
-  line-height: 1.5;
+.deck-canvas {
+  // As large as it can be while staying 16:9: width-bound on a tall viewport,
+  // height-bound on a short one.
+  width: min(100cqw, 100cqh * 16 / 9);
+  aspect-ratio: 16 / 9;
 
-  // Kill the top margin on a leading heading so a title slide sits optically
-  // centred rather than pushed low by its own margin.
+  container-type: inline-size;
+
+  display: flex;
+  flex-direction: column;
+  padding: 5cqi;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.06),
+    0 18px 48px -18px rgba(16, 24, 40, 0.28);
+
+  // Docker brand palette. Ocean is the primary, deep the dark surface, light the
+  // tint. Extended blues are reserved for diagrams, never chrome.
+  --docker-ocean: #2560ff;
+  --docker-deep: #00153c;
+  --docker-light: #d9e5fc;
+
+  --deck-bg: #ffffff;
+  --deck-surface: #f9fafb;
+  --deck-rule: #e7ebf3;
+  --deck-fg: #0f121b;
+  --deck-fg-2: #4a5670;
+  --deck-fg-3: #6c7e9d;
+  --deck-heading: #0f121b;
+  --deck-accent: var(--docker-ocean);
+  --deck-cite: #6c7e9d;
+
+  // Display face is Inter at heavy weight with tight tracking. The reference
+  // deck uses ABC Repro (a licensed Dinamo face); Inter already ships with the
+  // app, so the theme carries no font licensing question at all.
+  --deck-font-display: "Inter Variable", Inter, system-ui, sans-serif;
+  --deck-font-mono:
+    "Roboto Mono Variable", "Roboto Mono", ui-monospace, monospace;
+
+  background: var(--deck-bg);
+  color: var(--deck-fg);
+  font-size: 1.15cqi;
+  line-height: 1.45;
+}
+
+// ── Surfaces ───────────────────────────────────────────────────────────────
+.deck-canvas--dark {
+  --deck-bg: var(--docker-deep);
+  --deck-surface: rgba(255, 255, 255, 0.06);
+  --deck-rule: rgba(255, 255, 255, 0.14);
+  --deck-fg: #ffffff;
+  --deck-fg-2: rgba(255, 255, 255, 0.72);
+  --deck-fg-3: rgba(255, 255, 255, 0.5);
+  --deck-heading: #ffffff;
+  --deck-accent: #6fa7f7;
+  --deck-cite: rgba(255, 255, 255, 0.5);
+
+  background: var(--docker-deep) url("../deck/bg-deep-waves.png") center / cover
+    no-repeat;
+}
+
+.deck-canvas--tint {
+  --deck-bg: var(--docker-light);
+  --deck-surface: rgba(255, 255, 255, 0.55);
+  --deck-rule: rgba(0, 21, 60, 0.12);
+  background: var(--deck-bg);
+}
+
+// ── Chrome: the branded top and bottom bands ────────────────────────────────
+.deck-topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2cqi;
+  height: 1.7cqi;
+  margin-bottom: 2.1cqi;
+}
+
+.deck-logo {
+  height: 1.5cqi;
+  width: auto;
+  flex: 0 0 auto;
+  display: block;
+}
+
+.deck-eyebrow {
+  font-size: 0.73cqi;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--deck-accent);
+  text-align: right;
+  // One line, always: a wrapped eyebrow doubles the topbar's height and pushes
+  // the slide's content down. Long labels are the author's to shorten.
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deck-footer {
+  position: absolute;
+  left: 5cqi;
+  right: 5cqi;
+  bottom: 2.5cqi;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2cqi;
+  font-family: var(--deck-font-mono);
+  font-size: 0.68cqi;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.deck-source {
+  color: var(--deck-cite);
+}
+
+.deck-pagenum {
+  color: var(--deck-fg-3);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+// ── The body: everything between the bands ─────────────────────────────────
+// Bottom padding clears the absolutely-positioned footer.
+.deck-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 2.2cqi;
+  overflow: hidden;
+}
+
+.deck-region {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+
+  > :first-child {
+    margin-top: 0;
+  }
+  > :last-child {
+    margin-bottom: 0;
+  }
+}
+
+// ── Typography ─────────────────────────────────────────────────────────────
+// App.scss styles headings globally as DOCUMENT headings — underlined, with
+// generous top margin. On a slide that reads as a page title inside a page, so
+// reset it here (the instructions pane does the same for itself).
+.deck-canvas {
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--deck-font-display);
+    color: var(--deck-heading);
+    letter-spacing: -0.035em;
+    margin: 0 0 0.5em;
+    padding-bottom: 0;
+    border-bottom: none;
+    text-wrap: balance;
+  }
+
+  h1 {
+    font-size: 4.17cqi;
+    font-weight: 800;
+    line-height: 1.02;
+  }
+
+  h2 {
+    font-size: 2.5cqi;
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+  }
+
+  // 1.88cqi is the reference deck's 36px feature-title. An h3 on a slide is
+  // usually a column's main statement, not a minor subheading.
+  h3 {
+    font-size: 1.88cqi;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  h4 {
+    font-size: 1.15cqi;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  p {
+    margin: 0 0 0.8em;
+    color: var(--deck-fg-2);
+    max-width: 46em;
+  }
+
+  strong {
+    color: var(--deck-heading);
+    font-weight: 700;
+  }
+
+  a {
+    color: var(--deck-accent);
+  }
+
+  ul,
+  ol {
+    margin: 0 0 0.8em;
+    padding-left: 1.3em;
+    color: var(--deck-fg-2);
+    max-width: 44em;
+  }
+
+  li {
+    margin-bottom: 0.4em;
+  }
+
+  li::marker {
+    color: var(--deck-accent);
+  }
+
+  // Scoped to content regions, NOT the whole canvas: `.deck-canvas img` is a
+  // class+type selector and would outrank `.deck-logo`'s own class, resetting the
+  // chrome logo to `height: auto` and letting it fill the topbar.
+  .deck-region {
+    img,
+    svg {
+      max-width: 100%;
+      max-height: 46cqi;
+      height: auto;
+    }
+  }
+
+  code {
+    font-family: var(--deck-font-mono);
+    font-size: 0.92em;
+  }
+
+  blockquote {
+    margin: 0 0 0.8em;
+    padding-left: 1cqi;
+    border-left: 0.25cqi solid var(--deck-accent);
+    color: var(--deck-fg-2);
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--deck-rule);
+    margin: 1.4cqi 0;
+    opacity: 1;
+  }
+
+  // The lab's code-block chrome, resized for a slide. Everything scales with the
+  // canvas so a code sample keeps its proportion on any screen.
+  .code-block {
+    font-size: 0.99cqi;
+    text-align: left;
+    margin: 0 0 1cqi;
+    border-radius: 0.5cqi;
+  }
+
+  .code-block-header {
+    padding: 0.6cqi 1cqi;
+    font-size: 0.8cqi;
+  }
+
+  .code-block-body pre {
+    padding: 1.1cqi 1.4cqi !important;
+    line-height: 1.55;
+  }
+
+  // Tables: the reference wants a solid deep header band and generous rows, not
+  // the instructions pane's compact striped look. Override Bootstrap's classes,
+  // which MarkdownRenderer applies globally.
+  table.table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--deck-fg);
+    width: 100%;
+    margin: 0;
+    font-size: 1.05cqi;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    border-radius: 0.4cqi;
+  }
+
+  table.table thead th {
+    background: var(--docker-deep);
+    color: #fff;
+    font-size: 0.78cqi;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 1cqi 1.2cqi;
+    border: none;
+  }
+
+  table.table tbody td {
+    padding: 0.85cqi 1.2cqi;
+    border: none;
+    border-bottom: 1px solid var(--deck-rule);
+    color: var(--deck-fg-2);
+    vertical-align: middle;
+  }
+
+  table.table tbody tr:nth-child(even) td {
+    background: var(--deck-surface);
+  }
+
+  table.table tbody tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+// ── Layout: default ────────────────────────────────────────────────────────
+// Heading, then content flowing beneath it. The workhorse.
+.deck-canvas--default .deck-body {
+  justify-content: flex-start;
+}
+
+// ── Layout: title ──────────────────────────────────────────────────────────
+// The opener. Vertically centred, largest type in the deck, and a byline in the
+// footer's left slot instead of a source citation.
+.deck-canvas--title {
+  .deck-body {
+    justify-content: center;
+  }
+
+  h1 {
+    font-size: 5.83cqi;
+    letter-spacing: -0.04em;
+  }
+
+  // The line under the title is a standfirst, not body copy.
+  h1 + p {
+    font-size: 1.67cqi;
+    font-weight: 500;
+    color: var(--deck-fg-2);
+    max-width: 34em;
+    margin-top: 1.9cqi;
+  }
+}
+
+// ── Layout: section ────────────────────────────────────────────────────────
+// A chapter divider: eyebrow, oversized title, one supporting line.
+.deck-canvas--section {
+  .deck-body {
+    justify-content: center;
+  }
+
+  h1 {
+    font-size: 5.2cqi;
+    letter-spacing: -0.04em;
+  }
+
+  // On a divider the supporting line is the accent colour — it's a list of what
+  // the section covers, not prose.
+  h1 + p {
+    font-size: 1.5cqi;
+    font-weight: 600;
+    color: var(--deck-accent);
+    max-width: none;
+  }
+}
+
+// ── Layout: split ──────────────────────────────────────────────────────────
+// Regions become equal columns. With three or more regions the first is a
+// full-width header band (see SlideRegions).
+.deck-canvas--split {
+  .deck-body {
+    gap: 1.6cqi;
+  }
+
+  .deck-region--header {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .deck-columns {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--deck-columns, 2), minmax(0, 1fr));
+    gap: 3.75cqi;
+    align-items: start;
+  }
+
+  .deck-columns > .deck-region {
+    max-height: 100%;
+  }
+
+  // Columns are narrow, so drop the prose measure that keeps full-width text
+  // readable — here the column already provides it.
+  p,
+  ul,
+  ol {
+    max-width: none;
+  }
+}
+
+// ── Layout: stats ──────────────────────────────────────────────────────────
+// Heading, then the slide's `:::stat` blocks side by side.
+.deck-canvas--stats {
+  .deck-region {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 3.3cqi;
+  }
+
+  // Headings and prose take a full row of their own; the stats then share the
+  // next one. `flex: 1 1 0` is what makes N stats fill the width without CSS
+  // needing to know N — the reason this is flex rather than a grid. An auto-fit
+  // grid created as many column slots as fit the canvas, so three stats filled
+  // three of six and stopped half-way across.
+  .deck-region > h1,
+  .deck-region > h2,
+  .deck-region > p {
+    flex: 0 0 100%;
+  }
+
+  .deck-region > h1,
+  .deck-region > h2 {
+    margin-bottom: 0;
+  }
+
+  .deck-stat {
+    flex: 1 1 0;
+    // Below this a caption becomes unreadable, so wrap to a second row rather
+    // than squeezing.
+    min-width: 12cqi;
+  }
+}
+
+// ── Layout: quote ──────────────────────────────────────────────────────────
+// A pull quote at billboard size. The mark is generated, so the author writes an
+// ordinary markdown blockquote.
+.deck-canvas--quote {
+  .deck-body {
+    justify-content: center;
+  }
+
+  blockquote {
+    border-left: none;
+    padding-left: 0;
+    margin-bottom: 1.5cqi;
+    font-family: var(--deck-font-display);
+    font-size: 2.6cqi;
+    font-weight: 700;
+    line-height: 1.22;
+    letter-spacing: -0.025em;
+    color: var(--deck-heading);
+    max-width: 40em;
+    text-wrap: balance;
+
+    &::before {
+      content: "";
+      display: block;
+      width: 1.15cqi;
+      height: 1.15cqi;
+      margin-bottom: 1.9cqi;
+      background: var(--deck-accent);
+      // Two bars, the deck's quote mark.
+      clip-path: polygon(
+        0 0,
+        38% 0,
+        38% 100%,
+        0 100%,
+        0 0,
+        62% 0,
+        100% 0,
+        100% 100%,
+        62% 100%,
+        62% 0
+      );
+    }
+
+    p {
+      font-size: inherit;
+      color: inherit;
+      margin: 0;
+      max-width: none;
+    }
+  }
+
+  // Attribution: the paragraph after the quote, ruled like a citation.
+  blockquote + p {
+    border-left: 0.18cqi solid var(--deck-accent);
+    padding-left: 0.9cqi;
+    font-size: 1.05cqi;
+    color: var(--deck-fg-2);
+    max-width: none;
+
+    strong {
+      display: block;
+      font-size: 1.15cqi;
+    }
+  }
+}
+
+// ── Accents ────────────────────────────────────────────────────────────────
+// One set of tokens the components read, so a card and a tag share a palette.
+.deck-accent-blue {
+  --a-line: var(--docker-ocean);
+  --a-fill: rgba(37, 96, 255, 0.1);
+  --a-text: #1746c4;
+}
+.deck-accent-green {
+  --a-line: #2d9568;
+  --a-fill: rgba(45, 149, 104, 0.12);
+  --a-text: #1d7a52;
+}
+.deck-accent-red {
+  --a-line: #e40c2c;
+  --a-fill: rgba(228, 12, 44, 0.1);
+  --a-text: #c00a24;
+}
+.deck-accent-amber {
+  --a-line: #eb9c00;
+  --a-fill: rgba(235, 156, 0, 0.14);
+  --a-text: #a86f00;
+}
+.deck-accent-neutral {
+  --a-line: var(--deck-rule);
+  --a-fill: var(--deck-surface);
+  --a-text: var(--deck-fg-3);
+}
+
+// On a dark surface the light-mode accent text is unreadable; lift each to its
+// bright variant and let the fill carry the hue.
+.deck-canvas--dark {
+  .deck-accent-blue {
+    --a-line: #6fa7f7;
+    --a-text: #9dc1fb;
+  }
+  .deck-accent-green {
+    --a-line: #3fb950;
+    --a-text: #56d364;
+  }
+  .deck-accent-red {
+    --a-line: #ff7b72;
+    --a-text: #ff9d97;
+  }
+  .deck-accent-amber {
+    --a-line: #e3b341;
+    --a-text: #f0cc76;
+  }
+  .deck-accent-neutral {
+    --a-line: rgba(255, 255, 255, 0.2);
+    --a-fill: rgba(255, 255, 255, 0.06);
+    --a-text: rgba(255, 255, 255, 0.6);
+  }
+}
+
+// ── Component: stat ────────────────────────────────────────────────────────
+.deck-stat {
+  border-left: 0.21cqi solid var(--a-line);
+  padding-left: 1.45cqi;
+  min-width: 0;
+}
+
+.deck-stat-label {
+  font-size: 0.7cqi;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--a-text);
+  margin-bottom: 0.5cqi;
+}
+
+.deck-stat-value {
+  font-family: var(--deck-font-display);
+  font-size: 5.83cqi;
+  font-weight: 900;
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+  color: var(--deck-heading);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.deck-stat-desc {
+  font-size: 1.15cqi;
+  color: var(--deck-fg-2);
+  margin-top: 0.52cqi;
+  line-height: 1.35;
+
+  p {
+    margin: 0;
+    max-width: none;
+    font-size: inherit;
+  }
+}
+
+// ── Component: card ────────────────────────────────────────────────────────
+.deck-card {
+  margin-bottom: 1cqi;
+  min-width: 0;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.deck-card-label {
+  font-size: 0.7cqi;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--a-text);
+  margin-bottom: 0.4cqi;
+}
+
+.deck-card-body {
+  font-size: 1.1cqi;
+  color: var(--deck-fg-2);
+  line-height: 1.4;
+
   > :first-child {
     margin-top: 0;
   }
@@ -65,79 +683,61 @@
     margin-bottom: 0;
   }
 
-  // App.scss styles headings globally as DOCUMENT headings — underlined, with
-  // generous top margin. On a slide that reads as a page title inside a page, so
-  // reset it here (the instructions pane does the same for itself).
-  h1,
-  h2,
-  h3,
-  h4 {
-    color: var(--deck-heading);
-    font-weight: 650;
-    letter-spacing: -0.02em;
-    margin: 0 0 0.6em;
-    padding-bottom: 0;
-    border-bottom: none;
+  p {
+    font-size: inherit;
+    max-width: none;
   }
+}
 
-  h1 {
-    font-size: clamp(2rem, 6vmin, 4rem);
-    line-height: 1.1;
-  }
-  h2 {
-    font-size: clamp(1.5rem, 4.2vmin, 2.75rem);
-    line-height: 1.15;
-  }
-  h3 {
-    font-size: clamp(1.2rem, 3vmin, 1.9rem);
-  }
+// `rule` — an accent bar on the left. The lightest of the three, and the default:
+// a slide full of filled boxes reads as a form rather than a slide.
+.deck-card--rule {
+  border-left: 0.16cqi solid var(--a-line);
+  padding-left: 1cqi;
+}
 
-  p,
-  ul,
-  ol {
-    margin-bottom: 0.8em;
-  }
+.deck-card--fill {
+  background: var(--a-fill);
+  border-radius: 0.45cqi;
+  padding: 1.2cqi 1.45cqi;
+}
+
+.deck-card--outline {
+  border: 1px solid var(--a-line);
+  border-radius: 0.45cqi;
+  padding: 1.2cqi 1.45cqi;
+}
+
+// Inside a card, list bullets become arrows — the reference's feature panels.
+.deck-card-body ul {
+  padding-left: 0;
+  list-style: none;
 
   li {
-    margin-bottom: 0.35em;
-  }
+    padding-left: 1.4cqi;
+    position: relative;
 
-  // Slides are read at a distance: keep bullets from sprawling to the full
-  // width of a wide screen, where the eye loses the line.
-  ul,
-  ol {
-    padding-left: 1.4em;
-    max-width: 34em;
+    &::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: var(--a-line);
+    }
   }
+}
 
-  img,
-  svg {
-    max-width: 100%;
-    max-height: 60vh;
-    height: auto;
-  }
-
-  code {
-    font-size: 0.92em;
-  }
-
-  // The lab's code-block chrome is sized for the instructions pane; on a slide
-  // it needs to breathe without dominating.
-  .code-block {
-    font-size: clamp(0.75rem, 1.6vmin, 1rem);
-    text-align: left;
-  }
-
-  blockquote {
-    border-left: 3px solid var(--deck-accent);
-    padding-left: 0.8em;
-    color: var(--deck-muted);
-    margin-bottom: 0.8em;
-  }
-
-  table {
-    font-size: 0.9em;
-  }
+// ── Component: tag ─────────────────────────────────────────────────────────
+.deck-tag {
+  display: inline-block;
+  padding: 0.35cqi 0.8cqi;
+  border-radius: 0.2cqi;
+  background: var(--a-fill);
+  color: var(--a-text);
+  font-size: 0.78cqi;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.2;
 }
 
 // ── Fragments ──────────────────────────────────────────────────────────────
@@ -163,7 +763,7 @@
   }
 }
 
-// ── Chrome ─────────────────────────────────────────────────────────────────
+// ── Presenter chrome (outside the canvas) ──────────────────────────────────
 // Deliberately quiet: a thin bar that reads as part of the room's furniture
 // rather than competing with the content. It stays visible (rather than
 // auto-hiding) because the slide counter is genuinely useful to a presenter and
@@ -177,8 +777,9 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0 0.75rem;
-  border-top: 1px solid var(--deck-border);
-  background: var(--deck-surface);
+  border-top: 1px solid rgba(127, 127, 127, 0.2);
+  background: var(--deck-shell-bg);
+  color: #64708a;
   font-size: 13px;
 }
 
@@ -196,7 +797,7 @@
 }
 
 .deck-title {
-  color: var(--deck-muted);
+  color: inherit;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -204,7 +805,7 @@
 }
 
 .deck-counter {
-  color: var(--deck-muted);
+  color: inherit;
   font-variant-numeric: tabular-nums;
   min-width: 4.5em;
   text-align: center;
@@ -220,7 +821,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--deck-muted);
+  color: inherit;
   text-decoration: none;
   cursor: pointer;
 
@@ -229,8 +830,7 @@
   }
 
   &:hover:not(:disabled) {
-    background: rgba(127, 127, 127, 0.14);
-    color: var(--deck-text);
+    background: rgba(127, 127, 127, 0.16);
   }
 
   &:disabled {
@@ -239,7 +839,7 @@
   }
 
   &.active {
-    color: var(--deck-accent);
+    color: #2560ff;
     background: rgba(37, 96, 255, 0.12);
   }
 }
@@ -257,7 +857,7 @@
 
 .deck-progress-bar {
   height: 100%;
-  background: var(--deck-accent);
+  background: #2560ff;
   transition: width 180ms ease-out;
 }
 
@@ -275,7 +875,7 @@
   place-content: center;
   text-align: center;
   padding: 2rem;
-  color: var(--deck-muted, #64708a);
+  color: #64708a;
 }
 
 .deck-empty-hint {

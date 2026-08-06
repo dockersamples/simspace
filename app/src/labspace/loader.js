@@ -168,6 +168,14 @@ export async function loadLabspace(labUrl) {
     ],
     // "lab" or "slides" — which view runs this entry. See EntryRoute.
     kind,
+    // Deck presentation defaults. `theme` is the surface every slide starts from
+    // and `brand` supplies the chrome (logo, eyebrow, source line) so an author
+    // sets it once here rather than repeating it on every slide.
+    theme: raw.theme || null,
+    // `brand.logo` is lab-relative like every other path in this file, so a deck
+    // carries its own brand assets and stays a self-contained, portable bundle.
+    // Resolved to an absolute URL here so it also survives a subpath deploy.
+    brand: resolveBrand(raw.brand, resolve),
     title: raw.title || "Labspace",
     subtitle: raw.description || "",
     // Optional lab version, used to namespace/invalidate stored progress when a
@@ -190,4 +198,17 @@ export async function loadLabspace(labUrl) {
     tracking: raw.tracking ?? null,
     simulatorSpec,
   };
+}
+
+/**
+ * Resolves a deck's `brand:` block, turning a lab-relative `logo` into an
+ * absolute URL. Absolute paths and full URLs pass through untouched, so a deck can
+ * point at a CDN or a shared asset outside its own directory if it wants to.
+ */
+function resolveBrand(brand, resolve) {
+  if (!brand || typeof brand !== "object") return {};
+  const logo = brand.logo;
+  if (!logo || typeof logo !== "string") return { ...brand };
+  const isAbsolute = /^([a-z]+:)?\/\//i.test(logo) || logo.startsWith("/");
+  return { ...brand, logo: isAbsolute ? logo : resolve(logo) };
 }
