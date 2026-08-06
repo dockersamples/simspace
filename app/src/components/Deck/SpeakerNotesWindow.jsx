@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDeck } from "../../context/DeckContext";
 import { useChildWindow } from "../PanelWindow/useChildWindow";
+import { handleDeckNavKey } from "./deckKeys";
 import { MarkdownRenderer } from "../WorkshopPanel/markdown/MarkdownRenderer";
 import "./SpeakerNotesWindow.scss";
 
@@ -22,6 +23,28 @@ export function SpeakerNotesWindow({ onClose }) {
     onBlocked: onClose,
     onClosed: onClose,
   });
+
+  // Drive the deck from THIS window's keyboard too.
+  //
+  // A keydown here never reaches the opener — separate window, separate event
+  // target — so without this the presenter view is read-only and a presenter
+  // watching their notes has to reach back to the other screen to advance. The
+  // mapping is shared with the slide view (deckKeys.js) so the two can't disagree.
+  const { next, previous, goTo, total } = deck;
+  useEffect(() => {
+    const win = container?.ownerDocument?.defaultView;
+    if (!win) return undefined;
+    const onKeyDown = (event) => {
+      if (handleDeckNavKey(event, { next, previous, goTo, total })) return;
+      // Escape closes the presenter view, matching every other panel.
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    win.addEventListener("keydown", onKeyDown);
+    return () => win.removeEventListener("keydown", onKeyDown);
+  }, [container, next, previous, goTo, total, onClose]);
 
   if (!container) return null;
 
@@ -73,6 +96,10 @@ export function SpeakerNotesWindow({ onClose }) {
           Next →
         </button>
       </footer>
+
+      <p className="notes-hint">
+        The arrow keys work in this window too — the deck follows.
+      </p>
     </div>,
     container,
   );

@@ -144,3 +144,13 @@
     border-color: #39414d;
   }
 }
+
+// A quiet line telling the presenter the keyboard works here. Worth the space:
+// without it the two big buttons imply clicking is the only way to advance.
+.notes-hint {
+  flex: 0 0 auto;
+  margin: 0.5rem 0 0;
+  color: #6b7688;
+  font-size: 12px;
+  text-align: center;
+}

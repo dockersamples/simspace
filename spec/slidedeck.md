@@ -269,17 +269,38 @@ runtime: a typo must not blank a slide mid-presentation.
 
 ## 4. Navigation
 
-| Input                              | Action                                    |
-| ---------------------------------- | ----------------------------------------- |
-| `→`, `Space`, `PageDown`, click    | Next fragment, else next slide            |
-| `←`, `PageUp`                      | Previous fragment, else previous slide     |
-| `Home` / `End`                     | First / last slide                        |
-| `f`                                | Toggle fullscreen                         |
-| `s`                                | Toggle the speaker-notes window           |
-| `Esc` (while in a demo terminal)   | Return keyboard control to the deck       |
+| Input                            | Action                                          |
+| -------------------------------- | ----------------------------------------------- |
+| `→`, `Space`, `PageDown`, click  | Next fragment, else next slide                  |
+| `←`, `PageUp`                    | Previous fragment, else previous slide          |
+| `Home` / `End`                   | First / last slide                              |
+| `p`                              | Toggle **present mode** (§4.1)                  |
+| `f`                              | Toggle browser fullscreen                       |
+| `s`                              | Toggle the speaker-notes window                 |
+| `Esc`                            | Exit present mode                               |
+| `Esc` (while in a demo terminal) | Return keyboard control to the deck             |
 
 Clicking the slide **background** advances. A click on a link, button, or the demo
 terminal is that element's own business.
+
+**The navigation keys work in the presenter window too** (§8), so a presenter
+watching their notes never has to reach back to the other screen. Both windows
+share one key mapping, so they cannot disagree about what an arrow does.
+
+### 4.1 Present mode
+
+`p`, or the play button in the toolbar, hides the app's own chrome and lets the
+slide fill the window — **without** entering browser fullscreen. `Esc` or `p`
+exits.
+
+Both exist because they serve different jobs. Real fullscreen (`f`) is for
+presenting to a room. Present mode is for **capture**: a screen recorder or
+screenshot of the window then contains the slide and nothing else, with no toolbar
+to crop and no fullscreen mode some capture tools can't read. The slide's rounding
+and shadow are dropped and the letterbox bars go dark, so the frame is all slide.
+
+A hint appears briefly on entry and then removes itself — a permanent "press Esc"
+badge would end up in the very captures the mode exists for.
 
 ---
 
@@ -502,6 +523,11 @@ reset).
 It is rendered through a React portal, so it tracks the deck live — advancing on
 the projector updates it with no synchronisation of its own. Closing either window
 docks it back.
+
+**It drives the deck, not just displays it.** The navigation keys from §4 work in
+this window, and there are Previous/Next buttons. A keydown in a separate window
+never reaches the opener, so this window binds its own listener over the shared key
+mapping — without that the presenter view would be read-only. `Esc` closes it.
 
 Requires pop-ups to be allowed for the site; when blocked, the button simply
 un-toggles.

@@ -907,6 +907,72 @@
   }
 }
 
+// ── Present mode ───────────────────────────────────────────────────────────
+// Hides the app's chrome and lets the slide fill the window, WITHOUT entering
+// browser fullscreen — so a window capture contains the slide and nothing else.
+// (Real fullscreen is `f`; some recording tools can't capture from it, which is
+// why both exist.)
+.deck--presenting {
+  // A neutral dark surround, so any letterbox bars on a non-16:9 window read as
+  // part of the slide rather than as the app's background.
+  --deck-shell-bg: #05070c;
+
+  .deck-chrome {
+    display: none;
+  }
+
+  .deck-stage {
+    // Every pixel to the slide: no inset, no rounding, no shadow to crop around.
+    padding: 0;
+  }
+
+  .deck-canvas {
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+.deck-present-hint {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(8, 11, 18, 0.82);
+  color: #d5dae3;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: deck-hint-out 2.6s ease-in forwards;
+
+  kbd {
+    font-family: inherit;
+    font-size: inherit;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+
+@keyframes deck-hint-out {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-present-hint {
+    animation: none;
+  }
+}
+
 // ── Empty state ────────────────────────────────────────────────────────────
 .deck-empty {
   position: fixed;

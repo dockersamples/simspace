@@ -6,6 +6,7 @@ import { useCatalog } from "../../context/CatalogContext";
 import { MarkdownRenderer } from "../WorkshopPanel/markdown/MarkdownRenderer";
 import { SpeakerNotesWindow } from "./SpeakerNotesWindow";
 import { FragmentContext } from "./FragmentContext";
+import { handleDeckNavKey, isTypingTarget } from "./deckKeys";
 import "./DeckView.scss";
 
 // The deck. Renders one slide at a time full-bleed, with presenter chrome and
@@ -22,6 +23,11 @@ export function DeckView() {
   const catalog = useCatalog();
   const deck = useDeck();
   const [notesOpen, setNotesOpen] = useState(false);
+  // "Present" hides the app's own chrome and lets the slide fill the window,
+  // WITHOUT entering browser fullscreen — so a screen capture of the window
+  // contains the slide and nothing else. Distinct from `f` (real fullscreen),
+  // which a recording tool may not be able to capture from.
+  const [presenting, setPresenting] = useState(false);
   const stageRef = useRef(null);
 
   const { next, previous, goTo, index, total, current } = deck;
@@ -35,29 +41,13 @@ export function DeckView() {
   // output streams, and the focused element becomes the terminal body instead.
   useEffect(() => {
     const onKeyDown = (event) => {
+      // Navigation first, shared with the presenter window so the two can't
+      // disagree about what an arrow key does.
+      if (handleDeckNavKey(event, { next, previous, goTo, total })) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (isTypingTarget(event.target)) return;
 
       switch (event.key) {
-        case "ArrowRight":
-        case "PageDown":
-        case " ":
-          event.preventDefault();
-          next();
-          break;
-        case "ArrowLeft":
-        case "PageUp":
-          event.preventDefault();
-          previous();
-          break;
-        case "Home":
-          event.preventDefault();
-          goTo(0);
-          break;
-        case "End":
-          event.preventDefault();
-          goTo(total - 1);
-          break;
         case "f":
           event.preventDefault();
           toggleFullscreen(stageRef.current);
@@ -66,13 +56,26 @@ export function DeckView() {
           event.preventDefault();
           setNotesOpen((open) => !open);
           break;
+        case "p":
+          event.preventDefault();
+          setPresenting((on) => !on);
+          break;
+        case "Escape":
+          // Only meaningful as an exit. Inside a demo terminal, SlideTerminal
+          // stops Escape before it reaches here (it blurs instead), so this
+          // never steals the terminal's way out.
+          if (presenting) {
+            event.preventDefault();
+            setPresenting(false);
+          }
+          break;
         default:
           break;
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [next, previous, goTo, total]);
+  }, [next, previous, goTo, total, presenting]);
 
   // Clicking the slide background advances, the way a presenter expects. Only
   // the background: a click on a link, button, or the terminal is that element's
@@ -106,7 +109,8 @@ export function DeckView() {
   const showCatalogLink = (catalog.labs?.length ?? 0) > 1;
 
   return (
-    <div className="deck">
+    <div className={"deck" + (presenting ? " deck--presenting" : "")}>
+      {presenting && <PresentHint />}
       <div className="deck-stage" ref={stageRef} onClick={onStageClick}>
         {/* The canvas is a 16:9 box that is also a size container, so every type
             scale below can be expressed in `cqi` and stay proportional at any
@@ -172,6 +176,14 @@ export function DeckView() {
         </div>
 
         <div className="deck-chrome-right">
+          <button
+            type="button"
+            className="deck-btn"
+            onClick={() => setPresenting(true)}
+            title="Present in this window — hides this bar (p)"
+          >
+            <span className="material-symbols-outlined">play_arrow</span>
+          </button>
           <button
             type="button"
             className={"deck-btn" + (notesOpen ? " active" : "")}
@@ -294,18 +306,25 @@ function SlideChrome({ position }) {
 }
 
 /**
- * Whether a keystroke belongs to something the learner is typing into, in which
- * case the deck must not act on it.
+ * A brief "press Esc" note when present mode starts, then gone.
+ *
+ * Present mode exists so a screen capture contains the slide and nothing else, so
+ * a persistent exit affordance would defeat the point — but a mode with no visible
+ * way out reads as a frozen app. A hint that removes itself is the compromise:
+ * long enough to read, gone well before anyone starts recording.
  */
-function isTypingTarget(target) {
-  if (!target || typeof target.closest !== "function") return false;
-  if (target.isContentEditable) return true;
-  if (target.matches("input, textarea, select")) return true;
-  // The whole demo-terminal REGION, not just its input. MockTerminal unmounts
-  // the input row while output streams, so during a demo the focused element is
-  // the (focusable) `.slide-terminal` wrapper rather than the input — and a
-  // keystroke then still belongs to the terminal, not the deck.
-  return Boolean(target.closest(".mock-term, .slide-terminal"));
+function PresentHint() {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(false), 2600);
+    return () => clearTimeout(timer);
+  }, []);
+  if (!visible) return null;
+  return (
+    <div className="deck-present-hint" role="status">
+      Presenting — press <kbd>Esc</kbd> to show the toolbar again
+    </div>
+  );
 }
 
 function toggleFullscreen(element) {
