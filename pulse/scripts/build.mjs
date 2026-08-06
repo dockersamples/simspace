@@ -1,8 +1,7 @@
 // Bundles the TypeScript service to a single CommonJS file with esbuild, the
-// same toolchain the app uses for its Node scripts (no tsx/ts-node). CommonJS
-// output keeps interop with the native `better-sqlite3` module simple; that
-// module is marked external so its prebuilt binary loads from node_modules at
-// runtime instead of being (impossibly) bundled.
+// same toolchain the app uses for its Node scripts (no tsx/ts-node). Storage is
+// Node's built-in `node:sqlite`, so there are no runtime dependencies and
+// nothing to mark external — dist/server.cjs is the whole service.
 
 import { build } from "esbuild";
 
@@ -13,6 +12,5 @@ await build({
   format: "cjs",
   target: "node20",
   outfile: "dist/server.cjs",
-  external: ["better-sqlite3"],
   logLevel: "info",
 });

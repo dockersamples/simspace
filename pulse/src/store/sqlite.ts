@@ -1,14 +1,26 @@
-// Durable, append-only event log backed by SQLite (better-sqlite3). This is the
-// analytics side: every persisted event is a row, and cumulative stats
-// (completion funnel, per-step counts, lab completions) are plain SQL over it.
+// Durable, append-only event log backed by SQLite. This is the analytics side:
+// every persisted event is a row, and cumulative stats (completion funnel,
+// per-step counts, lab completions) are plain SQL over it.
 //
 // Presence is NOT stored here — that lives in the in-memory PresenceStore. Only
 // meaningful, durable events land in this log (heartbeats/leaves do not).
+//
+// Uses Node's built-in `node:sqlite` rather than better-sqlite3: same file
+// format and near-identical API, but no native addon to compile, which keeps a
+// C++ toolchain out of the image entirely. Needs Node >= 22.13 (where the
+// module became available unflagged); the images run 24.
 
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import Database from "better-sqlite3";
+import { DatabaseSync, type StatementSync } from "node:sqlite";
 import type { IncomingEvent } from "../types.js";
+
+// node:sqlite types every column as SQLOutputValue, so reads come back as
+// `Record<string, ...>` and need a hop through `unknown` to land on the shaped
+// row types below. The queries and their interfaces are declared side by side,
+// so this is the same trust boundary better-sqlite3's generics gave us.
+const rows = <T>(r: unknown): T[] => r as T[];
+const row = <T>(r: unknown): T => r as T;
 
 export interface StepStat {
   stepId: string;
@@ -38,13 +50,15 @@ export interface LabSummary {
 }
 
 export class EventLog {
-  private db: Database.Database;
-  private insertStmt: Database.Statement;
+  private db: DatabaseSync;
+  private insertStmt: StatementSync;
 
   constructor(dbPath: string) {
     if (dbPath !== ":memory:") mkdirSync(dirname(dbPath), { recursive: true });
-    this.db = new Database(dbPath);
-    this.db.pragma("journal_mode = WAL");
+    this.db = new DatabaseSync(dbPath);
+    // `exec` rather than a pragma helper — node:sqlite has no `.pragma()`.
+    // A no-op for :memory:, which reports journal_mode "memory" regardless.
+    this.db.exec(`PRAGMA journal_mode = WAL`);
     // `origin` namespaces every row by the deployment the event came from, so
     // the same labId served from two different sites never collides.
     this.db.exec(`
@@ -67,8 +81,8 @@ export class EventLog {
     // MUST run before the indexes below, which reference `origin` — on an
     // existing DB the CREATE TABLE above is a no-op, so the column only exists
     // once this ALTER has run.
-    const hasOrigin = (
-      this.db.prepare(`PRAGMA table_info(events)`).all() as { name: string }[]
+    const hasOrigin = rows<{ name: string }>(
+      this.db.prepare(`PRAGMA table_info(events)`).all(),
     ).some((c) => c.name === "origin");
     if (!hasOrigin) this.db.exec(`ALTER TABLE events ADD COLUMN origin TEXT`);
 
@@ -115,19 +129,20 @@ export class EventLog {
     const since = sinceIso ?? null;
 
     const count = (event: string) =>
-      (
+      row<{ n: number }>(
         this.db
           .prepare(
             `SELECT COUNT(DISTINCT session_id) AS n
                FROM events
               WHERE origin = ? AND lab_id = ? AND event = ? AND (? IS NULL OR ts_server >= ?)`,
           )
-          .get(origin, labId, event, since, since) as { n: number }
+          .get(origin, labId, event, since, since),
       ).n;
 
-    const steps = this.db
-      .prepare(
-        `SELECT step_id AS stepId,
+    const steps = rows<StepStat>(
+      this.db
+        .prepare(
+          `SELECT step_id AS stepId,
                 COUNT(*) AS completions,
                 COUNT(DISTINCT session_id) AS distinctSessions
            FROM events
@@ -135,12 +150,18 @@ export class EventLog {
                 AND (? IS NULL OR ts_server >= ?)
           GROUP BY step_id
           ORDER BY distinctSessions DESC`,
-      )
-      .all(origin, labId, since, since) as StepStat[];
+        )
+        .all(origin, labId, since, since),
+    );
 
-    const sections = this.db
-      .prepare(
-        `SELECT section_id AS sectionId,
+    const sections = rows<{
+      sectionId: string;
+      views: number;
+      distinctSessions: number;
+    }>(
+      this.db
+        .prepare(
+          `SELECT section_id AS sectionId,
                 COUNT(*) AS views,
                 COUNT(DISTINCT session_id) AS distinctSessions
            FROM events
@@ -148,12 +169,9 @@ export class EventLog {
                 AND (? IS NULL OR ts_server >= ?)
           GROUP BY section_id
           ORDER BY distinctSessions DESC`,
-      )
-      .all(origin, labId, since, since) as {
-      sectionId: string;
-      views: number;
-      distinctSessions: number;
-    }[];
+        )
+        .all(origin, labId, since, since),
+    );
 
     return {
       origin,
@@ -167,12 +185,12 @@ export class EventLog {
 
   /** Public, aggregate-only count for the catalog page ("N completed this lab"). */
   completedCount(origin: string, labId: string): number {
-    return (
+    return row<{ n: number }>(
       this.db
         .prepare(
           `SELECT COUNT(DISTINCT session_id) AS n FROM events WHERE origin = ? AND lab_id = ? AND event = 'lab_completed'`,
         )
-        .get(origin, labId) as { n: number }
+        .get(origin, labId),
     ).n;
   }
 
@@ -182,9 +200,10 @@ export class EventLog {
    * column are surfaced under "unknown" so nothing is silently dropped.
    */
   labs(): LabSummary[] {
-    return this.db
-      .prepare(
-        `SELECT COALESCE(origin, 'unknown') AS origin,
+    return rows<LabSummary>(
+      this.db
+        .prepare(
+          `SELECT COALESCE(origin, 'unknown') AS origin,
                 lab_id AS labId,
                 COUNT(*) AS events,
                 COUNT(DISTINCT CASE WHEN event = 'lab_started'  THEN session_id END) AS starts,
@@ -194,8 +213,9 @@ export class EventLog {
            FROM events
           GROUP BY COALESCE(origin, 'unknown'), lab_id
           ORDER BY lastSeen DESC`,
-      )
-      .all() as LabSummary[];
+        )
+        .all(),
+    );
   }
 
   close(): void {

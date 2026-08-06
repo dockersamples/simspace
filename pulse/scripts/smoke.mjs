@@ -7,7 +7,7 @@ import { request } from "node:http";
 import { existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 
 const PORT = 8899;
 const TOKEN = "test-token";
@@ -313,8 +313,8 @@ try {
   // ALTER that adds it, so an existing volume threw "no such column: origin"
   // on boot. Seed the old schema, then boot the real binary against it.
   for (const f of legacyDbFiles) if (existsSync(f)) rmSync(f);
-  const seed = new Database(legacyDb);
-  seed.pragma("journal_mode = WAL");
+  const seed = new DatabaseSync(legacyDb);
+  seed.exec(`PRAGMA journal_mode = WAL`);
   seed.exec(`
     CREATE TABLE events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
