@@ -1,17 +1,29 @@
 // ---------------------------------------------------------------------------
 // Slide deck: the Docker theme, six layouts, and the component vocabulary.
 //
-// ── The canvas ─────────────────────────────────────────────────────────────
-// `.deck-canvas` is a 16:9 box that is ALSO a size container, and every type
-// scale below is expressed in `cqi` (1cqi = 1% of the canvas width). That gives
-// the proportional fidelity of a fixed 1920×1080 canvas — a designed layout holds
-// its relationships at any display size — without `transform: scale()`, which
-// would blur the live demo terminal and make its caret and text selection
-// unreliable. Overflow can still scroll instead of being clipped.
+// ── The canvas and the type scale ──────────────────────────────────────────
+// `.deck-canvas` is a 16:9 box that is ALSO a size container, and every size in
+// the theme is expressed in `cqi` — 1cqi = 1% of the slide's width. That gives the
+// proportional fidelity of a fixed 1920×1080 canvas (a designed layout holds its
+// relationships at any display size) without `transform: scale()`, which would
+// blur the live demo terminal and make its caret and text selection unreliable.
+// Overflow can still scroll instead of being clipped.
 //
-// Every size here is derived from the reference deck by dividing its 1920px-canvas
-// value by 19.2 (so the reference's 112px title is 5.83cqi). If you are matching a
-// new comp, that's the conversion.
+// TWO RULES, both learned the hard way:
+//
+//   1. The canvas carries NO padding — `.deck-frame` inside it does. Container
+//      query units resolve against the container's CONTENT box, so 5cqi of padding
+//      on the canvas made every `cqi` in the file mean 1% of 90% of the slide, and
+//      the whole scale rendered 10% small.
+//   2. Don't set a `cqi` font-size ON `.deck-canvas` — a container never queries
+//      itself, so it would resolve against the STAGE instead and disagree with
+//      every descendant. The base size lives on `.deck-frame`.
+//
+// TUNING: every size below references the `--deck-fs-*` scale, so adjusting the
+// deck's typography is a matter of changing these values, not hunting through the
+// file. Values are the reference deck's 1920px-canvas pixels ÷ 19.2 (its 112px
+// title is 5.83cqi), nudged up for body copy — the reference is sized for a
+// projector, and these decks are also read at laptop size.
 //
 // ── Theme ──────────────────────────────────────────────────────────────────
 // One theme (Docker) with three surfaces: light, dark, tint. Tokens are scoped to
@@ -60,7 +72,6 @@
 
   display: flex;
   flex-direction: column;
-  padding: 5cqi;
   box-sizing: border-box;
   position: relative;
   overflow: hidden;
@@ -92,10 +103,36 @@
   --deck-font-mono:
     "Roboto Mono Variable", "Roboto Mono", ui-monospace, monospace;
 
+  // ── The type scale. Tune the deck's typography here. ──
+  --deck-fs-hero: 5.6cqi; // title / section headline, and a stat's number
+  --deck-fs-h1: 4cqi; // a content slide's headline
+  --deck-fs-h2: 2.5cqi;
+  --deck-fs-h3: 2cqi; // usually a column's main statement
+  --deck-fs-lead: 1.7cqi; // the standfirst under a title or section headline
+  --deck-fs-body: 1.45cqi; // prose and list items — the default
+  --deck-fs-small: 1.25cqi; // card bodies, table cells, stat captions
+  --deck-fs-code: 1.1cqi;
+  --deck-fs-micro: 0.85cqi; // eyebrow, footer, labels, tags
+
+  --deck-pad: 5cqi; // slide margin, and the footer's horizontal inset
+
   background: var(--deck-bg);
   color: var(--deck-fg);
-  font-size: 1.15cqi;
   line-height: 1.45;
+}
+
+// All of the slide's padding, one level in from the container (see rule 1 in the
+// header comment). The base body size lives here too, not on the canvas, so it
+// resolves against the slide like every other size (rule 2).
+.deck-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--deck-pad);
+  box-sizing: border-box;
+  position: relative;
+  font-size: var(--deck-fs-body);
 }
 
 // ── Surfaces ───────────────────────────────────────────────────────────────
@@ -140,7 +177,7 @@
 }
 
 .deck-eyebrow {
-  font-size: 0.73cqi;
+  font-size: var(--deck-fs-micro);
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -155,15 +192,17 @@
 
 .deck-footer {
   position: absolute;
-  left: 5cqi;
-  right: 5cqi;
+  left: var(--deck-pad);
+  right: var(--deck-pad);
+  // Relative to the FRAME's padding box, which is the canvas edge — so this is an
+  // inset from the bottom of the slide, not from the bottom of the padding.
   bottom: 2.5cqi;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 2cqi;
   font-family: var(--deck-font-mono);
-  font-size: 0.68cqi;
+  font-size: var(--deck-fs-micro);
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -186,7 +225,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding-bottom: 2.2cqi;
+  // Clears the absolutely-positioned footer (its inset plus its own line box).
+  padding-bottom: 4cqi;
   overflow: hidden;
 }
 
@@ -222,13 +262,13 @@
   }
 
   h1 {
-    font-size: 4.17cqi;
+    font-size: var(--deck-fs-h1);
     font-weight: 800;
     line-height: 1.02;
   }
 
   h2 {
-    font-size: 2.5cqi;
+    font-size: var(--deck-fs-h2);
     font-weight: 800;
     line-height: 1.08;
     letter-spacing: -0.025em;
@@ -237,13 +277,13 @@
   // 1.88cqi is the reference deck's 36px feature-title. An h3 on a slide is
   // usually a column's main statement, not a minor subheading.
   h3 {
-    font-size: 1.88cqi;
+    font-size: var(--deck-fs-h3);
     font-weight: 700;
     letter-spacing: -0.02em;
   }
 
   h4 {
-    font-size: 1.15cqi;
+    font-size: var(--deck-fs-body);
     font-weight: 700;
     letter-spacing: 0;
   }
@@ -313,7 +353,7 @@
   // The lab's code-block chrome, resized for a slide. Everything scales with the
   // canvas so a code sample keeps its proportion on any screen.
   .code-block {
-    font-size: 0.99cqi;
+    font-size: var(--deck-fs-code);
     text-align: left;
     margin: 0 0 1cqi;
     border-radius: 0.5cqi;
@@ -321,7 +361,7 @@
 
   .code-block-header {
     padding: 0.6cqi 1cqi;
-    font-size: 0.8cqi;
+    font-size: var(--deck-fs-micro);
   }
 
   .code-block-body pre {
@@ -337,7 +377,7 @@
     --bs-table-color: var(--deck-fg);
     width: 100%;
     margin: 0;
-    font-size: 1.05cqi;
+    font-size: var(--deck-fs-small);
     border-collapse: separate;
     border-spacing: 0;
     overflow: hidden;
@@ -347,7 +387,7 @@
   table.table thead th {
     background: var(--docker-deep);
     color: #fff;
-    font-size: 0.78cqi;
+    font-size: var(--deck-fs-micro);
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -387,13 +427,13 @@
   }
 
   h1 {
-    font-size: 5.83cqi;
+    font-size: var(--deck-fs-hero);
     letter-spacing: -0.04em;
   }
 
   // The line under the title is a standfirst, not body copy.
   h1 + p {
-    font-size: 1.67cqi;
+    font-size: var(--deck-fs-lead);
     font-weight: 500;
     color: var(--deck-fg-2);
     max-width: 34em;
@@ -409,14 +449,14 @@
   }
 
   h1 {
-    font-size: 5.2cqi;
+    font-size: var(--deck-fs-hero);
     letter-spacing: -0.04em;
   }
 
   // On a divider the supporting line is the accent colour — it's a list of what
   // the section covers, not prose.
   h1 + p {
-    font-size: 1.5cqi;
+    font-size: var(--deck-fs-lead);
     font-weight: 600;
     color: var(--deck-accent);
     max-width: none;
@@ -506,7 +546,7 @@
     padding-left: 0;
     margin-bottom: 1.5cqi;
     font-family: var(--deck-font-display);
-    font-size: 2.6cqi;
+    font-size: var(--deck-fs-h2);
     font-weight: 700;
     line-height: 1.22;
     letter-spacing: -0.025em;
@@ -548,13 +588,13 @@
   blockquote + p {
     border-left: 0.18cqi solid var(--deck-accent);
     padding-left: 0.9cqi;
-    font-size: 1.05cqi;
+    font-size: var(--deck-fs-small);
     color: var(--deck-fg-2);
     max-width: none;
 
     strong {
       display: block;
-      font-size: 1.15cqi;
+      font-size: var(--deck-fs-body);
     }
   }
 }
@@ -621,7 +661,7 @@
 }
 
 .deck-stat-label {
-  font-size: 0.7cqi;
+  font-size: var(--deck-fs-micro);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -631,7 +671,7 @@
 
 .deck-stat-value {
   font-family: var(--deck-font-display);
-  font-size: 5.83cqi;
+  font-size: var(--deck-fs-hero);
   font-weight: 900;
   line-height: 0.92;
   letter-spacing: -0.045em;
@@ -640,7 +680,7 @@
 }
 
 .deck-stat-desc {
-  font-size: 1.15cqi;
+  font-size: var(--deck-fs-small);
   color: var(--deck-fg-2);
   margin-top: 0.52cqi;
   line-height: 1.35;
@@ -663,7 +703,7 @@
 }
 
 .deck-card-label {
-  font-size: 0.7cqi;
+  font-size: var(--deck-fs-micro);
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -672,7 +712,7 @@
 }
 
 .deck-card-body {
-  font-size: 1.1cqi;
+  font-size: var(--deck-fs-small);
   color: var(--deck-fg-2);
   line-height: 1.4;
 
@@ -733,7 +773,7 @@
   border-radius: 0.2cqi;
   background: var(--a-fill);
   color: var(--a-text);
-  font-size: 0.78cqi;
+  font-size: var(--deck-fs-micro);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;

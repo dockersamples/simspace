@@ -327,6 +327,39 @@ Practical consequence for authors: sizes in this theme are derived from a
 1920px-wide reference canvas divided by 19.2. `::terminal{height=300}` means "300px
 on a 1920 canvas", not 300 physical pixels.
 
+### 5.2 The type scale
+
+Every size in the theme references a named scale declared on the slide canvas, so
+retuning the deck's typography is a matter of changing these values rather than
+hunting through the stylesheet:
+
+| Custom property    | Default  | Used by                                        |
+| ------------------ | -------- | ---------------------------------------------- |
+| `--deck-fs-hero`   | `5.6cqi` | `title`/`section` headline, a stat's number      |
+| `--deck-fs-h1`     | `4cqi`   | a content slide's headline                       |
+| `--deck-fs-h2`     | `2.5cqi` | `h2`, and a `quote`                              |
+| `--deck-fs-h3`     | `2cqi`   | `h3` — usually a column's main statement          |
+| `--deck-fs-lead`   | `1.7cqi` | the standfirst under a title/section headline     |
+| `--deck-fs-body`   | `1.45cqi`| prose and list items — the default               |
+| `--deck-fs-small`  | `1.25cqi`| card bodies, table cells, stat captions          |
+| `--deck-fs-code`   | `1.1cqi` | code blocks                                      |
+| `--deck-fs-micro`  | `0.85cqi`| eyebrow, footer, labels, tags                    |
+
+Body copy sits deliberately above the reference deck's equivalent (its two-column
+list is 24px, or 1.25cqi): that deck is sized for a projector, whereas these are
+also read at laptop size in a browser window.
+
+Two structural rules make the scale mean what it says, and both are easy to undo
+by accident:
+
+- **The canvas carries no padding** — an inner frame does. Container query units
+  resolve against the container's *content* box, so padding on the canvas would
+  make every `cqi` a percentage of a narrower box and render the whole scale
+  small.
+- **No `cqi` font-size on the canvas itself** — a container never queries itself,
+  so such a value resolves against the enclosing stage and disagrees with every
+  descendant. The base size lives on the frame.
+
 ## 6. Components
 
 Three container/text directives cover the non-code blocks on a slide. They're

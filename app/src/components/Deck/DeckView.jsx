@@ -117,15 +117,23 @@ export function DeckView() {
           className={`deck-canvas deck-canvas--${deck.layout} deck-canvas--${deck.theme}`}
           key={current.id}
         >
-          {/* Fragments are revealed by CSS driven from context, so the markdown
-              renderer stays unaware of presentation state. */}
-          <FragmentContext.Provider value={deck.fragment}>
-            <SlideChrome position="top" />
-            <div className="deck-body">
-              <SlideRegions />
-            </div>
-            <SlideChrome position="bottom" />
-          </FragmentContext.Provider>
+          {/* The canvas carries no padding of its own, and the frame inside it
+              carries all of it. That's load-bearing: container query units resolve
+              against the container's CONTENT box, so padding on the canvas would
+              silently shrink every `cqi` in the theme — 5cqi of padding made every
+              size 10% smaller than the type scale said. With the padding one level
+              in, 1cqi is exactly 1% of the slide's width. */}
+          <div className="deck-frame">
+            {/* Fragments are revealed by CSS driven from context, so the markdown
+                renderer stays unaware of presentation state. */}
+            <FragmentContext.Provider value={deck.fragment}>
+              <SlideChrome position="top" />
+              <div className="deck-body">
+                <SlideRegions />
+              </div>
+              <SlideChrome position="bottom" />
+            </FragmentContext.Provider>
+          </div>
         </article>
       </div>
 
