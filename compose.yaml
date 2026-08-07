@@ -30,10 +30,15 @@ services:
     ports:
       - "5173:5173"
     volumes:
-      - ./app:/usr/local/app
       - /usr/local/app/node_modules
     develop:
       watch:
+        - watch: ./app
+          action: sync
+          target: /usr/local/app
+          ignore:
+            - node_modules
+            - dist
         - path: ./app/package.json
           action: rebuild
 
