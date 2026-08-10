@@ -1,0 +1,40 @@
+// Styles for markdown the renderer produces itself, rather than for a surface.
+//
+// Unscoped on purpose: the renderer is shared by the instructions pane and the
+// deck, and the tokens in WorkshopPanel.scss are scoped to `.workshop-panel`, so
+// anything that must look right in BOTH places can't borrow them. Colours here are
+// derived from `currentColor` for the same reason — this has to read on a white
+// instructions pane and on a dark or tinted slide.
+
+.md-diagram-error {
+  margin: 1em 0;
+  padding: 0.75em 1em;
+  border: 1px solid rgba(200, 60, 60, 0.45);
+  border-radius: 6px;
+  background: rgba(200, 60, 60, 0.08);
+  font-size: 0.85em;
+  text-align: left;
+
+  p {
+    margin: 0 0 0.4em;
+  }
+}
+
+.md-diagram-error-title {
+  font-weight: 600;
+}
+
+.md-diagram-error-message {
+  font-family: var(--deck-font-mono, ui-monospace, monospace);
+  // The whole point of showing this is that it can be read off a phone screen, so
+  // it wraps rather than scrolling out of view.
+  overflow-wrap: anywhere;
+  opacity: 0.9;
+}
+
+.md-diagram-error-source {
+  margin: 0;
+  opacity: 0.75;
+  overflow-x: auto;
+  font-size: 0.95em;
+}

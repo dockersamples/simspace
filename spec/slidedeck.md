@@ -127,6 +127,11 @@ Rules:
   `highlight=`, `no-run-button`, …), and the `:filelink` / `:tablink` /
   `:variabledefinition` / `:variablesetbutton` / `:conditionaldisplay`
   directives. See `labspace.md` §5.1.
+- **A slide that fails to render shows a card saying so, and the deck keeps
+  working.** Mermaid renders in the browser, so a diagram can fail on one device
+  and not another; a diagram that can't be drawn falls back to its source plus the
+  error, and any other render error is caught per slide. Both show the message on
+  screen, because the browser that fails is often a phone with no console attached.
 
 ### 3.1 Slide ids
 

@@ -17,9 +17,16 @@ import { VariableDefinition } from "./VariableDefinition";
 import { VariableSetButton } from "./VariableSetButton";
 import { ConditionalDisplay } from "./ConditionalDisplay";
 import { MarkdownBaseUrlContext } from "./markdownBaseUrl";
+import { diagramErrorFallback } from "./diagramError";
 import { SlideTerminal } from "../../Deck/SlideTerminal";
 import { Fragment } from "../../Deck/Fragment";
 import { Card, Stat, Tag } from "../../Deck/SlideParts";
+import "./MarkdownRenderer.scss";
+
+// Mermaid renders in the browser here, so a diagram can fail on one device and not
+// another. Without a fallback `rehype-mermaid` throws, `MarkdownHooks` rethrows the
+// plugin error during render, and the app unmounts — see diagramError.js.
+const mermaidOptions = { errorFallback: diagramErrorFallback };
 
 export function MarkdownRenderer({ children, baseUrl }) {
   return (
@@ -34,7 +41,11 @@ export function MarkdownRenderer({ children, baseUrl }) {
           // merges the fragment index into whatever it left there.
           remarkFragmentIndexer,
         ]}
-        rehypePlugins={[rehypeRaw, rehypeMermaid, rehypeGithubAlerts]}
+        rehypePlugins={[
+          rehypeRaw,
+          [rehypeMermaid, mermaidOptions],
+          rehypeGithubAlerts,
+        ]}
         components={{
           code: CodeBlock,
           a: ExternalLink,

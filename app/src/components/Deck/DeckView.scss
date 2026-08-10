@@ -973,6 +973,46 @@
   }
 }
 
+// ── A slide that failed to render ──────────────────────────────────────────
+// Sized in `cqi` like everything else on the canvas, and quiet rather than alarming:
+// the presenter needs to know this slide is gone and that the deck still works, not
+// to be shouted at in front of the room.
+.deck-slide-error {
+  align-self: center;
+  margin: auto 0;
+  max-width: 70cqi;
+  padding: 2cqi;
+  border: 1px solid var(--deck-rule);
+  border-radius: 1cqi;
+  background: var(--deck-surface);
+  text-align: left;
+}
+
+.deck-slide-error-title {
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-fs-h3);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin: 0 0 0.5em;
+}
+
+.deck-slide-error-message {
+  font-family: var(--deck-font-mono);
+  font-size: var(--deck-fs-code);
+  color: var(--deck-fg-2);
+  // Readable off a phone screen, which is where a device-specific failure shows up.
+  overflow-wrap: anywhere;
+  margin: 0 0 0.75em;
+}
+
+.deck-slide-error-hint {
+  font-size: var(--deck-fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--deck-fg-3);
+  margin: 0;
+}
+
 // ── Empty state ────────────────────────────────────────────────────────────
 .deck-empty {
   position: fixed;

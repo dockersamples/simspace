@@ -5,6 +5,7 @@ import { useWorkshop } from "../../WorkshopContext";
 import { useCatalog } from "../../context/CatalogContext";
 import { MarkdownRenderer } from "../WorkshopPanel/markdown/MarkdownRenderer";
 import { SpeakerNotesWindow } from "./SpeakerNotesWindow";
+import { SlideErrorBoundary } from "./SlideErrorBoundary";
 import { FragmentContext } from "./FragmentContext";
 import { handleDeckNavKey, isTypingTarget } from "./deckKeys";
 import { useDeckSwipe } from "./deckSwipe";
@@ -143,7 +144,13 @@ export function DeckView() {
             <FragmentContext.Provider value={deck.fragment}>
               <SlideChrome position="top" />
               <div className="deck-body">
-                <SlideRegions />
+                {/* The boundary rides the canvas's `key={current.id}`, so it
+                    remounts on every slide change — an error boundary holds its
+                    failed state until it unmounts, and without that a single bad
+                    slide would leave every later slide blank too. */}
+                <SlideErrorBoundary>
+                  <SlideRegions />
+                </SlideErrorBoundary>
               </div>
               <SlideChrome position="bottom" />
             </FragmentContext.Provider>

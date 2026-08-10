@@ -226,6 +226,14 @@ the app, with no build step for the package. `@dockersamples/simspace-simulator`
   (`deckSwipe.js` reuses `isTypingTarget`), plus anything that pans sideways, and
   it suppresses the click a browser fires after a swipe so a gesture can't advance
   twice — `deckSwipe.test.jsx` pins all three.
+- **A render error must never reach the top of the tree.** `MarkdownHooks`
+  (react-markdown) *rethrows a plugin failure during render*, and mermaid renders in
+  the BROWSER, so a diagram one device can't draw used to unmount the whole app —
+  white screen, mid-talk, no way out but a reload. Two things hold that line and
+  both are easy to remove by accident: `errorFallback` on `rehype-mermaid`
+  (`markdown/diagramError.js`) and `SlideErrorBoundary` inside the deck canvas. The
+  boundary must stay INSIDE the canvas, so chrome and navigation survive a bad
+  slide, and it relies on the canvas's `key={current.id}` to reset.
 - **`app/dist/` is generated** by `npm run build` — never edit it. Edit the lab
   sources under `app/public/labs/`. `app/public/labs.json` is generated too
   (git-ignored) — never hand-edit it; change a lab's `labspace.yaml` instead.
