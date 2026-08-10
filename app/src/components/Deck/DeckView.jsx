@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useDeck } from "../../context/DeckContext";
 import { useWorkshop } from "../../WorkshopContext";
@@ -7,6 +7,7 @@ import { MarkdownRenderer } from "../WorkshopPanel/markdown/MarkdownRenderer";
 import { SpeakerNotesWindow } from "./SpeakerNotesWindow";
 import { FragmentContext } from "./FragmentContext";
 import { handleDeckNavKey, isTypingTarget } from "./deckKeys";
+import { useDeckSwipe } from "./deckSwipe";
 import "./DeckView.scss";
 
 // The deck. Renders one slide at a time full-bleed, with presenter chrome and
@@ -28,9 +29,15 @@ export function DeckView() {
   // contains the slide and nothing else. Distinct from `f` (real fullscreen),
   // which a recording tool may not be able to capture from.
   const [presenting, setPresenting] = useState(false);
-  const stageRef = useRef(null);
+  // The stage is held in state rather than a ref because the swipe listeners are
+  // bound to the element itself, and an effect can't depend on a ref's `.current`.
+  const [stage, setStage] = useState(null);
 
   const { next, previous, goTo, index, total, current } = deck;
+
+  // Swipe navigation for phones and tablets. Returns the guard the click handler
+  // below uses to ignore the click a browser may fire after a swipe.
+  const swipedRecently = useDeckSwipe(stage, { next, previous });
 
   // Keyboard navigation, scoped so it never steals a keystroke meant for
   // something else. An in-slide terminal is a real text input: if space or the
@@ -50,7 +57,7 @@ export function DeckView() {
       switch (event.key) {
         case "f":
           event.preventDefault();
-          toggleFullscreen(stageRef.current);
+          toggleFullscreen(stage);
           break;
         case "s":
           event.preventDefault();
@@ -75,7 +82,7 @@ export function DeckView() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [next, previous, goTo, total, presenting]);
+  }, [next, previous, goTo, total, presenting, stage]);
 
   // Clicking the slide background advances, the way a presenter expects. Only
   // the background: a click on a link, button, or the terminal is that element's
@@ -88,9 +95,12 @@ export function DeckView() {
         return;
       }
       if (window.getSelection()?.toString()) return; // mid text-selection
+      // A touch device may fire a click at the end of a swipe. Acting on it would
+      // advance a second time, or undo the swipe back the learner just made.
+      if (swipedRecently()) return;
       next();
     },
-    [next],
+    [next, swipedRecently],
   );
 
   if (!current) {
@@ -111,7 +121,7 @@ export function DeckView() {
   return (
     <div className={"deck" + (presenting ? " deck--presenting" : "")}>
       {presenting && <PresentHint />}
-      <div className="deck-stage" ref={stageRef} onClick={onStageClick}>
+      <div className="deck-stage" ref={setStage} onClick={onStageClick}>
         {/* The canvas is a 16:9 box that is also a size container, so every type
             scale below can be expressed in `cqi` and stay proportional at any
             display size — the fidelity a fixed 1920×1080 canvas would give,
@@ -196,7 +206,7 @@ export function DeckView() {
           <button
             type="button"
             className="deck-btn"
-            onClick={() => toggleFullscreen(stageRef.current)}
+            onClick={() => toggleFullscreen(stage)}
             title="Fullscreen (f)"
           >
             <span className="material-symbols-outlined">fullscreen</span>

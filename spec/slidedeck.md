@@ -272,7 +272,9 @@ runtime: a typo must not blank a slide mid-presentation.
 | Input                            | Action                                          |
 | -------------------------------- | ----------------------------------------------- |
 | `→`, `Space`, `PageDown`, click  | Next fragment, else next slide                  |
+| Swipe left                       | Next fragment, else next slide                  |
 | `←`, `PageUp`                    | Previous fragment, else previous slide          |
+| Swipe right                      | Previous fragment, else previous slide          |
 | `Home` / `End`                   | First / last slide                              |
 | `p`                              | Toggle **present mode** (§4.1)                  |
 | `f`                              | Toggle browser fullscreen                       |
@@ -282,6 +284,13 @@ runtime: a typo must not blank a slide mid-presentation.
 
 Clicking the slide **background** advances. A click on a link, button, or the demo
 terminal is that element's own business.
+
+**On a touch device, swipe horizontally to move through the deck** — the same
+sequence the arrow keys walk, fragments included. A swipe that starts inside the
+demo terminal belongs to the terminal (its transcript scrolls), as a keystroke there
+does, and so does one that starts on something panning sideways, such as a wide code
+block. Vertical scrolling and pinch-zoom are untouched: a phone shows a 16:9 slide
+small, and zooming in to read it still works.
 
 **The navigation keys work in the presenter window too** (§8), so a presenter
 watching their notes never has to reach back to the other screen. Both windows

@@ -62,7 +62,8 @@ app/                 THE PRODUCT — the consolidated static React app
                      `---`), per-slide config, and `<!-- region -->` columns
     components/       WorkshopPanel (instructions + markdown), TerminalPanel,
                       Deck (DeckView + DeckView.scss carries the layouts and the
-                      Docker theme, SlideParts, SlideTerminal, SpeakerNotesWindow),
+                      Docker theme, SlideParts, SlideTerminal, SpeakerNotesWindow,
+                      deckKeys + deckSwipe for keyboard and touch navigation),
                       ExportView
     context/          React contexts (Workshop, Tab, Terminal, Deck, PrintMode)
     EntryRoute.jsx   reads the entry's `kind` and dispatches: AppRoute or DeckRoute
@@ -143,9 +144,13 @@ This is a **JavaScript/React (Vite) project** — all work happens in `app/`.
 is not.** `npm test` runs both suites (the package's, then the app's) and must stay
 green — add cases for new behaviour. The app suite covers the pieces where a subtle
 bug wouldn't be obvious on screen, above all slide splitting. For the React UI
-there's no suite: verify that by running the app and exercising it, plus lint. Verify **lab content** (the
-`labspace.yaml` / `simulator.yaml` / markdown) with `npm run validate-lab` —
-always run it after editing a lab.
+there's no suite: verify that by running the app and exercising it, plus lint. The
+one exception is the deck's swipe hook (`deckSwipe.test.jsx`, which opts into jsdom
+with a `@vitest-environment` comment) — reproducing a gesture by hand means picking
+up a phone.
+
+Verify **lab content** (the `labspace.yaml` / `simulator.yaml` / markdown) with
+`npm run validate-lab` — always run it after editing a lab.
 
 ```bash
 cd app
@@ -217,7 +222,10 @@ the app, with no build step for the package. `@dockersamples/simspace-simulator`
   `docker ps` would flip slides on the space. `Esc` hands control back. If you
   touch either side of this, re-check it in a browser: the trap is that
   MockTerminal *unmounts its input row while output streams*, so focus lands on a
-  wrapper rather than an input.
+  wrapper rather than an input. **Swipe navigation defers to the same region**
+  (`deckSwipe.js` reuses `isTypingTarget`), plus anything that pans sideways, and
+  it suppresses the click a browser fires after a swipe so a gesture can't advance
+  twice — `deckSwipe.test.jsx` pins all three.
 - **`app/dist/` is generated** by `npm run build` — never edit it. Edit the lab
   sources under `app/public/labs/`. `app/public/labs.json` is generated too
   (git-ignored) — never hand-edit it; change a lab's `labspace.yaml` instead.
