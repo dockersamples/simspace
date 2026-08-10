@@ -23,14 +23,20 @@
   font-family:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
     monospace;
-  font-size: 13.5px;
+  /* Size is a consumer-settable property with the terminal's own default, because
+     one surface can't be served by a fixed px: a deck slide's type scale is a
+     percentage of the slide's width, so a hardcoded 13.5px renders correctly on a
+     1920px slide and ~3x oversized on a phone. Every other consumer (the lab pane,
+     a docs page, the popped-out terminal window) inherits nothing and gets the
+     default, so this changes no existing surface. */
+  font-size: var(--mock-term-fs, 13.5px);
   line-height: 1.5;
 }
 
 .mock-term-body {
   flex: 1;
   overflow-y: auto;
-  padding: 12px 14px;
+  padding: var(--mock-term-pad, 12px 14px);
   cursor: text;
 }
 

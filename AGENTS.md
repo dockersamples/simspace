@@ -214,7 +214,12 @@ the app, with no build step for the package. `@dockersamples/simspace-simulator`
   deck decisions that are easy to undo by accident. The slide canvas is a 16:9
   container and every type size is a percentage of its width, so a stray `px` in
   `DeckView.scss` stops scaling with the slide — see the header comment there for
-  the 1920÷19.2 conversion. And Prettier is kept away from `public/labs/**` because
+  the 1920÷19.2 conversion. **A component the deck SHARES with the lab has to expose
+  its sizes as custom properties** (`--cb-*` in `App.scss`, `--mock-term-*` in the
+  simulator package) — a px there can't be overridden from the deck, because
+  `div.code-block .x` outranks `.deck-canvas .x` and the deck's rules lose silently.
+  That one stayed hidden until a phone, where the block rendered 3x oversized while
+  the slide scaled down around it. And Prettier is kept away from `public/labs/**` because
   it rewrites `***`/`___` to `---`, which is the slide separator; re-enabling it
   would let a formatting pass split a slide in two.
 - **A deck's demo terminal owns its keystrokes.** While focus is inside

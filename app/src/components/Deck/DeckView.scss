@@ -350,22 +350,37 @@
     opacity: 1;
   }
 
-  // The lab's code-block chrome, resized for a slide. Everything scales with the
-  // canvas so a code sample keeps its proportion on any screen.
+  // The lab's code-block chrome, resized for a slide: every size the block exposes,
+  // restated in `cqi` so a code sample keeps its proportion on any screen.
+  //
+  // Setting the block's PROPERTIES rather than its rules is what makes this work.
+  // The earlier version styled `.code-block-header` and `.code-block-body pre`
+  // directly and silently lost: App.scss reaches those elements through
+  // `div.code-block .x` (specificity 0,2,1), which outranks `.deck-canvas .x`
+  // (0,2,0) — and `pre` never matched anything, because CodeBlock passes
+  // `PreTag="div"`. Properties inherit, so they sidestep both traps.
+  //
+  // Sizes with no equivalent in the theme are the instructions pane's px ÷ 19.2 —
+  // the same conversion the type scale at the top of this file uses — so a slide on a
+  // 1920px canvas keeps the proportions it has today. The two exceptions adopt the
+  // theme's own tokens, which nothing was reading before: code text takes
+  // `--deck-fs-code` and the filename label takes `--deck-fs-micro`, the token every
+  // other piece of slide chrome uses. Both are a little larger than today at 1920,
+  // which is the size the scale asks for and easier to read from a room.
   .code-block {
+    --cb-fs-code: var(--deck-fs-code);
+    --cb-fs-label: var(--deck-fs-micro);
+    --cb-btn: 1.7cqi;
+    --cb-btn-icon: 1cqi;
+    --cb-header-h: 2.1cqi;
+    --cb-header-pad: 0.25cqi 0.35cqi 0.25cqi 0.7cqi;
+    --cb-body-pad: 0.6cqi 0.8cqi;
+    --cb-radius: 0.5cqi;
+    --cb-gap: 0.45cqi;
+
     font-size: var(--deck-fs-code);
     text-align: left;
     margin: 0 0 1cqi;
-    border-radius: 0.5cqi;
-  }
-
-  .code-block-header {
-    padding: 0.6cqi 1cqi;
-    font-size: var(--deck-fs-micro);
-  }
-
-  .code-block-body pre {
-    padding: 1.1cqi 1.4cqi !important;
     line-height: 1.55;
   }
 
