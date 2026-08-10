@@ -28,13 +28,23 @@ import "./MarkdownRenderer.scss";
 // plugin error during render, and the app unmounts — see diagramError.js.
 const mermaidOptions = { errorFallback: diagramErrorFallback };
 
-export function MarkdownRenderer({ children, baseUrl }) {
+/**
+ * `runButtons` controls whether a code fence gets a Run button by default.
+ * A lab's fences are commands to run, so they do; a deck passes
+ * `"terminal-only"` because slide code is overwhelmingly a sample being read,
+ * and only a live-demo fence (`terminal-id=`) is meant to be executed.
+ */
+export function MarkdownRenderer({
+  children,
+  baseUrl,
+  runButtons = "default",
+}) {
   return (
     <MarkdownBaseUrlContext.Provider value={baseUrl}>
       <MarkdownHooks
         remarkPlugins={[
           remarkGfm,
-          remarkCodeIndexer,
+          [remarkCodeIndexer, { runButtons }],
           remarkDirective,
           tabDirective,
           // After tabDirective: it replaces hProperties wholesale, and this

@@ -495,7 +495,12 @@
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: repeat(var(--deck-columns, 2), minmax(0, 1fr));
+    // `columns: 1 2` on the slide sets --deck-column-tracks; without it every
+    // column shares the width equally, which is the common case.
+    grid-template-columns: var(
+      --deck-column-tracks,
+      repeat(var(--deck-columns, 2), minmax(0, 1fr))
+    );
     gap: 3.75cqi;
     align-items: start;
   }
@@ -611,6 +616,77 @@
       display: block;
       font-size: var(--deck-fs-body);
     }
+  }
+}
+
+// ── Layout: image ──────────────────────────────────────────────────────────
+// An image-led slide: the picture bleeds to the canvas edge and the words sit in
+// a panel over it. The image comes from the slide's `image:` config rather than
+// an `![]()` in the body, because a markdown image is a figure in the text flow
+// — a different, already-supported thing — and can't reach past the frame's
+// padding to the edge of the slide.
+//
+// Defaults to the dark surface (see DeckContext): the overlay is a scrim, and
+// light-on-dark is the only combination that stays readable over an arbitrary
+// photograph.
+.deck-canvas--image {
+  // Positioned against the CANVAS (its offset parent), not the frame — which is
+  // the whole reason the element is rendered a level up. Don't give the frame or
+  // the body a `position` here or this resolves against them and the image is
+  // inset by the frame's padding instead of bleeding.
+  .deck-image-bleed {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    // `cover` crops rather than letterboxes. A slide is a fixed 16:9 frame and a
+    // band of background down the side of a photo reads as a mistake; losing an
+    // edge of the image does not.
+    object-fit: cover;
+    z-index: 0;
+  }
+
+  // The frame — chrome bands and all — stacks above the picture as one layer.
+  .deck-frame {
+    position: relative;
+    z-index: 1;
+  }
+
+  .deck-body {
+    justify-content: flex-end;
+  }
+
+  // The scrim. Sized to its content rather than the full width so a short
+  // headline doesn't drag a full-bleed bar across the slide, and blurred behind
+  // so text stays legible over a busy photograph.
+  .deck-region--overlay {
+    align-self: flex-start;
+    max-width: 62%;
+    padding: 2.6cqi 3cqi;
+    border-radius: 0.6cqi;
+    background: rgba(9, 15, 28, 0.72);
+    backdrop-filter: blur(1.2cqi);
+    box-shadow: 0 0.6cqi 2.4cqi rgba(0, 0, 0, 0.28);
+  }
+
+  h1 {
+    font-size: var(--deck-fs-h1);
+    letter-spacing: -0.03em;
+    margin: 0;
+  }
+
+  // The line under the headline is a caption for the picture.
+  h1 + p {
+    font-size: var(--deck-fs-body);
+    color: var(--deck-fg-2);
+    max-width: 40em;
+    margin-top: 1.2cqi;
+  }
+
+  // A slide that is only a picture — no headline, no caption — keeps the image
+  // and drops the panel entirely (SlideRegions renders no overlay for it).
+  .deck-region--overlay:empty {
+    display: none;
   }
 }
 

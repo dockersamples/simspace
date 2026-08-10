@@ -132,6 +132,10 @@ export function DeckView() {
           className={`deck-canvas deck-canvas--${deck.layout} deck-canvas--${deck.theme}`}
           key={current.id}
         >
+          {/* `layout: image` bleeds its picture to the canvas edge, so it hangs
+              here rather than inside the frame — the frame's padding is exactly
+              what a full-bleed image needs to escape. */}
+          <SlideBleedImage />
           {/* The canvas carries no padding of its own, and the frame inside it
               carries all of it. That's load-bearing: container query units resolve
               against the container's CONTENT box, so padding on the canvas would
@@ -240,6 +244,19 @@ export function DeckView() {
 }
 
 /**
+ * The full-bleed picture behind a `layout: image` slide.
+ *
+ * A sibling of the frame rather than slide content, because the frame's padding
+ * is the one thing a full-bleed image has to get past. Nothing renders for any
+ * other layout — a picture in the text flow is an ordinary markdown image.
+ */
+function SlideBleedImage() {
+  const { layout, image } = useDeck();
+  if (layout !== "image" || !image) return null;
+  return <img className="deck-image-bleed" src={image.src} alt={image.alt} />;
+}
+
+/**
  * The slide's content, arranged by layout.
  *
  * Every layout reads the same `regions` array, which is what keeps the layout set
@@ -252,30 +269,55 @@ export function DeckView() {
  * adding a second layout name.
  */
 function SlideRegions() {
-  const { layout, regions, current } = useDeck();
+  const { layout, regions, current, columns: weights } = useDeck();
   const baseUrl = current?.baseUrl;
 
   const render = (markdown, key, className) => (
     <div className={className} key={key}>
-      <MarkdownRenderer baseUrl={baseUrl}>{markdown}</MarkdownRenderer>
+      <MarkdownRenderer baseUrl={baseUrl} runButtons="terminal-only">
+        {markdown}
+      </MarkdownRenderer>
     </div>
   );
 
   if (layout === "split" && regions.length > 1) {
     const hasHeader = regions.length > 2;
     const header = hasHeader ? regions[0] : null;
-    const columns = hasHeader ? regions.slice(1) : regions;
+    const cols = hasHeader ? regions.slice(1) : regions;
+    // Weights apply positionally; a list that doesn't match the column count is
+    // ignored rather than padded, so adding a region can't silently re-weight
+    // the rest of the slide.
+    const tracks =
+      weights && weights.length === cols.length
+        ? weights.map((w) => `minmax(0, ${w}fr)`).join(" ")
+        : null;
     return (
       <>
         {header && render(header, "header", "deck-region deck-region--header")}
         <div
           className="deck-columns"
-          style={{ "--deck-columns": columns.length }}
+          style={{
+            "--deck-columns": cols.length,
+            ...(tracks ? { "--deck-column-tracks": tracks } : {}),
+          }}
         >
-          {columns.map((region, i) => render(region, i, "deck-region"))}
+          {cols.map((region, i) => render(region, i, "deck-region"))}
         </div>
       </>
     );
+  }
+
+  // `image` puts the picture behind the slide and the words in a panel over it.
+  // The image is config rather than markdown so the layout can bleed it to the
+  // edges — an `![]()` in the body is a figure in the text flow, which is the
+  // other, already-supported thing.
+  if (layout === "image") {
+    const body = regions.join("\n\n").trim();
+    // The picture itself is rendered at canvas level by SlideBleedImage; what's
+    // left here is the panel of words that sits over it.
+    return body
+      ? render(body, "only", "deck-region deck-region--overlay")
+      : null;
   }
 
   // Any other layout ignores region markers and renders the whole slide. Joining

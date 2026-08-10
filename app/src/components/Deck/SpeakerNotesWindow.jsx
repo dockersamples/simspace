@@ -63,7 +63,10 @@ export function SpeakerNotesWindow({ onClose }) {
         <h2 className="notes-label">Notes</h2>
         {deck.notes ? (
           <div className="notes-body">
-            <MarkdownRenderer baseUrl={deck.current?.baseUrl}>
+            <MarkdownRenderer
+              baseUrl={deck.current?.baseUrl}
+              runButtons="terminal-only"
+            >
               {deck.notes}
             </MarkdownRenderer>
           </div>
@@ -79,7 +82,10 @@ export function SpeakerNotesWindow({ onClose }) {
         <h2 className="notes-label">Up next</h2>
         {nextSlide ? (
           <div className="notes-preview">
-            <MarkdownRenderer baseUrl={nextSlide.baseUrl}>
+            <MarkdownRenderer
+              baseUrl={nextSlide.baseUrl}
+              runButtons="terminal-only"
+            >
               {nextSlide.content}
             </MarkdownRenderer>
           </div>

@@ -35,6 +35,7 @@ export const LAYOUTS = [
   "split",
   "stats",
   "quote",
+  "image",
 ];
 
 /** Surface variants of the Docker theme. */
@@ -150,6 +151,27 @@ export function DeckContextProvider({ children }) {
     return LAYOUTS.includes(raw) ? raw : "default";
   }, [current]);
 
+  // `columns: 1 2` weights a split's columns instead of sharing the width
+  // equally. Real decks are full of asymmetric pairs — a narrow label column
+  // against a wide description — and forcing them to 1:1 rewrites the design.
+  // Accepts a list or a string; anything unparseable falls back to equal
+  // columns, which is the layout's own default.
+  const columns = useMemo(
+    () => parseColumns(current?.config?.columns),
+    [current],
+  );
+
+  // A full-bleed image for `layout: image`, resolved like every other slide
+  // asset so `image: assets/x.png` sits next to the chapter file. `alt:` is a
+  // sibling key rather than part of the path because this image is content —
+  // a deck read on a screen reader or exported to a printed handout still owes
+  // the reader a description of it.
+  const image = useMemo(() => {
+    const src = resolveAsset(current?.config?.image, current?.baseUrl);
+    if (!src) return null;
+    return { src, alt: current?.config?.alt ?? "" };
+  }, [current]);
+
   // Precedence: the slide's own theme, then the layout's default, then the deck
   // default, then light.
   //
@@ -161,7 +183,7 @@ export function DeckContextProvider({ children }) {
   const theme = useMemo(() => {
     const fromSlide = current?.config?.theme;
     if (THEMES.includes(fromSlide)) return fromSlide;
-    if (layout === "title") return "dark";
+    if (layout === "title" || layout === "image") return "dark";
     if (layout === "section") return "tint";
     return THEMES.includes(workshop.theme) ? workshop.theme : "light";
   }, [current, workshop.theme, layout]);
@@ -197,6 +219,8 @@ export function DeckContextProvider({ children }) {
       regions,
       notes,
       layout,
+      columns,
+      image,
       theme,
       chrome,
       fragment,
@@ -215,6 +239,8 @@ export function DeckContextProvider({ children }) {
       regions,
       notes,
       layout,
+      columns,
+      image,
       theme,
       chrome,
       fragment,
@@ -226,6 +252,29 @@ export function DeckContextProvider({ children }) {
   );
 
   return <DeckContext.Provider value={value}>{children}</DeckContext.Provider>;
+}
+
+/**
+ * Reads `columns:` into a list of positive weights, or null for equal columns.
+ *
+ * Accepts `columns: 2 1`, `columns: [2, 1]`, or `columns: "2 1"` — YAML turns
+ * the unquoted form into a string or a number depending on how it's written, and
+ * an author shouldn't have to care which. A zero, a negative, or a non-number
+ * anywhere means the whole value is ignored: a half-applied ratio would be a
+ * stranger layout than the equal columns it replaced.
+ */
+export function parseColumns(raw) {
+  if (raw === undefined || raw === null) return null;
+  const parts = Array.isArray(raw)
+    ? raw
+    : String(raw)
+        .trim()
+        .split(/[\s,:]+/)
+        .filter(Boolean);
+  if (parts.length < 2) return null;
+  const weights = parts.map((p) => Number(p));
+  if (weights.some((w) => !Number.isFinite(w) || w <= 0)) return null;
+  return weights;
 }
 
 /**

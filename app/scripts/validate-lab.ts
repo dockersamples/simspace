@@ -41,7 +41,7 @@ import {
   KINDS,
 } from "./catalog.mjs";
 import { parseSlides } from "../src/deck/splitSlides.js";
-import { LAYOUTS, THEMES } from "../src/context/DeckContext.jsx";
+import { LAYOUTS, THEMES, parseColumns } from "../src/context/DeckContext.jsx";
 
 // ── Reporting ─────────────────────────────────────────────────────────────────
 
@@ -393,15 +393,68 @@ function validateLab(labDir: string): {
             "`layout: split` with no `<!-- region -->` marker renders a single column",
           );
         }
-        // A logo path is relative to the slide's own directory.
+        // `columns:` weights a split's columns. A list that doesn't match the
+        // column count is ignored at runtime, so say so rather than letting the
+        // author wonder why their ratio did nothing.
+        if (slide.config.columns !== undefined) {
+          const weights = parseColumns(slide.config.columns);
+          if (weights === null) {
+            warn(
+              at,
+              `\`columns: ${slide.config.columns}\` is not a list of positive numbers (e.g. \`columns: 1 2\`) — columns will be equal`,
+            );
+          } else if (layout !== "split") {
+            warn(
+              at,
+              `has \`columns:\` but layout is "${layout ?? "default"}" — only \`layout: split\` has columns to weight`,
+            );
+          } else {
+            // Regions become columns, minus the header band when there are 3+.
+            const columnCount =
+              slide.regions.length > 2
+                ? slide.regions.length - 1
+                : slide.regions.length;
+            if (weights.length !== columnCount) {
+              warn(
+                at,
+                `\`columns:\` has ${weights.length} weights but the slide has ${columnCount} columns — the ratio is ignored`,
+              );
+            }
+          }
+        }
+
+        // `layout: image` with nothing to show is a blank slide at full size.
+        if (layout === "image" && typeof slide.config.image !== "string") {
+          err(at, "`layout: image` needs an `image:` path in the same config");
+        }
+        if (slide.config.image !== undefined && layout !== "image") {
+          warn(
+            at,
+            `has \`image:\` but layout is "${layout ?? "default"}" — the picture only renders on \`layout: image\` (use \`![](…)\` for a figure in the text)`,
+          );
+        }
         if (
-          typeof slide.config.logo === "string" &&
-          !/^([a-z]+:)?\/\//i.test(slide.config.logo) &&
-          !slide.config.logo.startsWith("/")
+          layout === "image" &&
+          typeof slide.config.image === "string" &&
+          !slide.config.alt
         ) {
-          const logoPath = join(dirname(p), slide.config.logo);
-          if (!existsSync(logoPath)) {
-            err(at, `logo not found: ${slide.config.logo}`);
+          warn(
+            at,
+            "`layout: image` has no `alt:` — the picture is the slide's content, so describe it",
+          );
+        }
+
+        // Slide-relative asset paths, resolved against the slide's directory.
+        for (const key of ["logo", "image"] as const) {
+          const value = slide.config[key];
+          if (
+            typeof value === "string" &&
+            !/^([a-z]+:)?\/\//i.test(value) &&
+            !value.startsWith("/")
+          ) {
+            if (!existsSync(join(dirname(p), value))) {
+              err(at, `${key} not found: ${value}`);
+            }
           }
         }
       }
@@ -669,6 +722,11 @@ function validateLab(labDir: string): {
 
     if (metaValue(f.meta, "save-as") !== undefined) continue;
     if (f.meta.includes("no-run-button")) continue;
+    // On a slide, a fence only gets a Run button when it targets a terminal
+    // (see codeIndexer's `runButtons: "terminal-only"`). Everything else is a
+    // sample being read aloud, so there is no command to reconcile against the
+    // simulator — imported decks are full of these.
+    if (isDeck && termId === undefined) continue;
 
     if (!SHELL_LANGS.has(f.lang)) {
       warn(

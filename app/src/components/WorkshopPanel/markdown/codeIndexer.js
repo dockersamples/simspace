@@ -3,9 +3,16 @@ import { visit } from "unist-util-visit";
 /**
  * A Remark plugin that adds a data-code-index attribute to code blocks, making
  * it possible to enable the "Run" button (which requires the code block index).
- * @returns
+ *
+ * `runButtons: "terminal-only"` flips the Run button from opt-out to opt-in: a
+ * fence gets one only if it names a terminal with `terminal-id=`. That's what a
+ * slide deck wants — most code on a slide is a sample being read, not a command
+ * to run, and only a live demo fence targets a terminal.
+ *
+ * @param {{runButtons?: "default" | "terminal-only"}} [options]
  */
-export function remarkCodeIndexer() {
+export function remarkCodeIndexer(options = {}) {
+  const terminalOnly = options?.runButtons === "terminal-only";
   return (tree) => {
     let i = 0;
     visit(tree, "code", (node) => {
@@ -27,13 +34,6 @@ export function remarkCodeIndexer() {
         ? highlightConfig.split("=")[1]
         : "";
 
-      node.data.hProperties["data-display-run-button"] = codeBlockMeta.includes(
-        "no-run-button",
-      )
-        ? "false"
-        : "true";
-      node.data.hProperties["data-display-copy-button"] =
-        codeBlockMeta.includes("no-copy-button") ? "false" : "true";
       // `terminal-id=<id>` targets a specific terminal tab for the Run/Save
       // buttons. Empty when unset — the CodeBlock falls back to the primary.
       const terminalIdMeta = codeBlockMeta.find((m) =>
@@ -42,6 +42,14 @@ export function remarkCodeIndexer() {
       node.data.hProperties["data-terminal-id"] = terminalIdMeta
         ? terminalIdMeta.split("=").slice(1).join("=")
         : "";
+
+      const runButtonWanted = terminalOnly ? Boolean(terminalIdMeta) : true;
+      node.data.hProperties["data-display-run-button"] =
+        runButtonWanted && !codeBlockMeta.includes("no-run-button")
+          ? "true"
+          : "false";
+      node.data.hProperties["data-display-copy-button"] =
+        codeBlockMeta.includes("no-copy-button") ? "false" : "true";
 
       // `filename="compose.yaml"` labels the block's header with a filename
       // instead of the language — the code-window look a deck wants. Purely a

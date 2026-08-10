@@ -229,9 +229,18 @@ export function parseSlides(markdown, { chapterId, baseUrl } = {}) {
         const { config, content, configError } = extractConfig(body);
         return { config, configError, notes, content: content.trim() };
       })
-      // A chunk with no body AND no notes is nothing at all — drop it. One with
-      // only notes is kept: a deliberate "say this, show nothing" beat.
-      .filter((slide) => slide.content !== "" || slide.notes !== "")
+      // A chunk with no body, no notes AND no config is nothing at all — drop
+      // it, so a stray or trailing `---` adds no blank slide. The other two are
+      // deliberate: notes alone is a "say this, show nothing" beat, and config
+      // alone is a slide whose entire content is its config — `layout: image`
+      // with a picture and not a word on it, which is a real slide in a real
+      // deck and used to disappear silently.
+      .filter(
+        (slide) =>
+          slide.content !== "" ||
+          slide.notes !== "" ||
+          Object.keys(slide.config ?? {}).length > 0,
+      )
       .map((slide, index) => ({
         id: `${chapterId}-${index + 1}`,
         chapterId,

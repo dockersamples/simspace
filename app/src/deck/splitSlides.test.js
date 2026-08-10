@@ -161,6 +161,21 @@ describe("parseSlides", () => {
     expect(slides[1].notes).toBe("just talk here");
   });
 
+  it("keeps a config-only slide — a picture with not a word on it", () => {
+    const slides = parseSlides(
+      "a\n---\n<!--\nlayout: image\nimage: assets/x.jpg\n-->",
+      { chapterId: "c" },
+    );
+    expect(slides).toHaveLength(2);
+    expect(slides[1].content).toBe("");
+    expect(slides[1].config.layout).toBe("image");
+  });
+
+  it("still drops a chunk holding an empty comment and nothing else", () => {
+    const slides = parseSlides("a\n---\n<!-- -->", { chapterId: "c" });
+    expect(slides).toHaveLength(1);
+  });
+
   it("returns nothing for empty or missing markdown", () => {
     expect(parseSlides("", { chapterId: "c" })).toEqual([]);
     expect(parseSlides(undefined, { chapterId: "c" })).toEqual([]);

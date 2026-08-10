@@ -272,6 +272,33 @@ runtime: a typo must not blank a slide mid-presentation.
 > separator. A formatting pass would silently split one slide into two. For the
 > same reason `app/.prettierignore` excludes lab and deck content entirely.
 
+### 3.6 Run buttons are opt-in on a slide
+
+In a lab, a code fence is a command the learner is about to run, so it carries a
+**Run** button by default. On a slide it is the other way round: almost all slide
+code is a sample being read — a Dockerfile, a config file, a diff — and only a
+live demo is meant to execute. So a fence on a slide gets a Run button **only
+when it names a terminal**:
+
+````markdown
+```bash terminal-id=demo   ← runnable: targets the demo terminal
+docker run -d --name web nginx
+```
+
+```dockerfile filename=Dockerfile   ← a sample; no Run button, nothing to declare
+FROM golang:1.22
+```
+````
+
+`no-run-button` still suppresses the button on a fence that would otherwise have
+one. It is simply unnecessary on a slide, and a deck that has to reach for it on
+every code block is fighting the default.
+
+This also settles what `validate-lab` checks. A slide fence with no `terminal-id=`
+is not a command, so its contents are never reconciled against the simulator —
+otherwise every imported deck would fail validation for quoting shell it never
+intended to run.
+
 ## 4. Navigation
 
 | Input                            | Action                                          |
@@ -328,9 +355,10 @@ about the slide is ordinary markdown.
 | `default` | Heading, then content flowing beneath it. The workhorse.          | deck default  |
 | `title`   | The opener: vertically centred, largest type, byline in the footer | `dark`        |
 | `section` | A chapter divider: eyebrow, oversized title, one supporting line   | `tint`        |
-| `split`   | Regions as equal columns, optionally under a header band (§3.5)    | deck default  |
+| `split`   | Regions as columns, optionally under a header band (§3.5, §5.3)    | deck default  |
 | `stats`   | Heading, then the slide's `:::stat` blocks side by side            | deck default  |
 | `quote`   | A pull quote at billboard size, with attribution                   | deck default  |
+| `image`   | A full-bleed picture with the words in a panel over it (§5.4)      | `dark`        |
 
 Notes on the ones with conventions attached:
 
@@ -344,6 +372,11 @@ Notes on the ones with conventions attached:
 
 An unrecognised layout falls back to `default` and is an error from
 `validate-lab` — a typo shows a plain slide rather than nothing.
+
+The set is deliberately small: every layout is permanent surface area, and the
+nine archetypes a deck tool usually enumerates are mostly the same shapes wearing
+different paint. The two below were added because imported decks kept producing
+slides the other six could only approximate.
 
 ### 5.1 Sizing: a fluid 16:9 canvas
 
@@ -394,6 +427,79 @@ by accident:
 - **No `cqi` font-size on the canvas itself** — a container never queries itself,
   so such a value resolves against the enclosing stage and disagrees with every
   descendant. The base size lives on the frame.
+
+### 5.3 `columns:` — weighting a split
+
+By default a `split`'s columns share the width equally. `columns:` gives them a
+ratio instead:
+
+```markdown
+<!--
+layout: split
+columns: 1 2
+-->
+
+# The theme carries across every activation
+
+<!-- region -->
+
+### The keynote
+
+<!-- region -->
+
+Docker execs with an outside voice, the reveal, and a product moment shown live.
+```
+
+- Weights are relative, so `1 2` and `50 100` are the same slide.
+- `columns: 1 2`, `columns: [1, 2]`, and `columns: "1 2"` all work — YAML reads
+  the unquoted form as a string or a number depending on how it's written, and an
+  author shouldn't have to care which.
+- The weights apply to the **columns**, not the regions: with a header band
+  (three or more regions, §3.5) the band always spans, so a slide with a heading
+  and two columns takes two weights.
+- A value that isn't a list of positive numbers, or whose length doesn't match
+  the column count, is **ignored** — the slide falls back to equal columns and
+  `validate-lab` warns. A half-applied ratio would be a stranger layout than the
+  one it replaced.
+
+A narrow label against a wide description is the case this exists for; forcing it
+to 1:1 rewrites the design rather than reproducing it.
+
+### 5.4 `layout: image` — an image-led slide
+
+The picture bleeds to the edge of the canvas and the words sit in a panel over it.
+
+```markdown
+<!--
+layout: image
+image: assets/keynote-stage.jpg
+alt: "The keynote stage, mid-demo, seen from the back of the hall"
+-->
+
+# The Docker Zone
+
+Build what's next — an instruction, not a slogan.
+```
+
+| Key     | Purpose                                                            |
+| ------- | ------------------------------------------------------------------ |
+| `image` | Slide-relative path to the picture. **Required**; without it the layout is a blank slide at full size, and `validate-lab` errors. |
+| `alt`   | Description of the picture. The image *is* the slide's content here, so `validate-lab` warns when it's missing. |
+
+- The image is **config, not markdown**, because a full-bleed picture has to get
+  past the frame's padding. An `![](…)` in the body is a figure in the text flow —
+  a different thing, still supported, and the right one for a diagram or a chart
+  that sits *within* a slide.
+- It's drawn with `object-fit: cover`: scaled to fill the 16:9 canvas and cropped.
+  A band of background down the side of a photo reads as a mistake; losing an edge
+  of the picture does not.
+- **A slide may be nothing but the picture.** Omit the heading and body entirely
+  and the panel doesn't render — a config-only slide is kept precisely so this is
+  expressible (§3.1). Add `chrome: false` for a true full-bleed frame.
+- Defaults to the `dark` surface, because the panel is a scrim and light-on-dark
+  is the only combination that stays readable over an arbitrary photograph. As
+  with `title`, **the deck's dark logo is invisible here** — set `logo:` to the
+  reversed mark, or turn the chrome off.
 
 ## 6. Components
 
@@ -476,9 +582,9 @@ docker run -d --name web -p 8080:80 nginx
 
 Behaviour:
 
-- The code fence above it keeps its normal **Run** button; `terminal-id=` targets
-  this terminal. Clicking Run is preferable to typing during a talk — the output
-  is paced by the author and typing races it.
+- **`terminal-id=` is what gives a fence its Run button on a slide** (§3.6).
+  Clicking Run is preferable to typing during a talk — the output is paced by the
+  author and typing races it.
 - **All terminals in a deck share one simulator**, so demo state accumulates
   across slides: a container started on slide 4 is still running on slide 9.
 - **The transcript is per-slide; the machine is not.** Moving between slides
