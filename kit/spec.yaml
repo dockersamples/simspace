@@ -1,0 +1,117 @@
+schemaVersion: "2"
+kind: mixin
+name: simspace
+displayName: Simspace Authoring
+description: Authoring skills and guidance for Docker Simspace labs and slide decks. Ships the authoring-lab, authoring-slidedeck, and importing-slidedeck skills into the agent's home, opens the preview and pulse ports, and allows the registry and docs hosts the authoring loop reaches.
+sourceURL: https://github.com/dockersamples/simspace
+licenses:
+  - Apache-2.0
+
+# The reason this kit exists. The skills and this guidance used to be vendored
+# into every repo generated from simspace-starter, so a lab repo created in
+# March described the March feature set forever — the format gained slide decks,
+# milestones and pacing, and every existing repo's agent stayed unaware. Here
+# they are versioned with the platform that defines the format and re-resolved
+# on each `sbx env run`, so a repo from March authors against today's Simspace.
+agentInstructions:
+  content: |
+    ## Authoring Simspace content
+
+    This sandbox is set up to author **Simspace** entries — plain data
+    (Markdown + YAML) under `labs/`, run by a prebuilt app image. There is no
+    build step for content and no app source to touch.
+
+    An entry is either a **lab** (instructions beside a simulated terminal) or a
+    **slide deck** (`kind: slides` in its `labspace.yaml`). A workshop is usually
+    both: two directories under `labs/`, two cards on the landing page, one
+    deploy.
+
+    ### Skills — use them, don't improvise
+
+    Three skills carry the actual format reference, and they ship with this kit
+    so they track the platform rather than the age of the repo you're in:
+
+    - **authoring-lab** — sections, `simulator.yaml` scenarios, milestones,
+      terminals, controls, seed files, the `labspace.yaml` reference.
+    - **authoring-slidedeck** — `kind: slides`: layouts, theme, speaker notes,
+      fragments, components, the in-slide demo terminal.
+    - **importing-slidedeck** — converting a PowerPoint/Keynote/Google Slides/PDF
+      deck into a Simspace deck by rebuilding each slide, never screenshotting it.
+
+    Read the relevant skill before writing content. They are more current than
+    any guidance committed inside a lab repo.
+
+    ### The loop
+
+    ```bash
+    docker compose up dev                 # live preview at http://localhost:5173
+    docker compose run --rm validate      # validate every entry — before committing
+    ```
+
+    Both ports are published to the host, so open the preview in your own
+    browser. `up dev` also starts **pulse** on 8888, which powers live presence
+    and the instructor insights dashboard (`#/labs/<id>/insights`, token
+    `dev-token`) while you author.
+
+    Docker runs inside this sandbox, so the first `up dev` pulls the images —
+    give it a moment.
+
+    ### Rules that are easy to get wrong
+
+    - **Never write `labs.json`.** It is generated from each entry's
+      `labspace.yaml` by `validate` and by the preview server. Editing it does
+      nothing except drift.
+    - **Only edit files under `labs/`.** Each entry lives in `labs/<id>/`, and
+      the directory name is its id — it becomes the URL segment and namespaces
+      the learner's saved progress, so keep it stable once published.
+    - **Milestones are expected, not optional.** Every hands-on section needs
+      `steps:` in `labspace.yaml` and a `completes:` on the scenario that proves
+      each one. Validation stays green without them and the analytics funnel
+      reports nothing but "N people started". See the authoring-lab skill.
+    - **`---` is the slide separator.** Never run Prettier or another markdown
+      formatter over `labs/`: it rewrites `***` and `___` to `---`, silently
+      splitting one slide into two. Use `----` for a real horizontal rule.
+    - **Don't invent CLI output.** Check
+      [`dockersamples/sample-cli-output`](https://github.com/dockersamples/sample-cli-output)
+      for the real `--help` text and example output, per tool and version, and
+      copy headers, spacing and ids verbatim.
+
+    **Definition of done:** validation is green, every hands-on section has at
+    least one milestone, and for anything non-trivial you have eyeballed it in
+    the preview. A deck's layouts are visual — validation cannot tell you that a
+    slide overcrowds or a heading wraps badly, only the preview can.
+
+    ### Authoritative specs
+
+    The skills are working references. The normative formats live in
+    [`dockersamples/simspace`](https://github.com/dockersamples/simspace) under
+    `spec/`: `simulator.md`, `labspace.md`, `catalog.md`, `slidedeck.md`.
+
+permissions:
+  network:
+    allow:
+      # Docker Hub, for the engine inside the sandbox to pull the Simspace
+      # authoring, runtime and pulse images that `docker compose` runs. All four
+      # hosts are needed for one pull: the registry API, its token endpoint, the
+      # legacy index alias, and the CDN the blobs actually stream from.
+      - registry-1.docker.io:443
+      - auth.docker.io:443
+      - index.docker.io:443
+      - production.cloudflare.docker.com:443
+      # dockersamples/sample-cli-output — the reference for realistic command
+      # output. Reached by raw curl, by `gh api`, or by a WebFetch of the same
+      # raw URL, so allow all three hosts rather than betting on which the agent
+      # picks. github.com also covers reading the spec/ files in this repo.
+      - raw.githubusercontent.com:443
+      - api.github.com:443
+      - github.com:443
+
+ports:
+  # The live preview. Host ports are ephemeral unless pinned — the starter's
+  # .sbxenv.yaml pins both of these to the same number on the host.
+  - container: 5173
+    name: preview
+  # pulse: presence + analytics, and the instructor insights dashboard. The
+  # app's bundled dev config points at localhost:8888, so the number matters.
+  - container: 8888
+    name: pulse

@@ -46,6 +46,10 @@ pulse/                OPTIONAL presence + analytics backend (Node/TS). Labs stay
                       static; the deployment points app/public/config.json at it.
                       See pulse/README.md
 spec/                 specifications for the YAML formats, catalog, slide decks
+kit/                  the Docker Sandboxes kit published as
+                      dockersamples/simspace-authoring-kit — the authoring skills 
+                      author repos consume. See "The authoring kit" below
+scripts/              publish-kit.sh — packages and publishes kit/
 AGENTS.md             onboarding guide for agentic coding sessions
 Dockerfile            builds app/ and serves it with nginx (optional)
 docker-bake.hcl       bake targets for the static-app image
@@ -211,6 +215,35 @@ terminal stays crisp, which a scaled canvas wouldn't.
 Press `s` for the presenter window (notes, next slide, timer), `f` for
 fullscreen. See [`spec/slidedeck.md`](spec/slidedeck.md) for the full reference,
 and `app/public/labs/tour-of-docker-slides/` for a working example of every layout.
+
+## The authoring kit
+
+Most people author with an agent, and an agent needs to know this format. That
+knowledge ships from here as [`kit/`](kit) — a
+[Docker Sandboxes](https://docs.docker.com/ai/sandboxes/customize/kits/) mixin
+kit published to
+[`dockersamples/simspace-authoring-kit`](https://hub.docker.com/r/dockersamples/simspace-authoring-kit),
+carrying three skills (`authoring-lab`, `authoring-slidedeck`,
+`importing-slidedeck`) plus the ports and network rules the authoring loop needs.
+
+A repo made from
+[`simspace-starter`](https://github.com/dockersamples/simspace-starter) names the
+kit in its `.sbxenv.yaml`, so an author runs one command:
+
+```bash
+sbx env run
+```
+
+The kit is versioned here, beside the `spec/` files that define the format, and
+re-resolved every time a sandbox is created — so a lab repo generated a year ago
+still authors against today's Simspace. That's the whole point: the skills used
+to be committed into the starter, which froze them at the moment each repo was
+generated. **A change to a format in `spec/` should update the kit's skills in
+the same PR.**
+
+[`.github/workflows/publish-kit.yml`](.github/workflows/publish-kit.yml)
+publishes it — `latest` follows `main`, and a `kit/vX.Y.Z` tag cuts a fixed
+version. See [`kit/README.md`](kit/README.md).
 
 ## Deploying
 

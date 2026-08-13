@@ -80,8 +80,13 @@ pulse/               OPTIONAL presence + analytics backend (Node/TS, its own
                      README). Labs are still static and server-free; a lab opts
                      in via a `tracking:` block. Not built by the app pipeline.
 spec/                the format specifications + catalog (see above)
+kit/                 THE AUTHORING KIT — a Docker Sandboxes mixin kit published
+                     as dockersamples/simspace-authoring-kit. spec.yaml + files/, carrying
+                     the three authoring skills author repos consume. See below
+scripts/             publish-kit.sh — packages kit/ and pushes the OCI artifact
 .github/workflows/   deploy.yml (Pages for THIS repo) + deploy-lab.yml (reusable
                      workflow author repos call to validate + deploy their labs)
+                     + publish-kit.yml (publishes kit/)
 Dockerfile           two images: `production` (nginx runtime) + `authoring`
                      (Node + validate-lab, for author dev/CI)
 docker-bake.hcl      bake targets: app / app-local, authoring / authoring-local
@@ -135,6 +140,47 @@ Release both under the **same tags** so a version-pinned lab gets a matching
 pair: `TAGS=1.0.0,1 docker buildx bake --push`. An author's repo — bootstrapped
 from the separate **`dockersamples/simspace-starter`** template — is just their
 `labs/` plus this tooling.
+
+## The authoring kit — `kit/`
+
+A third published artifact, and the one that carries **agent** knowledge of the
+format: a [Docker Sandboxes](https://docs.docker.com/ai/sandboxes/customize/kits/)
+mixin kit pushed to `docker.io/dockersamples/simspace-authoring-kit`.
+
+```
+kit/
+  spec.yaml     kind: mixin — agentInstructions, network allow-list, ports 5173/8888
+  README.md     the Docker Hub overview
+  files/home/.claude/skills/
+    authoring-lab/          sections, scenarios, milestones, labspace reference
+    authoring-slidedeck/    kind: slides — layouts, theme, components, demos
+    importing-slidedeck/    pptx/PDF → deck, plus two stdlib-only inventory tools
+```
+
+`files/home/` lands in the sandbox's `/home/agent/`, so the skills install as
+personal skills the agent picks up automatically. A mixin's
+`agentInstructions.content` is written to `kits-memory/simspace.md` and indexed
+from the agent's memory file.
+
+**Why it's here and not in the starter.** The skills used to be committed into
+`simspace-starter`, so every generated repo froze them at generation time —
+slide decks, milestones and output pacing all shipped to repos whose agents had
+never heard of them, and only regenerating the repo fixed that. Versioned here,
+beside the `spec/` files that define the format, they're re-resolved on every
+`sbx env run`. **So when you change a format in `spec/`, the kit's skills are
+part of the change**, the same way the specs and the engine are.
+
+`.github/workflows/publish-kit.yml` publishes it: a push to `main` touching
+`kit/` gets `<YYYYMMDD>-<sha>` and moves `latest`; a `kit/vX.Y.Z` tag cuts that
+version and moves nothing. Pull requests validate and plan without publishing.
+The work is in `scripts/publish-kit.sh`, so it can be dry-run locally:
+
+```bash
+DRY_RUN=1 ./scripts/publish-kit.sh v1.0.0
+```
+
+The kit's version is independent of the image tags above — it describes the kit
+(skills, guidance, ports, network), not the app.
 
 ## Commands
 
