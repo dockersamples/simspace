@@ -28,5 +28,11 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
+    "jsdom": "^30.0.1",
+    "subset-font": "^2.5.0"
   }
 }

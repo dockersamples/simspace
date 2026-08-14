@@ -10,9 +10,17 @@ const SLUG_SPACES = /\s+/g;
 // A $$variable$$ reference.
 const VAR_REF = /\$\$([^$]+)\$\$/g;
 
-/** Converts a title into an id, matching the Go/JS slug generation. */
+/**
+ * Converts a title into an id, matching the Go/JS slug generation.
+ *
+ * A missing title slugs to the EMPTY STRING, not to the text "undefined".
+ * Callers write `slugify(x) || fallback` on the assumption that an absent title
+ * is falsy; `String(undefined)` quietly produced a truthy `"undefined"`, so the
+ * fallback never ran — every untitled deck chapter took the id `undefined`, and
+ * two of them collided on it.
+ */
 export function slugify(title) {
-  return String(title)
+  return String(title ?? "")
     .toLowerCase()
     .replace(SLUG_STRIP, "")
     .replace(SLUG_SPACES, "-");
