@@ -9,6 +9,10 @@
 //
 // The relative URL below is resolved and fingerprinted by the host's bundler, so
 // the font travels with the component.
+//
+// It is an INSTANCED build of the upstream variable font: 299 KB rather than
+// 3.5 MB, with every icon intact. `scripts/instance-icon-font.mjs` rebuilds it
+// and explains why instancing (and not subsetting) is the lever here.
 @font-face {
   font-family: "Material Symbols Outlined";
   font-style: normal;
