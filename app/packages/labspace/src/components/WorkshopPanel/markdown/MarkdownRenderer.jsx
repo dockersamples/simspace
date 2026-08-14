@@ -1,7 +1,6 @@
 import { MarkdownHooks } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import rehypeMermaid from "rehype-mermaid";
 import remarkDirective from "remark-directive";
 import { rehypeGithubAlerts } from "rehype-github-alerts";
 import { CodeBlock } from "./CodeBlock.jsx";
@@ -17,13 +16,8 @@ import { VariableDefinition } from "./VariableDefinition.jsx";
 import { VariableSetButton } from "./VariableSetButton.jsx";
 import { ConditionalDisplay } from "./ConditionalDisplay.jsx";
 import { MarkdownBaseUrlContext } from "./markdownBaseUrl.js";
-import { diagramErrorFallback } from "./diagramError.js";
+import { useMermaidPlugin } from "./useMermaidPlugin.js";
 import "./MarkdownRenderer.scss";
-
-// Mermaid renders in the browser here, so a diagram can fail on one device and not
-// another. Without a fallback `rehype-mermaid` throws, `MarkdownHooks` rethrows the
-// plugin error during render, and the app unmounts — see diagramError.js.
-const mermaidOptions = { errorFallback: diagramErrorFallback };
 
 /**
  * `runButtons` controls whether a code fence gets a Run button by default.
@@ -44,6 +38,11 @@ export function MarkdownRenderer({
   runButtons = "default",
   components,
 }) {
+  // Mermaid is loaded on demand — it is the heaviest dependency here and most
+  // documents have no diagram. See useMermaidPlugin.js.
+  const { hasDiagram, plugin: mermaidPlugin } = useMermaidPlugin(children);
+  if (hasDiagram && !mermaidPlugin) return null;
+
   return (
     <MarkdownBaseUrlContext.Provider value={baseUrl}>
       <MarkdownHooks
@@ -58,7 +57,7 @@ export function MarkdownRenderer({
         ]}
         rehypePlugins={[
           rehypeRaw,
-          [rehypeMermaid, mermaidOptions],
+          ...(mermaidPlugin?.length ? [mermaidPlugin] : []),
           rehypeGithubAlerts,
         ]}
         components={{
