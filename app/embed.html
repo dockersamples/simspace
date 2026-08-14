@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./docker.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Embedded Labspace — host page</title>
+
+    <!--
+      A DELIBERATELY HOSTILE HOST PAGE.
+
+      This page exists to prove the runtime is embeddable, and it does that by
+      providing none of the things the lab app happens to provide:
+
+        · no Bootstrap stylesheet, and no `data-bs-theme` on <html>
+        · no react-router, no catalog, no toast container
+        · no app-served icon font at /material-symbols.woff2
+        · no App.scss, and a page font that is not the app's
+
+      The runtime therefore has to bring its own font, its own controls, its own
+      theme handling, and its own layout. If it renders correctly HERE, it will
+      render correctly inside Docker Learn. If it only renders correctly in the
+      app, the extraction is not finished — and the app cannot tell you that,
+      because the app supplies all of the above.
+
+      The lab is mounted in a fixed-height box with page content above and below
+      it, which is how a docs page would place it.
+    -->
+    <style>
+      :root {
+        color-scheme: light dark;
+        --host-fg: #14161a;
+        --host-bg: #ffffff;
+        --host-muted: #5b6472;
+        --host-line: #e3e6eb;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --host-fg: #e8eaee;
+          --host-bg: #0b0d10;
+          --host-muted: #98a2b3;
+          --host-line: #232833;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--host-bg);
+        color: var(--host-fg);
+        font-family: Georgia, "Times New Roman", serif;
+        line-height: 1.6;
+      }
+      .host-shell {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 24px 64px;
+      }
+      .host-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 0;
+        border-bottom: 1px solid var(--host-line);
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+      .host-bar nav {
+        font-size: 14px;
+        font-weight: 400;
+        color: var(--host-muted);
+      }
+      h1 {
+        font-size: 32px;
+        margin: 32px 0 8px;
+      }
+      .host-lede {
+        margin: 0 0 24px;
+        color: var(--host-muted);
+        max-width: 60ch;
+      }
+      /* The host decides how big the lab is. The runtime fills this box. */
+      .host-lab {
+        height: 78vh;
+        min-height: 520px;
+        border: 1px solid var(--host-line);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      /*
+        The one rule a host genuinely has to write. The runtime sizes itself with
+        `height: 100%`, and a percentage height needs a parent with a DEFINITE
+        height — so every element between the sized box and the runtime needs one
+        too, including the element React mounts into. Miss it and the lab renders
+        at its full content height and overflows the box, which looks like a
+        layout bug in the runtime rather than a missing line here.
+      */
+      .host-lab > #root {
+        height: 100%;
+      }
+      .host-after {
+        margin-top: 32px;
+        max-width: 60ch;
+        color: var(--host-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="host-shell">
+      <div class="host-bar">
+        <span>Example Docs</span>
+        <nav>Guides · Reference · Labs</nav>
+      </div>
+
+      <h1>Run an agent safely</h1>
+      <p class="host-lede">
+        This page belongs to the host, not to the runtime. The header above,
+        this text, the page font, and the size of the panel below are all the
+        host's.
+      </p>
+
+      <div class="host-lab"><div id="root"></div></div>
+
+      <p class="host-after">
+        Page content continues after the lab, so the runtime must stay inside
+        its box and must not scroll the page or claim the viewport height.
+      </p>
+    </div>
+    <script type="module" src="/src/embed/main.jsx"></script>
+  </body>
+</html>

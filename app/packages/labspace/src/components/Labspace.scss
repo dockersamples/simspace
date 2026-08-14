@@ -1,0 +1,49 @@
+// The two-pane split.
+//
+// Everything here is scoped to `.labspace` and sized in percentages of the
+// container, never the viewport: the runtime is one region of someone else's
+// page, and a `100vh` anywhere would break out of whatever box that page gave
+// it. The host sets the height; this fills it.
+
+.labspace {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.labspace-panel {
+  display: flex;
+  min-width: 0;
+  overflow: hidden;
+
+  > * {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+.labspace-resize-handle {
+  display: flex;
+  flex: 0 0 0.5rem;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  outline: none;
+  // Neutral tint rather than a theme colour: this strip sits between a light
+  // instructions pane and a permanently dark terminal, so it has to work
+  // against both.
+  background: rgba(128, 128, 128, 0.18);
+  color: rgba(128, 128, 128, 0.9);
+
+  &:hover,
+  &[data-resize-handle-active] {
+    background: rgba(128, 128, 128, 0.32);
+  }
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}

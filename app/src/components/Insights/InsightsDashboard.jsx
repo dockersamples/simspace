@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
-import { loadLabspace } from "../../labspace/loader";
+import { loadEntry } from "../../labspace/loadEntry";
 import "./InsightsDashboard.scss";
 
 // Instructor-only dashboard for one lab's CUMULATIVE analytics — the funnel and
@@ -98,7 +98,7 @@ export function InsightsDashboard({ lab }) {
   // Load the labspace once to label and order steps/sections in lab order.
   useEffect(() => {
     let cancelled = false;
-    loadLabspace(lab.labspaceUrl)
+    loadEntry(lab.labspaceUrl)
       .then((data) => !cancelled && setLabspace(data))
       .catch(() => {});
     return () => {

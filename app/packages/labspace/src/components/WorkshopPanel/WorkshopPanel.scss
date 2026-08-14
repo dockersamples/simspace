@@ -1,0 +1,590 @@
+@use "../../styles/icons";
+
+// ---------------------------------------------------------------------------
+// Instructions pane design tokens. Scoped to .workshop-panel so the terminal
+// pane is untouched.
+//
+// THREE ways to land on the dark palette, because the pane has to be right in
+// three different situations:
+//
+//   1. `prefers-color-scheme: dark` — the only signal available to an embedded
+//      runtime whose host does nothing. This is the fallback that matters: the
+//      pane used to go dark ONLY under [data-bs-theme="dark"], an attribute the
+//      lab app sets on <html> and a host has never heard of, so an embed would
+//      have sat in permanent light mode inside a dark page.
+//   2. `[data-labspace-theme]` on the pane itself — an explicit choice from the
+//      host, wired to the runtime's `theme` prop. Wins over the media query in
+//      both directions, so a host with its own light/dark switch can drive it.
+//   3. `[data-bs-theme="dark"]` on an ancestor — the lab app's own switch, kept
+//      so this app's behaviour is unchanged.
+// ---------------------------------------------------------------------------
+@mixin wp-dark-tokens {
+  --wp-accent: #5b86ff;
+  --wp-accent-soft: rgba(91, 134, 255, 0.16);
+  --wp-bg: #0d1017;
+  --wp-bg-elevated: #12161f;
+  --wp-surface: #161b25;
+  --wp-surface-border: #232a37;
+  --wp-text: #ced4e0;
+  --wp-text-muted: #8794ab;
+  --wp-heading: #f2f5fa;
+  --wp-border: #232a37;
+  --wp-code-inline-bg: rgba(91, 134, 255, 0.16);
+  --wp-code-inline-text: #a8c0ff;
+  --wp-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 34px -14px rgba(0, 0, 0, 0.6);
+  // A dark brand mark has to flip to read on a dark header.
+  --wp-logo-filter: brightness(0) saturate(100%) invert(1);
+}
+
+.workshop-panel {
+  --wp-accent: #2560ff;
+  --wp-accent-soft: rgba(37, 96, 255, 0.1);
+  --wp-bg: #ffffff;
+  --wp-bg-elevated: #ffffff;
+  --wp-surface: #f6f8fc;
+  --wp-surface-border: #e7ebf3;
+  --wp-text: #1b2130;
+  --wp-text-muted: #64708a;
+  --wp-heading: #0d1220;
+  --wp-border: #e7ebf3;
+  --wp-code-inline-bg: rgba(37, 96, 255, 0.08);
+  --wp-code-inline-text: #1746c4;
+  --wp-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px -12px rgba(16, 24, 40, 0.12);
+  --wp-logo-filter: none;
+
+  // The pane lays itself out and fills whatever box the host gives it.
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  background: var(--wp-bg);
+  color: var(--wp-text);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+// 1. System preference — unless something explicitly asked for light.
+@media (prefers-color-scheme: dark) {
+  :root:not([data-bs-theme="light"])
+    .workshop-panel:not([data-labspace-theme="light"]) {
+    @include wp-dark-tokens;
+  }
+}
+
+// 2 + 3. Explicit choices, which outrank the media query by specificity.
+.workshop-panel[data-labspace-theme="dark"],
+[data-bs-theme="dark"] .workshop-panel:not([data-labspace-theme="light"]) {
+  @include wp-dark-tokens;
+}
+
+// ---------------------------------------------------------------------------
+// Header
+// ---------------------------------------------------------------------------
+.workshop-header {
+  flex: 0 0 auto;
+  padding: 16px 32px 0;
+  background: var(--wp-bg-elevated);
+  border-bottom: 1px solid var(--wp-border);
+  z-index: 10;
+  position: relative;
+
+  .workshop-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 14px;
+  }
+
+  .workshop-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .workshop-back-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    color: var(--wp-text-muted);
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--wp-surface);
+      color: var(--wp-accent);
+    }
+
+    .material-symbols-outlined {
+      font-size: 20px;
+    }
+  }
+
+  .workshop-brand-logo {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    cursor: context-menu;
+    filter: var(--wp-logo-filter, none);
+  }
+
+  // Hidden right-click menu on the logo (Reset lab, for authors/testers).
+  .workshop-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+  }
+
+  .workshop-context-menu {
+    position: fixed;
+    z-index: 1001;
+    min-width: 170px;
+    padding: 4px;
+    background: var(--wp-bg-elevated);
+    border: 1px solid var(--wp-border);
+    border-radius: 8px;
+    box-shadow: var(--wp-shadow);
+  }
+
+  .workshop-context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 10px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--wp-text);
+    text-align: left;
+    cursor: pointer;
+
+    .material-symbols-outlined {
+      font-size: 18px;
+      color: var(--wp-text-muted);
+    }
+
+    &:hover {
+      background: var(--wp-accent-soft);
+      color: var(--wp-accent);
+
+      .material-symbols-outlined {
+        color: var(--wp-accent);
+      }
+    }
+  }
+
+  .workshop-brand-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.25;
+  }
+
+  .workshop-brand-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--wp-accent);
+  }
+
+  .workshop-brand-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--wp-heading);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // Right-hand cluster: live presence + the section counter, kept together.
+  .workshop-header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 0 0 auto;
+  }
+
+  // "Who's here now" — an overlapping avatar stack (AvatarStack) + a live count.
+  .workshop-presence {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .workshop-presence-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--wp-text-muted);
+    white-space: nowrap;
+  }
+
+  .workshop-progress-count {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    flex: 0 0 auto;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .workshop-progress-current {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--wp-heading);
+  }
+
+  .workshop-progress-total {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--wp-text-muted);
+  }
+
+  .workshop-progress-track {
+    display: flex;
+    gap: 4px;
+    padding-bottom: 14px;
+  }
+
+  .workshop-progress-segment {
+    height: 4px;
+    flex: 1 1 0;
+    border-radius: 999px;
+    background: var(--wp-border);
+    transition: background-color 0.3s ease;
+
+    &.is-complete {
+      background: var(--wp-accent);
+    }
+
+    &.is-active {
+      background: var(--wp-accent);
+      opacity: 0.55;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Scroll region + body content
+// ---------------------------------------------------------------------------
+.workshop-scroll {
+  // Owned here rather than borrowed from Bootstrap utilities: the pane has to
+  // lay itself out inside whatever container a host gives it.
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  scroll-behavior: smooth;
+}
+
+.workshop-body {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 32px 48px;
+
+  > :first-child {
+    margin-top: 0;
+  }
+
+  p {
+    color: var(--wp-text);
+  }
+
+  strong {
+    color: var(--wp-heading);
+    font-weight: 650;
+  }
+
+  a {
+    color: var(--wp-accent);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease;
+
+    &:hover {
+      border-bottom-color: currentColor;
+    }
+  }
+
+  ul,
+  ol {
+    padding-left: 1.35rem;
+  }
+
+  // Was inherited from the app's global `li` rule; owned here so the pane reads
+  // the same inside a host that has its own (or no) list styling.
+  li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  li::marker {
+    color: var(--wp-text-muted);
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--wp-border);
+    margin: 2rem 0;
+  }
+
+  img {
+    max-width: 100%;
+    border-radius: 10px;
+  }
+}
+
+// Headings — lighter, modern, no full-width rules
+.workshop-body {
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--wp-heading);
+    border: none;
+    padding-bottom: 0;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+  }
+
+  h1 {
+    font-size: 30px;
+    font-weight: 750;
+    margin: 4px 0 20px;
+  }
+
+  h2 {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 36px 0 14px;
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 28px 0 12px;
+  }
+
+  h4 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 24px 0 10px;
+  }
+}
+
+// Inline code pills (block code handled in CodeBlock / App.scss)
+.workshop-body :not(pre) > code {
+  background: var(--wp-code-inline-bg);
+  color: var(--wp-code-inline-text);
+  font-size: 0.86em;
+  font-weight: 500;
+  padding: 0.14em 0.42em;
+  border-radius: 6px;
+}
+
+// Blockquotes / GitHub alerts get a softer, card-like treatment
+.workshop-body blockquote {
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--wp-accent);
+  background: var(--wp-surface);
+  border-radius: 0 8px 8px 0;
+  color: var(--wp-text-muted);
+
+  > :last-child {
+    margin-bottom: 0;
+  }
+}
+
+// Variable-definition prompt card
+.workshop-body .wp-variable-card {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border: 1px solid var(--wp-border);
+  border-radius: 12px;
+  background: var(--wp-surface);
+
+  // An unset variable is worth flagging: the markdown around it reads as if the
+  // learner has already chosen a value.
+  &.is-unset {
+    border-color: #eb9c00;
+  }
+
+  .wp-variable-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+    font-weight: 600;
+    color: var(--wp-heading);
+  }
+
+  .wp-variable-icon {
+    font-size: 1.1rem;
+    color: var(--wp-accent);
+  }
+
+  // Input and button share an edge, so they stretch to one height.
+  .wp-variable-group {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .wp-variable-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.375rem 0.75rem;
+    font: inherit;
+    line-height: 1.5;
+    border: 1px solid var(--wp-border);
+    border-right: none;
+    border-radius: 9px 0 0 9px;
+    background: var(--wp-bg-elevated);
+    color: var(--wp-text);
+
+    &:focus {
+      outline: none;
+      border-color: var(--wp-accent);
+      box-shadow: 0 0 0 3px var(--wp-accent-soft);
+    }
+  }
+
+  .wp-variable-submit {
+    flex: 0 0 auto;
+    padding: 0.375rem 0.75rem;
+    font: inherit;
+    font-weight: 600;
+    line-height: 1.5;
+    border: 1px solid var(--wp-border);
+    border-radius: 0 9px 9px 0;
+    background: var(--wp-bg-elevated);
+    color: var(--wp-text-muted);
+    cursor: pointer;
+
+    &.is-primary {
+      background: var(--wp-accent);
+      border-color: var(--wp-accent);
+      color: #fff;
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.65;
+    }
+  }
+}
+
+// Variable-set buttons. Authors often place several in a row to act as a
+// choice picker, so they need to align, space evenly, wrap, and clearly show
+// which option is currently selected.
+.workshop-body .wp-set-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  vertical-align: middle;
+  margin: 0 0.5rem 0.5rem 0;
+  padding: 0.4rem 0.9rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  border: 1px solid var(--wp-border);
+  border-radius: 9px;
+  background: var(--wp-bg-elevated);
+  color: var(--wp-text);
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:hover:not(.is-active),
+  &:focus-visible:not(.is-active) {
+    background: var(--wp-accent-soft);
+    border-color: var(--wp-accent);
+    color: var(--wp-accent);
+  }
+
+  &.is-active {
+    background: var(--wp-accent);
+    border-color: var(--wp-accent);
+    color: #fff;
+    box-shadow: 0 6px 14px -6px var(--wp-accent);
+  }
+
+  .wp-set-btn-check {
+    font-size: 1rem;
+    margin-left: -0.15rem;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Footer navigation
+// ---------------------------------------------------------------------------
+.workshop-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--wp-bg-elevated);
+  border-top: 1px solid var(--wp-border);
+}
+
+.workshop-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  border: 1px solid var(--wp-border);
+  background: transparent;
+  color: var(--wp-text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 9px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease,
+    box-shadow 0.15s ease;
+
+  .material-symbols-outlined {
+    font-size: 16px;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--wp-surface);
+    border-color: var(--wp-text-muted);
+  }
+
+  &:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &--next {
+    color: #fff;
+    background: var(--wp-accent);
+    border-color: var(--wp-accent);
+    box-shadow: 0 6px 14px -6px var(--wp-accent);
+
+    &:hover:not(:disabled) {
+      background: var(--wp-accent);
+      border-color: var(--wp-accent);
+      filter: brightness(1.06);
+    }
+  }
+}

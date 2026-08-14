@@ -1,0 +1,32 @@
+{
+  "name": "@dockersamples/simspace-labspace",
+  "version": "0.1.0",
+  "description": "The Labspace lab runtime as an embeddable React component: instruction panel, multi-terminal shared state, and the CI tab, driven by a labspace.yaml.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": [
+    "*.css",
+    "*.scss"
+  ],
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./src/index.js",
+    "./loader": "./src/loader.js"
+  },
+  "dependencies": {
+    "@dockersamples/simspace-simulator": "*",
+    "react-resizable-panels": "^3.0.3",
+    "yaml": "^2.6.1"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  }
+}

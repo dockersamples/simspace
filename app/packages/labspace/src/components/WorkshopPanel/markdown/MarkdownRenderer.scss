@@ -1,0 +1,74 @@
+@use "rehype-github-alerts/styling/css/index.css";
+// Styles for markdown the renderer produces itself, rather than for a surface.
+//
+// Unscoped on purpose: the renderer is shared by the instructions pane and the
+// deck, and the tokens in WorkshopPanel.scss are scoped to `.workshop-panel`, so
+// anything that must look right in BOTH places can't borrow them. Colours here are
+// derived from `currentColor` for the same reason — this has to read on a white
+// instructions pane and on a dark or tinted slide.
+
+.md-diagram-error {
+  margin: 1em 0;
+  padding: 0.75em 1em;
+  border: 1px solid rgba(200, 60, 60, 0.45);
+  border-radius: 6px;
+  background: rgba(200, 60, 60, 0.08);
+  font-size: 0.85em;
+  text-align: left;
+
+  p {
+    margin: 0 0 0.4em;
+  }
+}
+
+.md-diagram-error-title {
+  font-weight: 600;
+}
+
+.md-diagram-error-message {
+  font-family: var(--deck-font-mono, ui-monospace, monospace);
+  // The whole point of showing this is that it can be read off a phone screen, so
+  // it wraps rather than scrolling out of view.
+  overflow-wrap: anywhere;
+  opacity: 0.9;
+}
+
+.md-diagram-error-source {
+  margin: 0;
+  opacity: 0.75;
+  overflow-x: auto;
+  font-size: 0.95em;
+}
+
+// Tables. Was Bootstrap's `.table .table-sm .table-striped` plus
+// `.table-group-divider`; rebuilt from currentColor so it reads on the
+// instructions pane and on a slide alike, and so the package carries no
+// framework.
+.md-table {
+  width: 100%;
+  margin: 1.15rem 0;
+  border-collapse: collapse;
+  font-size: 0.95em;
+  // A wide table shouldn't push the whole pane sideways.
+  display: block;
+  overflow-x: auto;
+
+  th,
+  td {
+    padding: 0.3rem 0.5rem;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid currentColor;
+    // The border is the only thing that wants to be faint — not the text.
+    border-bottom-color: color-mix(in srgb, currentColor 15%, transparent);
+  }
+
+  thead th {
+    font-weight: 600;
+    border-bottom-width: 2px;
+  }
+
+  tbody tr:nth-of-type(odd) {
+    background: color-mix(in srgb, currentColor 4%, transparent);
+  }
+}

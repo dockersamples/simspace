@@ -1,0 +1,89 @@
+.terminal-panel {
+  // Own layout rather than Bootstrap utilities, so the pane fills whatever box
+  // a host gives it.
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  // Full-bleed dark surface. The terminal and settings pages fill it edge to
+  // edge (no inner rounding), so no pane background peeks through at the
+  // corners.
+  background: #0d1117;
+
+  // Let MockTerminal / settings page fill the available height of the pane.
+  .mock-term {
+    height: 100%;
+    width: 100%;
+  }
+
+  // Each tab body fills the pane below the tab bar. `min-height: 0` lets it
+  // shrink below its content so the terminal's own body is the scroll container
+  // — without it, streaming output is clipped and invisible. See MockTerminal.
+  .terminal-pane {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .terminal-tabbar {
+    display: flex;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+    padding: 0.4rem 0.5rem 0;
+    background: #161b22;
+    border-bottom: 1px solid #30363d;
+  }
+
+  .terminal-tab {
+    display: flex;
+    align-items: center;
+    border-top-left-radius: 0.375rem;
+    border-top-right-radius: 0.375rem;
+    background: transparent;
+    border: none;
+    color: #fff;
+
+    .terminal-tab-icon {
+      margin-right: 0.25rem;
+    }
+    font-size: 0.72rem;
+    padding: 0.3rem 0.75rem;
+    opacity: 0.65;
+    transition:
+      opacity 0.15s ease,
+      background 0.15s ease;
+
+    &:hover {
+      opacity: 0.9;
+    }
+
+    &.active {
+      background: var(--bs-primary);
+      opacity: 1;
+    }
+
+    .material-symbols-outlined {
+      font-size: 0.9rem;
+    }
+  }
+
+  .terminal-tab-settings {
+    color: #adbac7;
+
+    &.active {
+      background: #21262d;
+      color: #fff;
+    }
+  }
+
+  .terminal-tab-settings {
+    // Pushed to the far end of the bar, away from the content tabs.
+    margin-left: auto;
+  }
+
+  .terminal-tab-close {
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+}

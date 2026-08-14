@@ -8,8 +8,12 @@ import {
   useState,
 } from "react";
 import { useNavigate, useParams } from "react-router";
-import { useWorkshop, useVariables } from "../WorkshopContext";
-import { substituteVariables } from "../labspace/slugify";
+import { LAYOUTS, THEMES, parseColumns } from "../deck/slideConfig";
+import {
+  substituteVariables,
+  useWorkshop,
+  useVariables,
+} from "@dockersamples/simspace-labspace";
 
 // Owns "where are we in the deck": the flattened slide list, the current index,
 // fragment state, and navigation.
@@ -25,21 +29,6 @@ import { substituteVariables } from "../labspace/slugify";
 // litter history with entries nobody wants to walk back through.
 
 const DeckContext = createContext(null);
-
-/** Layouts a slide may name. An unknown value falls back to `default` and is
- * reported by validate-lab, so a typo shows a plain slide rather than nothing. */
-export const LAYOUTS = [
-  "default",
-  "title",
-  "section",
-  "split",
-  "stats",
-  "quote",
-  "image",
-];
-
-/** Surface variants of the Docker theme. */
-export const THEMES = ["light", "dark", "tint"];
 
 export function DeckContextProvider({ children }) {
   const workshop = useWorkshop();
@@ -252,29 +241,6 @@ export function DeckContextProvider({ children }) {
   );
 
   return <DeckContext.Provider value={value}>{children}</DeckContext.Provider>;
-}
-
-/**
- * Reads `columns:` into a list of positive weights, or null for equal columns.
- *
- * Accepts `columns: 2 1`, `columns: [2, 1]`, or `columns: "2 1"` — YAML turns
- * the unquoted form into a string or a number depending on how it's written, and
- * an author shouldn't have to care which. A zero, a negative, or a non-number
- * anywhere means the whole value is ignored: a half-applied ratio would be a
- * stranger layout than the equal columns it replaced.
- */
-export function parseColumns(raw) {
-  if (raw === undefined || raw === null) return null;
-  const parts = Array.isArray(raw)
-    ? raw
-    : String(raw)
-        .trim()
-        .split(/[\s,:]+/)
-        .filter(Boolean);
-  if (parts.length < 2) return null;
-  const weights = parts.map((p) => Number(p));
-  if (weights.some((w) => !Number.isFinite(w) || w <= 0)) return null;
-  return weights;
 }
 
 /**

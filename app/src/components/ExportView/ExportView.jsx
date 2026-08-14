@@ -1,7 +1,10 @@
 import { useEffect } from "react";
-import { MarkdownRenderer } from "../WorkshopPanel/markdown/MarkdownRenderer";
-import { useWorkshop, useVariables } from "../../WorkshopContext";
-import { substituteVariables } from "../../labspace/slugify";
+import { MarkdownRenderer } from "@dockersamples/simspace-labspace";
+import {
+  substituteVariables,
+  useWorkshop,
+  useVariables,
+} from "@dockersamples/simspace-labspace";
 import "./ExportView.scss";
 
 // Print/export view: renders every section top-to-bottom from the already

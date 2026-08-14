@@ -1,17 +1,17 @@
 import "./App.scss";
 import { ToastContainer } from "react-toastify";
-import { useParams } from "react-router";
-import { WorkshopContextProvider } from "./WorkshopContext";
-import { TabContextProvider } from "./TabContext";
-import { TerminalContextProvider } from "./context/TerminalContext";
-import { PrintModeProvider } from "./PrintModeContext";
+import {
+  TabContextProvider,
+  TerminalContextProvider,
+  PrintModeProvider,
+} from "@dockersamples/simspace-labspace";
 import { ExportView } from "./components/ExportView/ExportView";
+import { LabRoute } from "./labspace/LabRoute";
 
 function ExportRoute() {
-  const { labId } = useParams();
   return (
     <>
-      <WorkshopContextProvider key={labId ?? "default"} printMode>
+      <LabRoute printMode>
         <TabContextProvider>
           <TerminalContextProvider>
             <PrintModeProvider>
@@ -19,7 +19,7 @@ function ExportRoute() {
             </PrintModeProvider>
           </TerminalContextProvider>
         </TabContextProvider>
-      </WorkshopContextProvider>
+      </LabRoute>
       <ToastContainer position="bottom-right" theme="dark" />
     </>
   );

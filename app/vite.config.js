@@ -42,4 +42,17 @@ function catalogPlugin() {
 export default defineConfig({
   base: "./",
   plugins: [react(), catalogPlugin()],
+  build: {
+    rollupOptions: {
+      input: {
+        index: "index.html",
+        // The embed harness (embed.html) is built alongside the app ON PURPOSE.
+        // It mounts <Labspace> on a page with no Bootstrap, no router, no toast
+        // container and no app stylesheet — the check that the runtime package
+        // is genuinely self-contained. Building it means a change that breaks
+        // embedding fails here rather than in the host that finds out later.
+        embed: "embed.html",
+      },
+    },
+  },
 });

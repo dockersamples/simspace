@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useDeck } from "../../context/DeckContext";
-import { useWorkshop } from "../../WorkshopContext";
+import { useWorkshop } from "@dockersamples/simspace-labspace";
 import { useCatalog } from "../../context/CatalogContext";
-import { MarkdownRenderer } from "../WorkshopPanel/markdown/MarkdownRenderer";
+import { MarkdownRenderer } from "@dockersamples/simspace-labspace";
+import { deckDirectives } from "./deckDirectives";
 import { SpeakerNotesWindow } from "./SpeakerNotesWindow";
 import { SlideErrorBoundary } from "./SlideErrorBoundary";
 import { FragmentContext } from "./FragmentContext";
@@ -274,7 +275,11 @@ function SlideRegions() {
 
   const render = (markdown, key, className) => (
     <div className={className} key={key}>
-      <MarkdownRenderer baseUrl={baseUrl} runButtons="terminal-only">
+      <MarkdownRenderer
+        baseUrl={baseUrl}
+        runButtons="terminal-only"
+        components={deckDirectives}
+      >
         {markdown}
       </MarkdownRenderer>
     </div>

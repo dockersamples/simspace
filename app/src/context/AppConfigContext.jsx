@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 // (like labs.json). Optional: a 404 or parse error just means "no app config"
 // and everything degrades to off. Today it carries the default `tracking`
 // config so a whole deployment points every lab at one pulse backend from a
-// single place (a lab opts out with `tracking: false`); see labspace/tracking.js.
+// single place (a lab opts out with `tracking: false`); see the package's labspace/tracking.js.
 //
 // The deploy pipeline writes this file (or removes it); in dev it's the
 // committed default pointing at the compose pulse (http://localhost:8888).
