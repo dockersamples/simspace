@@ -19,10 +19,16 @@
 # The static output is platform-independent, so build it on the build platform.
 FROM --platform=$BUILDPLATFORM dhi.io/node:24-alpine-dev AS build
 WORKDIR /usr/local/app
-# The simulator engine + terminal live in an npm workspace under packages/, so
-# its manifest has to be present for `npm ci` to resolve the workspace link.
+# Manifests first, so `npm ci` caches independently of the source.
+#
+# EVERY npm workspace under packages/ needs its package.json listed here — add a
+# line when you add a package. Miss one and `npm ci` still exits 0, leaving a
+# node_modules symlink pointing at a directory that doesn't exist yet; the COPY
+# below happens to fill it in, so the image works and the mistake stays hidden
+# until something resolves that package earlier.
 COPY app/package*.json ./
 COPY app/packages/simulator/package.json ./packages/simulator/
+COPY app/packages/labspace/package.json ./packages/labspace/
 RUN npm ci
 COPY app/ ./
 RUN npm run build
@@ -45,8 +51,10 @@ EXPOSE 80
 #   validate: -v ./labs:/labs                        (npm run validate-lab -- /labs)
 FROM dhi.io/node:24-alpine-dev AS authoring
 WORKDIR /usr/local/app
+# Keep in step with the build stage above — one line per workspace package.
 COPY app/package*.json ./
 COPY app/packages/simulator/package.json ./packages/simulator/
+COPY app/packages/labspace/package.json ./packages/labspace/
 RUN npm ci
 COPY app/ ./
 EXPOSE 5173

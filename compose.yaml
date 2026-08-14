@@ -18,9 +18,20 @@ name: simspace
 
 services:
   # The static lab app in dev mode (Vite + HMR). Built from the root Dockerfile's
-  # `authoring` target (Node + app source). The whole app/ is bind-mounted for
-  # live editing; an anonymous volume keeps the image's node_modules so you don't
-  # need Node or a local install.
+  # `authoring` target (Node + app source), so node_modules comes from the image
+  # and you need no local Node install. Edits reach the container through
+  # `develop.watch` below — run `docker compose watch` (or `up --watch`) for live
+  # editing.
+  #
+  # There is deliberately NO volume over node_modules. An anonymous one used to
+  # sit here, from when app/ was bind-mounted and the mount would otherwise have
+  # hidden the image's modules. `develop.watch` replaced that bind mount and
+  # ignores node_modules, so the volume protected nothing — but Compose reattaches
+  # an anonymous volume to the recreated container, so it kept serving a
+  # node_modules from before the dependency graph changed. Adding the labspace
+  # workspace made that concrete: `up --build` produced a correct image and Vite
+  # still failed to resolve @dockersamples/simspace-labspace, because the stale
+  # volume had no symlink for it.
   app:
     build:
       context: .
@@ -29,17 +40,23 @@ services:
     command: npm run dev
     ports:
       - "5173:5173"
-    volumes:
-      - /usr/local/app/node_modules
     develop:
       watch:
-        - watch: ./app
+        - path: ./app
           action: sync
           target: /usr/local/app
           ignore:
             - node_modules
             - dist
+        # A manifest change means the dependency graph moved, which a file sync
+        # can't reproduce — the image has to be rebuilt and node_modules
+        # recreated. That includes the workspace packages under packages/, not
+        # just the app's own manifest.
         - path: ./app/package.json
+          action: rebuild
+        - path: ./app/packages/simulator/package.json
+          action: rebuild
+        - path: ./app/packages/labspace/package.json
           action: rebuild
 
   # The presence + analytics backend. Built from pulse/Dockerfile's `dev` target
