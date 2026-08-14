@@ -129,22 +129,28 @@ div.code-block {
     }
   }
 
-  // A label on hover/focus, without a positioning library. `white-space: nowrap`
-  // plus the centring transform is the whole trick.
+  // A label on hover/focus, without a positioning library.
   //
-  // It hangs BELOW the button, over the code body. Above would put it outside
-  // the block, where this block's `overflow: hidden` — the thing that rounds its
-  // corners — clips it away. The replaced tooltip component escaped that by
-  // rendering into a portal at the end of <body>; a pseudo-element can't, and
-  // shouldn't have to.
+  // Both of its offsets are pinned INWARD, because this block sets
+  // `overflow: hidden` to round its corners and will silently cut off anything
+  // that reaches past an edge. (The tooltip component this replaced escaped that
+  // by rendering into a portal at the end of <body>. A pseudo-element can't.)
+  //
+  //   below the button, not above — above is outside the block entirely;
+  //   right-aligned, not centred — these buttons sit hard against the block's
+  //   right edge, so a centred label hangs half its width into the clip. That
+  //   shipped: "Run in terminal" rendered as "Run in term".
+  //
+  // Right-aligning is safe for every button in the group, not just the last,
+  // because the group itself is right-aligned in the header — so the label always
+  // grows back across the block rather than out of it.
   .code-action-wrap[data-tooltip] {
     &:hover::after,
     &:focus-within::after {
       content: attr(data-tooltip);
       position: absolute;
       top: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
+      right: 0;
       z-index: 10;
       padding: 0.25rem 0.5rem;
       border-radius: 6px;
