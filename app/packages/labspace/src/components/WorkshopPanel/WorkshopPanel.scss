@@ -1,8 +1,3 @@
-// Extension spelled out, like every relative import in this package: a
-// consumer's bundler only fills one in when the file is project source, and
-// here it is a dependency inside their node_modules.
-@use "../../styles/icons.scss";
-
 // ---------------------------------------------------------------------------
 // Instructions pane design tokens. Scoped to .workshop-panel so the terminal
 // pane is untouched.

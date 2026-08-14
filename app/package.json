@@ -19,7 +19,8 @@
     "test": "npm run test --workspace @dockersamples/simspace-simulator && npm run test --workspace @dockersamples/simspace-labspace && vitest run",
     "test:app": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "npm run typecheck --workspace @dockersamples/simspace-simulator"
+    "typecheck": "npm run typecheck --workspace @dockersamples/simspace-simulator",
+    "build:packages": "npm run build --workspace @dockersamples/simspace-simulator && npm run build --workspace @dockersamples/simspace-labspace"
   },
   "dependencies": {
     "@dockersamples/simspace-labspace": "*",

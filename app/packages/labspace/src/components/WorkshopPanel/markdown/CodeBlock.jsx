@@ -1,5 +1,12 @@
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { darcula } from "react-syntax-highlighter/dist/cjs/styles/prism";
+// The ESM build of just this one theme, named with its extension.
+//
+// Two separate traps here. Reaching into `dist/cjs/...` (as this did) hands a
+// consumer's bundler a CommonJS module from inside a dependency, which it then
+// has to be told about explicitly — and pulls the whole theme barrel to get one
+// export. And the `.js` is required because Node resolves this specifier
+// directly during a server render; it does not guess extensions.
+import darcula from "react-syntax-highlighter/dist/esm/styles/prism/darcula.js";
 
 import copy from "copy-to-clipboard";
 import { useCallback } from "react";

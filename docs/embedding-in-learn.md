@@ -26,41 +26,67 @@ deck. Those are yours (and the deck is deliberately out of scope).
 
 Two entry points:
 
-|                                           |                                                                                                                  |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `@dockersamples/simspace-labspace`        | `<Labspace>` and the runtime. Pulls in React.                                                                    |
-| `@dockersamples/simspace-labspace/loader` | `loadLabspace`, progress, slug/variable helpers. **No React** — this is the one you import in Astro frontmatter. |
+|                                               |                                                                                                                  |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `@dockersamples/simspace-labspace`            | `<Labspace>` and the runtime. Pulls in React.                                                                    |
+| `@dockersamples/simspace-labspace/loader`     | `loadLabspace`, progress, slug/variable helpers. **No React** — this is the one you import in Astro frontmatter. |
+| `@dockersamples/simspace-labspace/styles.css` | Every style the runtime needs, in one file. Import it once.                                                      |
 
 ---
 
 ## 2. The smallest thing that works
 
+Install the two packages, then:
+
+```js
+// astro.config.mjs — this is the whole integration.
+import { defineConfig } from "astro/config";
+import react from "@astrojs/react";
+
+export default defineConfig({ integrations: [react()] });
+```
+
+No `vite.ssr.noExternal`. No `vite.optimizeDeps.include`. The packages ship
+compiled ESM with a CSS bundle, so Vite treats them like any other dependency.
+(An earlier revision shipped `.jsx`/`.scss` source and did need both — if you find
+a guide or a config that mentions them, it predates the build.)
+
 ```astro
 ---
 // src/pages/learn/simspaces/[scenario].astro
 import { loadLabspace } from "@dockersamples/simspace-labspace/loader";
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { Labspace } from "@dockersamples/simspace-labspace";
+import "@dockersamples/simspace-labspace/styles.css";
+
+// Every scenario file, inlined at build time. Preferred over reading from disk:
+// it behaves the same in `astro dev` and `astro build`, and doesn't depend on
+// `import.meta.url` (which points into dist/ after the build) or on the cwd.
+const files = import.meta.glob("../../../content/simspaces/**/*.{yaml,md}", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+});
 
 const { scenario } = Astro.params;
-const dir = new URL(`../../../content/simspaces/${scenario}/`, import.meta.url);
-
-// The loader takes an injected reader, so the same parse the browser uses runs
-// at build time against the filesystem. `fetchText` receives a file:// URL
-// because every path in a labspace.yaml resolves against the labspace's own URL.
-const config = await loadLabspace(new URL("labspace.yaml", dir).href, {
-  fetchText: (url) => readFile(fileURLToPath(url), "utf8"),
+// A base for the loader to resolve relative paths against. It is never fetched —
+// `fetchText` intercepts every read — but it does become `config.baseUrl`, which
+// is what relative image paths in the markdown resolve against. So use the URL
+// the scenario's assets will really be served from.
+const base = `https://docs.docker.com/learn/simspaces/${scenario}/`;
+const config = await loadLabspace(`${base}labspace.yaml`, {
+  fetchText: async (url) => {
+    const key = `../../../content/simspaces/${scenario}/${url.slice(base.length)}`;
+    if (!(key in files)) throw new Error(`Not in the scenario: ${url}`);
+    return files[key];
+  },
 });
 ---
 
 <BaseLayout title={config.title} description={config.subtitle}>
   <h1>{config.title}</h1>
-  <p>{config.subtitle}</p>
 
   <!-- The host sizes the lab. See §3.1 — the height rule is not optional. -->
   <div class="lab-frame">
-    <!-- client:load gives a real first paint (§3.2). client:only="react" also
-         works if you'd rather skip the server pass entirely. -->
     <Labspace
       client:load
       config={config}
@@ -72,18 +98,26 @@ const config = await loadLabspace(new URL("labspace.yaml", dir).href, {
 
 <style>
   .lab-frame { height: 78vh; min-height: 520px; }
-  /* Astro wraps an island in <astro-island>, which is display:contents by
-     default — but anything you put between the sized box and the component
-     needs a height too. */
+  /* Astro wraps an island in <astro-island>, which is display:contents — but
+     anything between the sized box and the component needs a height too. */
   .lab-frame :global(astro-island) { display: block; height: 100%; }
 </style>
 ```
 
-There is a working reference implementation in this repo: **`app/embed.html`**
-mounts `<Labspace>` on a page that deliberately provides no Bootstrap, no
-router, no toast container, no app stylesheet and a different font. Run
-`npm run dev` in `app/` and open `/embed.html`. If you hit something that page
-doesn't, that's a package bug — report it rather than working around it.
+**Import `styles.css` once**, in the page or a shared layout. The compiled
+modules deliberately do not import their own CSS: a server render loads the
+package through Node, and Node cannot load a `.css` file — that is precisely what
+makes `ssr.noExternal` necessary for libraries that do it the other way.
+
+That example is real. It was built and driven in a browser against a stock Astro
+5 project: instructions render, styles and the icon font apply, a mermaid diagram
+draws, and clicking Run streams output into the terminal and ticks the milestone.
+
+There is a second reference in this repo: **`app/embed.html`** mounts
+`<Labspace>` on a page with no Bootstrap, no router, no toast container and a
+different font. `npm run dev` in `app/`, then open `/embed.html`. If you hit
+something neither reference does, that's a package bug — report it rather than
+working around it.
 
 ---
 
@@ -251,18 +285,21 @@ dangling `contentPath` / `simulator` / `terminal-id` references, `{{ args.X }}`
 placeholders with no capture, and Run-button commands nothing handles. Authors
 should use the existing `simspace-authoring-kit`.
 
-### 5.6 React
+### 5.6 React and types
 
-React is a peer dependency, `>=18`; the Labspace app runs React 19. The package
-ships **`.jsx` source**, not a compiled bundle, so your build must handle JSX in
-`node_modules` — `@astrojs/react` does. There is no `.d.ts`; if you want types,
-ask for the lib build.
+React is a peer dependency, `>=18`; the Labspace app runs React 19.
+
+Both packages ship compiled ESM. `simspace-simulator` includes `.d.ts` files
+(it's TypeScript); the runtime is plain JSX and ships none, so `<Labspace>` and
+its props are untyped. Ask if you want them — the props are documented in §4 and
+in the component's own doc comment meanwhile.
 
 ---
 
 ## 6. Checklist
 
-- [ ] Link the package (workspace/`file:` link is fine — it's the same team; npm publish is not a prerequisite)
+- [ ] Install both packages (a `file:` tarball from `npm pack` is fine — same team, publishing is not a prerequisite)
+- [ ] `import "@dockersamples/simspace-labspace/styles.css"` once, in the page or a layout
 - [ ] Scenario directories under `src/content/simspaces/<scenario>/`
 - [ ] Load the config in frontmatter via `/loader` with an injected `fetchText`
 - [ ] Mount with `client:load` or `client:only="react"` (either works)
@@ -282,6 +319,7 @@ ask for the lib build.
    inline `<svg>` in markdown already renders with no renderer changes. It costs
    a headless browser in the build and means diagrams can't contain
    `$$variables$$`, so it's worth doing only if measurement says so.
-3. **Lib build**: ESM + `.d.ts` + compiled CSS, if consuming source is awkward.
+3. **Types for the runtime**: `.d.ts` for `<Labspace>` and its props, if the
+   untyped surface gets in the way.
 4. **Analytics backend**: pulse or Learn-native? The seam is ready; the choice
    isn't made, and nothing is blocked by leaving it open.

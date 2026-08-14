@@ -5,7 +5,9 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
-  globalIgnores(["dist", ".vite"]),
+  // `**/dist` also covers the workspace packages' build output, which is
+  // generated (see scripts/build-package.mjs) — lint the source, not the emit.
+  globalIgnores(["**/dist", ".vite"]),
   {
     files: ["**/*.{js,jsx}"],
     extends: [
