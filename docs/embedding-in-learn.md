@@ -5,9 +5,8 @@ agent that extracted the runtime, so it leads with the things that cost time —
 several of them contradict the integration proposal, which was written before the
 code existed.
 
-**Read §3 before you write the page.** Two of those four items decide the shape
-of your Astro page, and both are cheap to get right up front and expensive to
-retrofit.
+**Read §3 before you write the page.** Those items decide the shape of your
+Astro page, and they are cheap to get right up front and expensive to retrofit.
 
 ---
 
@@ -60,8 +59,10 @@ const config = await loadLabspace(new URL("labspace.yaml", dir).href, {
 
   <!-- The host sizes the lab. See §3.1 — the height rule is not optional. -->
   <div class="lab-frame">
+    <!-- client:load gives a real first paint (§3.2). client:only="react" also
+         works if you'd rather skip the server pass entirely. -->
     <Labspace
-      client:only="react"
+      client:load
       config={config}
       labKey={scenario}
       brand={{ logo: "/learn/docker.svg", eyebrow: "Lab" }}
@@ -86,7 +87,7 @@ doesn't, that's a package bug — report it rather than working around it.
 
 ---
 
-## 3. The four that will cost you a day
+## 3. The ones that will cost you a day
 
 ### 3.1 The mount element needs a real height
 
@@ -97,19 +98,21 @@ sized box and the component — including whatever Astro puts around the island.
 Miss it and the lab renders at full content height and overflows or gets
 clipped. It looks like a layout bug in the runtime. It isn't.
 
-### 3.2 Use `client:only="react"`, not `client:load`
+### 3.2 `client:load` works — and either directive is fine
 
-`client:load` **will break your build.** Astro server-renders islands during the
-static build; on the server, `rehype-mermaid` resolves to `mermaid-isomorphic`,
-which requires **`playwright`**. It isn't a dependency of this package and
-shouldn't be, so the Node import fails outright:
+This used to be a hard blocker and no longer is. Mermaid is loaded from inside an
+effect now, so a server render never evaluates it. Pinned by a test
+(`Labspace.ssr.test.jsx`) that server-renders a lab **containing** a diagram.
 
-```
-Cannot find package 'playwright' imported from .../mermaid-isomorphic/dist/mermaid-isomorphic.js
-```
+With a build-time `config`, the server pass emits the panel shell and the
+terminal (~2.9 KB of HTML), so `client:load` gives a real first paint rather than
+a spinner. `client:only="react"` remains perfectly valid and marginally simpler.
 
-`client:only="react"` never imports the component in Node, so the problem
-doesn't arise. Verified both ways.
+For the record, since it is the kind of thing that gets reintroduced: while
+`rehype-mermaid` was a static import, importing the renderer under Node pulled
+`mermaid-isomorphic`, which resolves to a **playwright**-backed build there. Any
+server render failed with `Cannot find package 'playwright'`. If that error comes
+back, something made the mermaid plugin static again.
 
 ### 3.3 The instructions will NOT be in your server-rendered HTML
 
@@ -123,8 +126,8 @@ so the markdown body is empty in the server pass no matter what you do. (It's
 `MarkdownHooks` rather than the sync `Markdown` because `rehype-mermaid` is an
 async plugin.)
 
-Measured, with mermaid stubbed so a server render could complete at all: the
-shell and terminal render (~2.9 KB of HTML), the instruction text does not.
+Measured: the shell and terminal render (~2.9 KB of HTML); the instruction text
+does not.
 
 **Build-time `config` is still the right choice** — no fetch waterfall, no
 loading flash, no CORS surface, and the scenario is versioned with the page that
@@ -137,24 +140,31 @@ is the raw markdown. Run it through Astro's own markdown pipeline into a
 
 ### 3.4 Budget for the JavaScript
 
-Measured by building a bare Vite project whose only entry is `<Labspace>`:
+Measured by building a bare Vite project whose only entry is `<Labspace>`. What a
+reader downloads to open a lab is the **eager** column:
 
-|                                      | total emitted assets                                        |
-| ------------------------------------ | ----------------------------------------------------------- |
-| `/loader` entry alone (no React)     | **104 KB**                                                  |
-| full `<Labspace>` island             | **6.1 MB** (3.1 MB eager, 760 KB gzipped, rest lazy chunks) |
-| └ of which `rehype-mermaid`          | **3.5 MB**                                                  |
-| └ `react-syntax-highlighter` (Prism) | 640 KB                                                      |
-| └ react-markdown + remark/rehype     | 336 KB                                                      |
+|                                  | eager                        | total emitted |
+| -------------------------------- | ---------------------------- | ------------- |
+| `/loader` entry alone (no React) | 104 KB                       | 104 KB        |
+| full `<Labspace>` island         | **2.2 MB** (~700 KB gzipped) | 6.1 MB        |
 
-**Mermaid is ~58% of it** and is only needed if a lab's markdown contains a
-` ```mermaid ` fence. It is currently a static import inside the renderer, so
-you cannot tree-shake it away from your side.
+Mermaid — 3.5 MB, by far the heaviest thing here — is **not eager**. It loads on
+demand, and only for a document that actually contains a ` ```mermaid ` fence, so
+a lab with no diagram never fetches it at all.
 
-If this matters for a docs page — and on `docs.docker.com` it probably does —
-ask the Labspace team to make mermaid optional or dynamically imported. That one
-change roughly halves the payload and would also remove the `client:load`
-blocker in §3.2. **Don't build a workaround for this yourself.**
+Roughly what makes up the 2.2 MB:
+
+|                                                        |         |
+| ------------------------------------------------------ | ------- |
+| react + react-dom                                      | 192 KB  |
+| `react-syntax-highlighter` (Prism, all ~280 languages) | ~630 KB |
+| react-markdown + remark/rehype/micromark/`rehype-raw`  | ~1.2 MB |
+| the simulator engine + terminal                        | 16 KB   |
+
+Note how cheap the _simulator_ is — the weight is all markdown machinery. The next
+worthwhile lever is `react-syntax-highlighter`: moving to `PrismLight` with only
+the languages labs actually use would recover most of that 630 KB. Ask for it if
+your budget is tight rather than working around it on your side.
 
 Also note the icon font: **299 KB**, loaded by the runtime's own `@font-face`.
 It's an instanced build of Material Symbols — already 92% off the upstream
@@ -255,18 +265,23 @@ ask for the lib build.
 - [ ] Link the package (workspace/`file:` link is fine — it's the same team; npm publish is not a prerequisite)
 - [ ] Scenario directories under `src/content/simspaces/<scenario>/`
 - [ ] Load the config in frontmatter via `/loader` with an injected `fetchText`
-- [ ] Mount with **`client:only="react"`**
+- [ ] Mount with `client:load` or `client:only="react"` (either works)
 - [ ] Give the mount element and every wrapper a definite height
 - [ ] Pass a unique `labKey`
 - [ ] Decide on `theme` if Learn's toggle doesn't follow the system
-- [ ] Check the JS budget, and raise the mermaid question early
+- [ ] Check the JS budget (§3.4) against your page-weight targets
 - [ ] Wire `validate-lab` into CI
 - [ ] Compare against `app/embed.html` if anything looks wrong
 
 ## 7. Questions to send back
 
-1. **Mermaid**: can it be made optional/dynamic? Biggest single win (§3.4), and
-   it unblocks `client:load`.
-2. **Lib build**: ESM + `.d.ts` + compiled CSS, if consuming source is awkward.
-3. **Analytics backend**: pulse or Learn-native? The seam is ready; the choice
+1. **`react-syntax-highlighter`**: move to `PrismLight` with a registered
+   language list? ~630 KB of the remaining 2.2 MB (§3.4).
+2. **Precompiled diagrams**: if diagram-heavy labs make the on-demand 3.5 MB
+   fetch a problem, diagrams can be rendered to SVG at build time instead —
+   inline `<svg>` in markdown already renders with no renderer changes. It costs
+   a headless browser in the build and means diagrams can't contain
+   `$$variables$$`, so it's worth doing only if measurement says so.
+3. **Lib build**: ESM + `.d.ts` + compiled CSS, if consuming source is awkward.
+4. **Analytics backend**: pulse or Learn-native? The seam is ready; the choice
    isn't made, and nothing is blocked by leaving it open.
