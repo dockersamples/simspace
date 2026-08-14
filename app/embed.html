@@ -96,6 +96,25 @@
       .host-lab > #root {
         height: 100%;
       }
+      /*
+        HOST STYLES THAT REACH INTO THE RUNTIME.
+        A docs site styles its own form controls and links globally, and those
+        rules do not stop at a component boundary — an element selector like
+        `input:focus` (0,1,1) outranks a component's `.term-input` (0,1,0).
+        These are here so the runtime has to defend itself on every build,
+        rather than only when someone reports it from a real site.
+      */
+      input:focus,
+      input:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: 1px;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+        border-color: #2563eb;
+      }
+      button:focus-visible {
+        outline: 2px solid #2563eb;
+      }
+
       .host-after {
         margin-top: 32px;
         max-width: 60ch;

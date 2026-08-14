@@ -26,6 +26,12 @@ const workspaceSource = {
     __dirname,
     "packages/labspace/src/index.js",
   ),
+  // Must precede the "/react" entry below: aliases match by prefix, so the
+  // broader key would rewrite this into ".../react/index.ts/styles.css".
+  "@dockersamples/simspace-simulator/react/styles.css": resolve(
+    __dirname,
+    "packages/simulator/src/react/MockTerminal.css",
+  ),
   "@dockersamples/simspace-simulator/react": resolve(
     __dirname,
     "packages/simulator/src/react/index.ts",

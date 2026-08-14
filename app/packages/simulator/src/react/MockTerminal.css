@@ -90,16 +90,39 @@
   color: var(--term-dim);
 }
 
-.term-input {
+.mock-term input.term-input {
   flex: 1;
   background: transparent;
   border: none;
   outline: none;
+  box-shadow: none;
   font: inherit;
   color: var(--term-fg);
   padding: 0;
   margin: 0;
   caret-color: var(--term-green);
+}
+
+/* The focus appearance, held against the host page.
+ *
+ * A site that styles its own forms writes `input:focus` — specificity (0,1,1),
+ * which outranks a bare `.term-input` (0,1,0). Its ring then paints around an
+ * input that is stretched across the full width of the terminal, so the whole
+ * command row gets boxed in the host's accent colour. That shipped, and it looks
+ * like the terminal is broken rather than like a stylesheet collision.
+ *
+ * Matching the element as well as the class, inside .mock-term, is (0,2,2) —
+ * past any reasonable global rule, and still overridable by a host that really
+ * means it, which `!important` would not be.
+ *
+ * Removing the ring is right HERE specifically because this is a text field:
+ * the green caret already shows where focus is. Buttons elsewhere in the
+ * runtime keep their focus rings. */
+.mock-term input.term-input:focus,
+.mock-term input.term-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: transparent;
 }
 
 .mock-term-error .term-stderr {
