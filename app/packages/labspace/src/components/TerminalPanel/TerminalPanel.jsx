@@ -10,6 +10,11 @@ import { useTerminal } from "../../context/TerminalContext.jsx";
 // rules into the importing stylesheet, and sass does not rewrite the relative
 // `url()` inside them — so the compiled CSS would look for the font beside
 // itself instead of beside icons.css, and every icon would silently 404.
+// The terminal's own stylesheet. This package renders <MockTerminal>, so it is
+// this package's job to bring its styles along — the simulator's compiled
+// modules don't import their own CSS (nothing publishable can; see
+// scripts/build-package.mjs), so nothing else would.
+import "@dockersamples/simspace-simulator/react/styles.css";
 import "../../styles/icons.scss";
 import "./TerminalPanel.scss";
 
