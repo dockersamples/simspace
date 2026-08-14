@@ -1,5 +1,8 @@
-import { useActiveSection, useWorkshop } from "../../context/WorkshopContext";
-import { WorkshopNav } from "./WorkshopNav";
+import {
+  useActiveSection,
+  useWorkshop,
+} from "../../context/WorkshopContext.jsx";
+import { WorkshopNav } from "./WorkshopNav.jsx";
 
 // Bottom navigation for the instructions pane: Previous / section picker / Next.
 export function WorkshopFooter() {

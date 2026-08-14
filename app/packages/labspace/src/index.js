@@ -20,7 +20,7 @@
 // ── Loading and parsing ────────────────────────────────────────────────────
 // Also available on its own at "@dockersamples/simspace-labspace/loader", which
 // pulls in no React — that is the entry a build-time host wants.
-export * from "./loader";
+export * from "./loader.js";
 
 // ── The runtime's context layer ────────────────────────────────────────────
 export {
@@ -28,29 +28,36 @@ export {
   useWorkshop,
   useActiveSection,
   useVariables,
-} from "./context/WorkshopContext";
+} from "./context/WorkshopContext.jsx";
 export {
   TerminalContextProvider,
   useTerminal,
-} from "./context/TerminalContext";
-export { TabContextProvider, useTabs, CI_TAB_ID } from "./context/TabContext";
+} from "./context/TerminalContext.jsx";
+export {
+  TabContextProvider,
+  useTabs,
+  CI_TAB_ID,
+} from "./context/TabContext.jsx";
 export {
   ProgressContextProvider,
   useProgress,
-} from "./context/ProgressContext";
-export { PrintModeProvider, usePrintMode } from "./context/PrintModeContext";
+} from "./context/ProgressContext.jsx";
+export {
+  PrintModeProvider,
+  usePrintMode,
+} from "./context/PrintModeContext.jsx";
 export {
   PanelWindowProvider,
   usePanelWindow,
-} from "./context/PanelWindowContext";
+} from "./context/PanelWindowContext.jsx";
 
 // ── The runtime ────────────────────────────────────────────────────────────
-export { Labspace, LabspaceLayout } from "./components/Labspace";
+export { Labspace, LabspaceLayout } from "./components/Labspace.jsx";
 
 // ── Its panels, for a host composing them itself ───────────────────────────
-export { WorkshopPanel } from "./components/WorkshopPanel/WorkshopPanel";
-export { TerminalPanel } from "./components/TerminalPanel/TerminalPanel";
-export { MarkdownRenderer } from "./components/WorkshopPanel/markdown/MarkdownRenderer";
+export { WorkshopPanel } from "./components/WorkshopPanel/WorkshopPanel.jsx";
+export { TerminalPanel } from "./components/TerminalPanel/TerminalPanel.jsx";
+export { MarkdownRenderer } from "./components/WorkshopPanel/markdown/MarkdownRenderer.jsx";
 
 // ── Shared surfaces ────────────────────────────────────────────────────────
-export { LoadingState, ErrorState } from "./components/LoadState";
+export { LoadingState, ErrorState } from "./components/LoadState.jsx";

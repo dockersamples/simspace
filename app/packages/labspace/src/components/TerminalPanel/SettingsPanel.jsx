@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useTerminal } from "../../context/TerminalContext";
+import { useTerminal } from "../../context/TerminalContext.jsx";
 import "./SettingsPanel.scss";
 
 // Derives each control's on/off from the shared simulator's current state, so

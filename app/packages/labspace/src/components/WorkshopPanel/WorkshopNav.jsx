@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useActiveSection, useWorkshop } from "../../context/WorkshopContext";
-import { useProgress } from "../../context/ProgressContext";
-import { AvatarStack } from "./AvatarStack";
+import {
+  useActiveSection,
+  useWorkshop,
+} from "../../context/WorkshopContext.jsx";
+import { useProgress } from "../../context/ProgressContext.jsx";
+import { AvatarStack } from "./AvatarStack.jsx";
 import "./WorkshopNav.scss";
 
 // The section picker in the footer: a button that opens a list of every section

@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { useVariables } from "../../../context/WorkshopContext";
+import { useVariables } from "../../../context/WorkshopContext.jsx";
 
 /**
  * This custom markdown directive provides the ability to define a Labspace variable.

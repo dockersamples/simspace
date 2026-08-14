@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { loadLabspace } from "./loader";
+import { loadLabspace } from "./loader.js";
 
 // The loader is the package's front door: it turns one labspace.yaml URL into
 // the config every other part of the runtime reads. Two things make it worth

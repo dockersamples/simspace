@@ -1,5 +1,5 @@
-import { useWorkshop } from "../../../context/WorkshopContext";
-import { useMarkdownBaseUrl } from "./markdownBaseUrl";
+import { useWorkshop } from "../../../context/WorkshopContext.jsx";
+import { useMarkdownBaseUrl } from "./markdownBaseUrl.js";
 
 // Resolves a markdown image `src` against the lab's base directory so relative
 // paths (e.g. `diagram.png` sitting next to the .md file) load in the browser.

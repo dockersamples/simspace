@@ -1,11 +1,11 @@
 import { PanelGroup, Panel, PanelResizeHandle } from "react-resizable-panels";
-import { WorkshopContextProvider } from "../context/WorkshopContext";
-import { TabContextProvider } from "../context/TabContext";
-import { TerminalContextProvider } from "../context/TerminalContext";
-import { ProgressContextProvider } from "../context/ProgressContext";
-import { PanelWindowProvider } from "../context/PanelWindowContext";
-import { WorkshopPanel } from "./WorkshopPanel/WorkshopPanel";
-import { TerminalPanel } from "./TerminalPanel/TerminalPanel";
+import { WorkshopContextProvider } from "../context/WorkshopContext.jsx";
+import { TabContextProvider } from "../context/TabContext.jsx";
+import { TerminalContextProvider } from "../context/TerminalContext.jsx";
+import { ProgressContextProvider } from "../context/ProgressContext.jsx";
+import { PanelWindowProvider } from "../context/PanelWindowContext.jsx";
+import { WorkshopPanel } from "./WorkshopPanel/WorkshopPanel.jsx";
+import { TerminalPanel } from "./TerminalPanel/TerminalPanel.jsx";
 import "./Labspace.scss";
 
 /**

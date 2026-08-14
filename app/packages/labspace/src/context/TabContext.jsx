@@ -5,7 +5,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useWorkshop } from "./WorkshopContext";
+import { useWorkshop } from "./WorkshopContext.jsx";
 
 // Tabs shown in the right-hand pane. Every declared terminal becomes a tab
 // (rendered as a component, not an iframe) — `kind: "terminal"`. When the lab

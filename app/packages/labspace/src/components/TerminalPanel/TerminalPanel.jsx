@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef } from "react";
 import { MockTerminal } from "@dockersamples/simspace-simulator/react";
-import { SettingsPanel } from "./SettingsPanel";
-import { CIPanel } from "./CIPanel";
-import { scopedKey } from "../../labspace/storage";
-import { useWorkshop } from "../../context/WorkshopContext";
-import { useTabs, CI_TAB_ID } from "../../context/TabContext";
-import { useTerminal } from "../../context/TerminalContext";
+import { SettingsPanel } from "./SettingsPanel.jsx";
+import { CIPanel } from "./CIPanel.jsx";
+import { scopedKey } from "../../labspace/storage.js";
+import { useWorkshop } from "../../context/WorkshopContext.jsx";
+import { useTabs, CI_TAB_ID } from "../../context/TabContext.jsx";
+import { useTerminal } from "../../context/TerminalContext.jsx";
 import "./TerminalPanel.scss";
 
 // The pane owns the framing (tab bar + border). It hosts one <MockTerminal> per

@@ -38,7 +38,7 @@
 // the same thing, which is why one loader serves both.
 
 import { parse } from "yaml";
-import { slugify } from "./slugify";
+import { slugify } from "./slugify.js";
 
 async function fetchTextOverNetwork(url) {
   const res = await fetch(url);

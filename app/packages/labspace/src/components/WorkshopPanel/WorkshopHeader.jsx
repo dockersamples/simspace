@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { useActiveSection, useWorkshop } from "../../context/WorkshopContext";
-import { useTerminal } from "../../context/TerminalContext";
-import { useProgress } from "../../context/ProgressContext";
-import { usePanelWindow } from "../../context/PanelWindowContext";
-import { PresenceBar } from "./PresenceBar";
+import {
+  useActiveSection,
+  useWorkshop,
+} from "../../context/WorkshopContext.jsx";
+import { useTerminal } from "../../context/TerminalContext.jsx";
+import { useProgress } from "../../context/ProgressContext.jsx";
+import { usePanelWindow } from "../../context/PanelWindowContext.jsx";
+import { PresenceBar } from "./PresenceBar.jsx";
 
 // Sticky branded header for the instructions pane. Shows the lab identity and a
 // segmented progress bar so the learner always knows where they are.

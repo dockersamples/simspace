@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef } from "react";
 import { Simulator } from "@dockersamples/simspace-simulator";
-import { useVariables, useWorkshop } from "./WorkshopContext";
-import { scopedKey } from "../labspace/storage";
+import { useVariables, useWorkshop } from "./WorkshopContext.jsx";
+import { scopedKey } from "../labspace/storage.js";
 
 // Owns the single Simulator shared by every terminal in the pane. All terminals
 // read and write the same state store and virtual filesystem — like two shells

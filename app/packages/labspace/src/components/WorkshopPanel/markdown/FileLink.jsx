@@ -1,5 +1,5 @@
-import { useTabs } from "../../../context/TabContext";
-import { useTerminal } from "../../../context/TerminalContext";
+import { useTabs } from "../../../context/TabContext.jsx";
+import { useTerminal } from "../../../context/TerminalContext.jsx";
 
 // There is no real IDE in the static app, so a file link `cat`s the file in the
 // simulated terminal (the built-in cat reflects the virtual filesystem).

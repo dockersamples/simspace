@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveTracking } from "./tracking";
+import { resolveTracking } from "./tracking.js";
 
 // One lab's effective tracking config comes from two places: the deployment
 // default (config.json) and the lab's own `tracking:` directive. The distinction
