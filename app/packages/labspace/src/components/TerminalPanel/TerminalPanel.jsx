@@ -19,10 +19,11 @@ import "./TerminalPanel.scss";
 // focused, so an agent session and a host shell can run side by side.
 const SETTINGS_TAB_ID = "__settings__";
 
-export function TerminalPanel() {
+export function TerminalPanel({ showReset = true }) {
   const workshop = useWorkshop();
   const { tabs, activeTab, setActiveTab, removeTab } = useTabs();
-  const { register, simulator, error, subscribe, broadcast } = useTerminal();
+  const { register, simulator, error, subscribe, broadcast, resetAll } =
+    useTerminal();
 
   // Stable per-id ref callbacks so terminals don't re-register every render.
   const refCallbacks = useRef({});
@@ -35,6 +36,17 @@ export function TerminalPanel() {
     },
     [register],
   );
+
+  // Re-seeds the whole shared machine, so it asks first.
+  const confirmReset = useCallback(() => {
+    if (
+      window.confirm(
+        "Reset the lab? This clears every terminal and restores the starting state.",
+      )
+    ) {
+      resetAll();
+    }
+  }, [resetAll]);
 
   const handleChange = useCallback(
     (info) => {
@@ -59,7 +71,11 @@ export function TerminalPanel() {
   const serviceTabs = tabs.filter((t) => t.kind === "service");
   const hasSettings = (simulator?.lab.controls?.length ?? 0) > 0;
   const ciEnabled = Boolean(workshop.features?.ci);
-  const showTabBar = tabs.length > 1 || hasSettings;
+  // The reset control lives in this bar, so the bar has to exist even for the
+  // simplest lab — one terminal, no CI, no controls — which would otherwise have
+  // nothing to show and stay hidden.
+  const canReset = showReset && Boolean(resetAll);
+  const showTabBar = tabs.length > 1 || hasSettings || canReset;
 
   // When a new CI run appears (from a `git push` in any terminal), bring the CI
   // tab forward so the learner sees the pipeline fire. Compares the run count on
@@ -118,22 +134,37 @@ export function TerminalPanel() {
             </button>
           ))}
 
-          {hasSettings && (
-            <button
-              type="button"
-              className={
-                "terminal-tab terminal-tab-settings " +
-                (activeTab === SETTINGS_TAB_ID ? "active" : "")
-              }
-              onClick={() => setActiveTab(SETTINGS_TAB_ID)}
-              aria-label="Lab settings"
-            >
-              <span className="material-symbols-outlined terminal-tab-icon">
-                tune
-              </span>
-              <span>Settings</span>
-            </button>
-          )}
+          <div className="terminal-tabbar-end">
+            {canReset && (
+              <button
+                type="button"
+                className="terminal-tab terminal-tab-reset"
+                onClick={confirmReset}
+                aria-label="Reset lab"
+                title="Reset lab"
+              >
+                <span className="material-symbols-outlined terminal-tab-icon">
+                  restart_alt
+                </span>
+              </button>
+            )}
+            {hasSettings && (
+              <button
+                type="button"
+                className={
+                  "terminal-tab terminal-tab-settings " +
+                  (activeTab === SETTINGS_TAB_ID ? "active" : "")
+                }
+                onClick={() => setActiveTab(SETTINGS_TAB_ID)}
+                aria-label="Lab settings"
+              >
+                <span className="material-symbols-outlined terminal-tab-icon">
+                  tune
+                </span>
+                <span>Settings</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
 

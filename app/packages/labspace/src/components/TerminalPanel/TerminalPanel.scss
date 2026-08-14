@@ -76,9 +76,32 @@
     }
   }
 
-  .terminal-tab-settings {
-    // Pushed to the far end of the bar, away from the content tabs.
+  // Utilities, pushed to the far end of the bar away from the content tabs.
+  .terminal-tabbar-end {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     margin-left: auto;
+  }
+
+  // Reset re-seeds the whole shared machine. It lives here rather than behind a
+  // right-click on the brand mark: that menu is hidden from anyone who doesn't
+  // already know it exists, and it disappears completely when a host embeds the
+  // runtime with no brand of its own.
+  .terminal-tab-reset {
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+    opacity: 0.65;
+
+    &:hover,
+    &:focus-visible {
+      opacity: 1;
+    }
+
+    .terminal-tab-icon {
+      // Icon-only, so nothing to space it from.
+      margin-right: 0;
+    }
   }
 
   .terminal-tab-close {
