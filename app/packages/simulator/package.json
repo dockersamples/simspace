@@ -1,6 +1,6 @@
 {
   "name": "@dockersamples/simspace-simulator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Deterministic, in-browser terminal simulator: a config-driven state machine plus a React mock-terminal component. No backend, no network, no LLM.",
   "license": "Apache-2.0",
   "type": "module",
