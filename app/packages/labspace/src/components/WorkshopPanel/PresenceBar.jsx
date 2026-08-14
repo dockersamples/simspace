@@ -1,5 +1,5 @@
-import { useProgress } from "../../context/ProgressContext";
-import { AvatarStack } from "./AvatarStack";
+import { useProgress } from "../../context/ProgressContext.jsx";
+import { AvatarStack } from "./AvatarStack.jsx";
 
 // Live "who's here now" for the header — a Google-Docs-style stack of avatar
 // bubbles plus a count. Driven entirely by the presence aggregate polled in

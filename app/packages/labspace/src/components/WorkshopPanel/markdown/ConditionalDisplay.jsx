@@ -1,6 +1,6 @@
-import { useVariables } from "../../../context/WorkshopContext";
+import { useVariables } from "../../../context/WorkshopContext.jsx";
 import { useMemo } from "react";
-import { detectOs } from "./detectOs";
+import { detectOs } from "./detectOs.js";
 
 /**
  * This custom markdown directive provides the ability to conditionally show content based on variable values

@@ -6,10 +6,10 @@ import {
   useMemo,
   useState,
 } from "react";
-import { loadLabspace } from "../labspace/loader";
-import { substituteVariables } from "../labspace/slugify";
-import { scopedKey } from "../labspace/storage";
-import { LoadingState, ErrorState } from "../components/LoadState";
+import { loadLabspace } from "../labspace/loader.js";
+import { substituteVariables } from "../labspace/slugify.js";
+import { scopedKey } from "../labspace/storage.js";
+import { LoadingState, ErrorState } from "../components/LoadState.jsx";
 
 // Server-free workshop context. Loads the labspace.yaml (and everything it
 // references) as static assets, keeps variables in memory, and substitutes

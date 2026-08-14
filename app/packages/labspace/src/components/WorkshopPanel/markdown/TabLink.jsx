@@ -1,4 +1,4 @@
-import { useTabs } from "../../../context/TabContext";
+import { useTabs } from "../../../context/TabContext.jsx";
 
 export function TabLink({ href, title, id, icon, children }) {
   const { displayLink } = useTabs();

@@ -1,4 +1,4 @@
-import { useVariables } from "../../../context/WorkshopContext";
+import { useVariables } from "../../../context/WorkshopContext.jsx";
 import { useCallback, useMemo } from "react";
 
 /**

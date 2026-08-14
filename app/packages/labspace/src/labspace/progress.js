@@ -12,7 +12,7 @@
 // per-browser handle, not an identity. This module is app-layer (not the
 // engine), so time and randomness are allowed here.
 
-import { scopedKey } from "./storage";
+import { scopedKey } from "./storage.js";
 
 const PROGRESS_KEY = "simspace:progress";
 

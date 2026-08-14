@@ -1,6 +1,9 @@
-import { useActiveSection, useWorkshop } from "../../context/WorkshopContext";
-import { useProgress } from "../../context/ProgressContext";
-import { AvatarStack } from "./AvatarStack";
+import {
+  useActiveSection,
+  useWorkshop,
+} from "../../context/WorkshopContext.jsx";
+import { useProgress } from "../../context/ProgressContext.jsx";
+import { AvatarStack } from "./AvatarStack.jsx";
 import "./SectionMilestones.scss";
 
 // A compact strip at the top of a section listing its milestones (steps). Each

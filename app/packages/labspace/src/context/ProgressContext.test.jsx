@@ -2,10 +2,10 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, act, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { WorkshopContextProvider } from "./WorkshopContext";
-import { TerminalContextProvider } from "./TerminalContext";
-import { ProgressContextProvider, useProgress } from "./ProgressContext";
-import { useTerminal } from "./TerminalContext";
+import { WorkshopContextProvider } from "./WorkshopContext.jsx";
+import { TerminalContextProvider } from "./TerminalContext.jsx";
+import { ProgressContextProvider, useProgress } from "./ProgressContext.jsx";
+import { useTerminal } from "./TerminalContext.jsx";
 
 // The analytics SEAM, which is the promise this package makes to a host: a
 // runtime embedded in someone else's page reports nothing anywhere until that

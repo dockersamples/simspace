@@ -7,9 +7,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { useActiveSection, useWorkshop } from "./WorkshopContext";
-import { useTerminal } from "./TerminalContext";
-import * as progress from "../labspace/progress";
+import { useActiveSection, useWorkshop } from "./WorkshopContext.jsx";
+import { useTerminal } from "./TerminalContext.jsx";
+import * as progress from "../labspace/progress.js";
 
 // Records the learner's progress through a lab's author-defined steps and
 // exposes it to the UI (nav check-marks, milestones, resume).

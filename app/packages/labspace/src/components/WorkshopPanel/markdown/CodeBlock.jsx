@@ -3,11 +3,11 @@ import { darcula } from "react-syntax-highlighter/dist/cjs/styles/prism";
 
 import copy from "copy-to-clipboard";
 import { useCallback } from "react";
-import { CodeBlockAction } from "./CodeBlockAction";
+import { CodeBlockAction } from "./CodeBlockAction.jsx";
 import "./CodeBlock.scss";
-import { useTabs } from "../../../context/TabContext";
-import { useTerminal } from "../../../context/TerminalContext";
-import { usePrintMode } from "../../../context/PrintModeContext";
+import { useTabs } from "../../../context/TabContext.jsx";
+import { useTerminal } from "../../../context/TerminalContext.jsx";
+import { usePrintMode } from "../../../context/PrintModeContext.jsx";
 
 export function CodeBlock({ node, inline, className, children, ...props }) {
   const { setActiveTab } = useTabs();

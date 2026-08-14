@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import * as progress from "./progress";
-import { scopedKey } from "./storage";
+import * as progress from "./progress.js";
+import { scopedKey } from "./storage.js";
 
 // The learner's own record: which steps they finished, and the anonymous handle
 // those completions belong to. It is the layer that keeps working when there is

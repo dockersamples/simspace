@@ -14,8 +14,8 @@
 // Everything here is also re-exported from the package root, so a host that
 // wants the whole runtime imports one specifier.
 
-export { loadLabspace } from "./labspace/loader";
-export { slugify, substituteVariables } from "./labspace/slugify";
-export { scopedKey } from "./labspace/storage";
-export { resolveTracking } from "./labspace/tracking";
-export * as progress from "./labspace/progress";
+export { loadLabspace } from "./labspace/loader.js";
+export { slugify, substituteVariables } from "./labspace/slugify.js";
+export { scopedKey } from "./labspace/storage.js";
+export { resolveTracking } from "./labspace/tracking.js";
+export * as progress from "./labspace/progress.js";

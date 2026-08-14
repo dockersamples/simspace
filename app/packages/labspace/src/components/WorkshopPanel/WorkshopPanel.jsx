@@ -1,8 +1,8 @@
-import { useActiveSection } from "../../context/WorkshopContext";
-import { MarkdownRenderer } from "./markdown/MarkdownRenderer";
-import { WorkshopHeader } from "./WorkshopHeader";
-import { WorkshopFooter } from "./WorkshopFooter";
-import { SectionMilestones } from "./SectionMilestones";
+import { useActiveSection } from "../../context/WorkshopContext.jsx";
+import { MarkdownRenderer } from "./markdown/MarkdownRenderer.jsx";
+import { WorkshopHeader } from "./WorkshopHeader.jsx";
+import { WorkshopFooter } from "./WorkshopFooter.jsx";
+import { SectionMilestones } from "./SectionMilestones.jsx";
 import "./WorkshopPanel.scss";
 
 // The instructions pane: header, the rendered section, and the footer nav.

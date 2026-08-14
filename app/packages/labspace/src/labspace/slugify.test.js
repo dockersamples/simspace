@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { slugify, substituteVariables } from "./slugify";
+import { slugify, substituteVariables } from "./slugify.js";
 
 describe("slugify", () => {
   it("lowercases, strips punctuation, and hyphenates spaces", () => {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import { visit } from "unist-util-visit";
-import { remarkCodeIndexer } from "./codeIndexer";
+import { remarkCodeIndexer } from "./codeIndexer.js";
 
 // The Run button's default differs between a lab and a deck, and getting it
 // wrong is invisible until someone is presenting: a lab fence is a command the

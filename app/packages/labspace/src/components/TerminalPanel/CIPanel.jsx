@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useTerminal } from "../../context/TerminalContext";
+import { useTerminal } from "../../context/TerminalContext.jsx";
 import "./CIPanel.scss";
 
 // Cosmetic playback pacing (presentation only — the run itself is fully
