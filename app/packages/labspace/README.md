@@ -70,6 +70,13 @@ const config = await loadLabspace(url, { fetchText: readFileFromDisk });
 that needs to read the loaded lab before the runtime mounts. The lab app uses
 it; most hosts want `<Labspace>`.
 
+## Embedding it elsewhere
+
+`docs/embedding-in-learn.md` in this repo is the handoff for a host team — the
+Astro page shape, the measured JS budget, and the caveats that cost time
+(`client:only` vs `client:load`, the height rule, why instructions are not
+server-rendered).
+
 ## The boundary
 
 Two rules keep this package embeddable, and both are easy to break by accident

@@ -64,12 +64,22 @@ export const WorkshopContextProvider = ({
   onError,
   className,
 }) => {
+  const variablesKey = scopedKey(VARIABLES_KEY, labKey);
+
+  // A build-time `config` is resolved BEFORE the first render, so seed straight
+  // from it rather than in an effect. Effects don't run during a server render,
+  // and a host that went to the trouble of resolving the lab at build time
+  // should get the lab on the first paint rather than a loading spinner.
   const [workshop, setWorkshop] = useState(
     config ? { ...config, labKey } : null,
   );
   const [loadError, setLoadError] = useState(null);
-  const [variables, setVariables] = useState(null);
-  const [activeSectionId, setActiveSectionId] = useState(null);
+  const [variables, setVariables] = useState(() =>
+    config ? readVariables(variablesKey, config.variables || {}) : null,
+  );
+  const [activeSectionId, setActiveSectionId] = useState(() =>
+    config && !printMode ? (section ?? config.sections?.[0]?.id ?? null) : null,
+  );
 
   // A host that passes `onSectionChange` is driving navigation — typically a
   // router keeping the section in the URL. Its value is then authoritative,
@@ -78,7 +88,6 @@ export const WorkshopContextProvider = ({
   // Mirroring the absence is what makes that work; treating a missing host value
   // as "keep the current one" silently strands the reader mid-lab.
   const controlled = Boolean(onSectionChange);
-  const variablesKey = scopedKey(VARIABLES_KEY, labKey);
 
   const changeActiveSection = useCallback(
     (nextId) => {
