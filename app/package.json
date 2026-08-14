@@ -16,12 +16,13 @@
     "generate-catalog": "node scripts/generate-catalog.mjs",
     "prettier": "prettier --write .",
     "prettier-check": "prettier --check .",
-    "test": "npm run test --workspace @dockersamples/simspace-simulator && vitest run",
+    "test": "npm run test --workspace @dockersamples/simspace-simulator && npm run test --workspace @dockersamples/simspace-labspace && vitest run",
     "test:app": "vitest run",
     "test:watch": "vitest",
     "typecheck": "npm run typecheck --workspace @dockersamples/simspace-simulator"
   },
   "dependencies": {
+    "@dockersamples/simspace-labspace": "*",
     "@dockersamples/simspace-simulator": "*",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/roboto-mono": "^5.3.0",

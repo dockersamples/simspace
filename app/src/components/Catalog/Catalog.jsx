@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { isLabComplete } from "../../labspace/progress";
-import { resolveTracking } from "../../labspace/tracking";
+import {
+  progress,
+  resolveTracking,
+} from "@dockersamples/simspace-labspace/loader";
 import { useAppConfig } from "../../context/AppConfigContext";
 import "./Catalog.scss";
 
@@ -83,7 +85,7 @@ export function Catalog({ labs }) {
         {labs.map((lab) => {
           // Personal completion: has THIS browser finished all the lab's steps?
           // Read from the local progress store — no backend needed.
-          const done = isLabComplete(lab.id);
+          const done = progress.isLabComplete(lab.id);
           // Effective backend config (deployment default + this lab's directive)
           // for the social "Completed by N people" count.
           const tracking = resolveTracking(

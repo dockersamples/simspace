@@ -1,0 +1,33 @@
+// The icon font the runtime draws with.
+//
+// SHIPPED WITH THE PACKAGE, not fetched from an app-served path. The app used to
+// declare this font against an absolute `/material-symbols.woff2`, which works
+// only because the lab app is at the root of its own origin. Inside a host that
+// URL 404s and every icon in the runtime renders as its literal ligature text —
+// "arrow_back", "play_arrow", "check_circle" — which looks like broken content
+// rather than a missing font.
+//
+// The relative URL below is resolved and fingerprinted by the host's bundler, so
+// the font travels with the component.
+@font-face {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  src: url("./material-symbols.woff2") format("woff2");
+  font-display: block;
+}
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-size: 1.5em;
+  font-weight: 400;
+  // Ligature text must never leak while the font loads or if it fails.
+  font-variant-ligatures: none;
+  -webkit-font-feature-settings: "liga";
+  font-feature-settings: "liga";
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+}

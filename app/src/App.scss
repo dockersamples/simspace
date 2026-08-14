@@ -1,3 +1,9 @@
+// The icon font ships with the runtime package now, so it travels with the
+// components instead of being served from this app's origin. Pulled in here too
+// because the catalog and the deck chrome draw the same icons outside the
+// runtime. (@use must precede every other rule, hence the position.)
+@use "../packages/labspace/src/styles/icons";
+
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/roboto-mono";
 
@@ -35,20 +41,6 @@ $border-color: #e5e5e5;
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
 @import "bootstrap/scss/bootstrap";
-
-@import "rehype-github-alerts/styling/css/index.css";
-
-@font-face {
-  font-family: "Material Symbols Outlined";
-  font-style: normal;
-  src: url(/material-symbols.woff2) format("woff");
-}
-
-.material-symbols-outlined {
-  font-family: "Material Symbols Outlined";
-  font-size: 1.5em;
-  font-weight: 400;
-}
 
 h1,
 h2,
@@ -109,128 +101,5 @@ li {
   svg {
     width: 1rem;
     height: 1rem;
-  }
-}
-
-div.code-block {
-  // ── Every size in this block is a custom property. ──
-  //
-  // Not decoration: the code block is shared by the instructions pane and by DECK
-  // SLIDES, and a slide's type scale is in `cqi` (a percentage of the slide's
-  // width) so that a designed layout holds its proportions at any display size.
-  // Fixed px here therefore can't just be overridden by the deck — and quietly
-  // wasn't. `div.code-block .code-block-label` (specificity 0,2,1) outranks
-  // `.deck-canvas .code-block-label` (0,2,0), so the deck's cqi rules lost and the
-  // block kept these px sizes. On a 1920px slide that passed for a design choice;
-  // on a 381px phone slide the code rendered ~3x oversized and clipped while the
-  // rest of the slide scaled down around it.
-  //
-  // Custom properties INHERIT, so `.deck-canvas` can retune the whole block
-  // (DeckView.scss) with no specificity fight and no `!important`. The defaults
-  // below are the instructions pane's own sizes, so that surface is unchanged.
-  --cb-fs-code: 0.82rem;
-  --cb-fs-label: 0.72rem;
-  // In `em` of the label it sits inside, so one value serves every surface:
-  // 1.4 x 0.72rem is the 1rem it has always been in the instructions pane.
-  --cb-label-icon: 1.4em;
-  --cb-btn: 32px;
-  --cb-btn-icon: 1.15rem;
-  --cb-header-h: 40px;
-  --cb-header-pad: 0.3rem 0.4rem 0.3rem 0.85rem;
-  --cb-body-pad: 0.7rem 0.95rem;
-  --cb-radius: 12px;
-  --cb-gap: 0.5rem;
-
-  margin: 1.15rem 0;
-  border-radius: var(--cb-radius);
-  overflow: hidden;
-  background: #14181f;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 12px 28px -18px rgba(0, 0, 0, 0.7);
-
-  .code-block-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--cb-gap);
-    padding: var(--cb-header-pad);
-    background: rgba(255, 255, 255, 0.035);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-    min-height: var(--cb-header-h);
-  }
-
-  .code-block-label {
-    display: inline-flex;
-    align-items: center;
-    // In `em` so the gap tracks the label's own size, whatever a surface sets it to.
-    gap: 0.55em;
-    font-family: $font-family-monospace;
-    font-size: var(--cb-fs-label);
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    color: rgba(255, 255, 255, 0.5);
-    text-transform: none;
-    min-width: 0;
-
-    > span:not(.code-block-label-icon) {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-  }
-
-  .code-block-label-icon {
-    font-size: var(--cb-label-icon);
-    color: rgba(255, 255, 255, 0.4);
-  }
-
-  .button-container {
-    flex: 0 0 auto;
-    gap: calc(var(--cb-gap) * 0.3);
-  }
-
-  button.code-action-btn.btn {
-    font-family: $font-family-sans-serif !important;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--cb-btn);
-    height: var(--cb-btn);
-    padding: 0;
-    border: none;
-    border-radius: calc(var(--cb-radius) * 0.67);
-    color: rgba(255, 255, 255, 0.6);
-    text-decoration: none;
-    transition:
-      background-color 0.15s ease,
-      color 0.15s ease;
-
-    &:hover:not(:disabled),
-    &:focus-visible {
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
-    }
-
-    .material-symbols-outlined {
-      font-size: var(--cb-btn-icon);
-    }
-  }
-
-  .code-block-body {
-    overflow-x: auto;
-
-    // react-syntax-highlighter renders its own <div>/<pre>; strip the inline
-    // background so the block's own surface shows through. (The theme sets no
-    // font-size inline, which is why that one needs no `!important`.)
-    > div {
-      background: transparent !important;
-      margin: 0 !important;
-      padding: var(--cb-body-pad) !important;
-      font-size: var(--cb-fs-code);
-    }
-  }
-
-  .highlight-line {
-    background: rgba(255, 255, 255, 0.1);
   }
 }

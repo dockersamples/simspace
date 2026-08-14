@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
-import { usePanelWindow } from "../../context/PanelWindowContext";
+import { usePanelWindow } from "@dockersamples/simspace-labspace";
 import { useChildWindow } from "./useChildWindow";
 import "./PanelWindow.scss";
 

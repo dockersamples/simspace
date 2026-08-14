@@ -1,0 +1,192 @@
+import { useCallback, useEffect, useRef } from "react";
+import { MockTerminal } from "@dockersamples/simspace-simulator/react";
+import { SettingsPanel } from "./SettingsPanel";
+import { CIPanel } from "./CIPanel";
+import { scopedKey } from "../../labspace/storage";
+import { useWorkshop } from "../../context/WorkshopContext";
+import { useTabs, CI_TAB_ID } from "../../context/TabContext";
+import { useTerminal } from "../../context/TerminalContext";
+import "./TerminalPanel.scss";
+
+// The pane owns the framing (tab bar + border). It hosts one <MockTerminal> per
+// declared terminal plus, when the lab defines controls, a Settings "page".
+// Terminals stay mounted (their transcripts persist) even when another tab is
+// focused, so an agent session and a host shell can run side by side.
+const SETTINGS_TAB_ID = "__settings__";
+
+export function TerminalPanel() {
+  const workshop = useWorkshop();
+  const { tabs, activeTab, setActiveTab, removeTab } = useTabs();
+  const { register, simulator, error, subscribe, broadcast } = useTerminal();
+
+  // Stable per-id ref callbacks so terminals don't re-register every render.
+  const refCallbacks = useRef({});
+  const getRefCallback = useCallback(
+    (id) => {
+      if (!refCallbacks.current[id]) {
+        refCallbacks.current[id] = (handle) => register(id, handle);
+      }
+      return refCallbacks.current[id];
+    },
+    [register],
+  );
+
+  const handleChange = useCallback(
+    (info) => {
+      broadcast({ type: "state" });
+      // When the command completed a tracked step, fan out a `step` event for
+      // the tracking layer (progress store / presence). Kept separate from the
+      // `state` event so it never interferes with shared-state persistence.
+      if (info?.completes) {
+        broadcast({
+          type: "step",
+          stepId: info.completes,
+          scenario: info.matched,
+          command: info.line,
+          terminalId: info.terminalId,
+        });
+      }
+    },
+    [broadcast],
+  );
+
+  const terminals = workshop.terminals || [];
+  const serviceTabs = tabs.filter((t) => t.kind === "service");
+  const hasSettings = (simulator?.lab.controls?.length ?? 0) > 0;
+  const ciEnabled = Boolean(workshop.features?.ci);
+  const showTabBar = tabs.length > 1 || hasSettings;
+
+  // When a new CI run appears (from a `git push` in any terminal), bring the CI
+  // tab forward so the learner sees the pipeline fire. Compares the run count on
+  // each shared-state event; a reset zeroes the baseline.
+  const prevRunCountRef = useRef(0);
+  useEffect(() => {
+    if (!ciEnabled || !subscribe || !simulator) return;
+    const readCount = () => {
+      const runs = simulator.getState("ci.runs");
+      return Array.isArray(runs) ? runs.length : 0;
+    };
+    prevRunCountRef.current = readCount();
+    return subscribe((event) => {
+      if (event.type === "reset") {
+        prevRunCountRef.current = 0;
+        return;
+      }
+      const count = readCount();
+      if (count > prevRunCountRef.current) {
+        setActiveTab(CI_TAB_ID);
+      }
+      prevRunCountRef.current = count;
+    });
+  }, [ciEnabled, subscribe, simulator, setActiveTab]);
+
+  return (
+    <div className="terminal-panel">
+      {showTabBar && (
+        <div className="terminal-tabbar">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={
+                "terminal-tab " + (activeTab === tab.id ? "active" : "")
+              }
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <span className="material-symbols-outlined terminal-tab-icon">
+                {tab.icon}
+              </span>
+              <span>{tab.title}</span>
+              {tab.kind === "service" && activeTab === tab.id && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  className="material-symbols-outlined terminal-tab-close"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeTab(tab.id);
+                  }}
+                >
+                  close
+                </span>
+              )}
+            </button>
+          ))}
+
+          {hasSettings && (
+            <button
+              type="button"
+              className={
+                "terminal-tab terminal-tab-settings " +
+                (activeTab === SETTINGS_TAB_ID ? "active" : "")
+              }
+              onClick={() => setActiveTab(SETTINGS_TAB_ID)}
+              aria-label="Lab settings"
+            >
+              <span className="material-symbols-outlined terminal-tab-icon">
+                tune
+              </span>
+              <span>Settings</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {terminals.map((terminal) => (
+        <div
+          key={terminal.id}
+          className="terminal-pane"
+          style={{ display: activeTab === terminal.id ? "flex" : "none" }}
+        >
+          <MockTerminal
+            ref={getRefCallback(terminal.id)}
+            simulator={simulator}
+            error={error}
+            terminalId={terminal.id}
+            // A lab RESUMES: the transcript is restored on reload, namespaced per
+            // terminal and per lab. Embedded terminals elsewhere omit this prop
+            // and start clean on every mount.
+            storageKey={scopedKey(
+              `simspace:terminal:${terminal.id}`,
+              workshop.labKey,
+            )}
+            onChange={handleChange}
+            subscribe={subscribe}
+            className="terminal-pane"
+          />
+        </div>
+      ))}
+
+      {ciEnabled && (
+        <div
+          className="terminal-pane"
+          style={{ display: activeTab === CI_TAB_ID ? "flex" : "none" }}
+        >
+          <CIPanel />
+        </div>
+      )}
+
+      {hasSettings && (
+        <div
+          className="terminal-pane"
+          style={{ display: activeTab === SETTINGS_TAB_ID ? "flex" : "none" }}
+        >
+          <SettingsPanel />
+        </div>
+      )}
+
+      {serviceTabs.map((tab) => (
+        <iframe
+          key={tab.id}
+          title={tab.title}
+          src={tab.url}
+          style={{
+            flex: 1,
+            border: "none",
+            display: activeTab === tab.id ? "block" : "none",
+          }}
+        />
+      ))}
+    </div>
+  );
+}

@@ -1,0 +1,203 @@
+// The code block, shared by the instructions pane and by DECK SLIDES.
+//
+// Lives with the component rather than in an app-level stylesheet so an
+// embedding host gets it by importing the component, and so the custom
+// properties below stay next to the markup that reads them.
+
+div.code-block {
+  // ── Every size in this block is a custom property. ──
+  //
+  // Not decoration: the code block is shared by the instructions pane and by DECK
+  // SLIDES, and a slide's type scale is in `cqi` (a percentage of the slide's
+  // width) so that a designed layout holds its proportions at any display size.
+  // Fixed px here therefore can't just be overridden by the deck — and quietly
+  // wasn't. `div.code-block .code-block-label` (specificity 0,2,1) outranks
+  // `.deck-canvas .code-block-label` (0,2,0), so the deck's cqi rules lost and the
+  // block kept these px sizes. On a 1920px slide that passed for a design choice;
+  // on a 381px phone slide the code rendered ~3x oversized and clipped while the
+  // rest of the slide scaled down around it.
+  //
+  // Custom properties INHERIT, so `.deck-canvas` can retune the whole block
+  // (DeckView.scss) with no specificity fight and no `!important`. The defaults
+  // below are the instructions pane's own sizes, so that surface is unchanged.
+  --cb-fs-code: 0.82rem;
+  --cb-fs-label: 0.72rem;
+  // In `em` of the label it sits inside, so one value serves every surface:
+  // 1.4 x 0.72rem is the 1rem it has always been in the instructions pane.
+  --cb-label-icon: 1.4em;
+  --cb-btn: 32px;
+  --cb-btn-icon: 1.15rem;
+  --cb-header-h: 40px;
+  --cb-header-pad: 0.3rem 0.4rem 0.3rem 0.85rem;
+  --cb-body-pad: 0.7rem 0.95rem;
+  --cb-radius: 12px;
+  --cb-gap: 0.5rem;
+
+  margin: 1.15rem 0;
+  border-radius: var(--cb-radius);
+  overflow: hidden;
+  background: #14181f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 28px -18px rgba(0, 0, 0, 0.7);
+
+  .code-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cb-gap);
+    padding: var(--cb-header-pad);
+    background: rgba(255, 255, 255, 0.035);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    min-height: var(--cb-header-h);
+  }
+
+  .code-block-label {
+    display: inline-flex;
+    align-items: center;
+    // In `em` so the gap tracks the label's own size, whatever a surface sets it to.
+    gap: 0.55em;
+    font-family: var(
+      --cb-font-mono,
+      ui-monospace,
+      SFMono-Regular,
+      Menlo,
+      Consolas,
+      monospace
+    );
+    font-size: var(--cb-fs-label);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: none;
+    min-width: 0;
+
+    > span:not(.code-block-label-icon) {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  .code-block-label-icon {
+    font-size: var(--cb-label-icon);
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  .button-container {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    gap: calc(var(--cb-gap) * 0.3);
+  }
+
+  // Anchor for the CSS tooltip below.
+  .code-action-wrap {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .code-action-btn {
+    font: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--cb-btn);
+    height: var(--cb-btn);
+    padding: 0;
+    border: none;
+    border-radius: calc(var(--cb-radius) * 0.67);
+    background: none;
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+
+    &:hover:not(:disabled),
+    &:focus-visible {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    &:disabled {
+      cursor: default;
+    }
+
+    .material-symbols-outlined {
+      font-size: var(--cb-btn-icon);
+    }
+  }
+
+  // A label on hover/focus, without a positioning library. `white-space: nowrap`
+  // plus the centring transform is the whole trick.
+  //
+  // It hangs BELOW the button, over the code body. Above would put it outside
+  // the block, where this block's `overflow: hidden` — the thing that rounds its
+  // corners — clips it away. The replaced tooltip component escaped that by
+  // rendering into a portal at the end of <body>; a pseudo-element can't, and
+  // shouldn't have to.
+  .code-action-wrap[data-tooltip] {
+    &:hover::after,
+    &:focus-within::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      background: #000;
+      color: #fff;
+      font-size: 0.72rem;
+      line-height: 1.3;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+  }
+
+  .code-action-spinner {
+    width: 0.85em;
+    height: 0.85em;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: code-action-spin 0.7s linear infinite;
+  }
+
+  .code-action-error {
+    font-size: 0.7rem;
+    white-space: nowrap;
+  }
+
+  .code-block-body {
+    overflow-x: auto;
+
+    // react-syntax-highlighter renders its own <div>/<pre>; strip the inline
+    // background so the block's own surface shows through. (The theme sets no
+    // font-size inline, which is why that one needs no `!important`.)
+    > div {
+      background: transparent !important;
+      margin: 0 !important;
+      padding: var(--cb-body-pad) !important;
+      font-size: var(--cb-fs-code);
+    }
+  }
+
+  .highlight-line {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+@keyframes code-action-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-action-spinner {
+    animation: none;
+  }
+}

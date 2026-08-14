@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { useDeck } from "../../context/DeckContext";
 import { useChildWindow } from "../PanelWindow/useChildWindow";
 import { handleDeckNavKey } from "./deckKeys";
-import { MarkdownRenderer } from "../WorkshopPanel/markdown/MarkdownRenderer";
+import { MarkdownRenderer } from "@dockersamples/simspace-labspace";
+import { deckDirectives } from "./deckDirectives";
 import "./SpeakerNotesWindow.scss";
 
 // The presenter view, in a second window: the current slide's `Note:` text, what's
@@ -66,6 +67,7 @@ export function SpeakerNotesWindow({ onClose }) {
             <MarkdownRenderer
               baseUrl={deck.current?.baseUrl}
               runButtons="terminal-only"
+              components={deckDirectives}
             >
               {deck.notes}
             </MarkdownRenderer>
@@ -85,6 +87,7 @@ export function SpeakerNotesWindow({ onClose }) {
             <MarkdownRenderer
               baseUrl={nextSlide.baseUrl}
               runButtons="terminal-only"
+              components={deckDirectives}
             >
               {nextSlide.content}
             </MarkdownRenderer>

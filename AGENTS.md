@@ -46,7 +46,14 @@ When changing engine behaviour or the YAML shapes, **keep these specs in sync**.
 
 ```
 app/                 THE PRODUCT — the consolidated static React app
+  embed.html         THE EMBED HARNESS — mounts <Labspace> on a page with no
+                     Bootstrap, router, toasts or app CSS. Built by `npm run
+                     build`; the check that the runtime is really embeddable
   packages/
+    labspace/        THE LAB RUNTIME — @dockersamples/simspace-labspace: the
+                     instructions pane, the terminal pane, the contexts, and the
+                     loader, behind <Labspace>. Extracted so Docker Learn can
+                     embed a lab. Own README and tests
     simulator/       THE REUSABLE CORE — @dockersamples/simspace-simulator, an
                      npm workspace. Own README, tests, and typecheck.
       src/engine/    in-browser scenario engine (TypeScript). Entry: index.ts
@@ -56,16 +63,19 @@ app/                 THE PRODUCT — the consolidated static React app
       src/react/     <MockTerminal> (over a Simulator you own) and <SimTerminal>
                      (one terminal from a spec string) + MockTerminal.css
       test/          vitest suite — engine unit tests + React component tests
-  src/
-    labspace/        fetch + parse labspace.yaml; slug + $$variable$$ substitution
+  src/               WHAT THE RUNTIME ISN'T: this app's shell around it
+    labspace/        the glue to the runtime package — LabRoute (router ->
+                     labspaceUrl/labKey/section), AppLabspace (brand + adapter +
+                     menu), pulseAnalytics, loadEntry (injects parseSlides),
+                     DeckProgress, useOfflineMenuItem; catalog.js
     deck/            splitSlides.js — chapter markdown -> slides (fence-aware
                      `---`), per-slide config, and `<!-- region -->` columns
-    components/       WorkshopPanel (instructions + markdown), TerminalPanel,
-                      Deck (DeckView + DeckView.scss carries the layouts and the
-                      Docker theme, SlideParts, SlideTerminal, SpeakerNotesWindow,
-                      deckKeys + deckSwipe for keyboard and touch navigation),
-                      ExportView
-    context/          React contexts (Workshop, Tab, Terminal, Deck, PrintMode)
+    embed/           entry point for embed.html (the harness)
+    components/       Catalog, Deck (DeckView + DeckView.scss carries the layouts
+                      and the Docker theme, SlideParts, SlideTerminal,
+                      SpeakerNotesWindow, deckDirectives, deckKeys + deckSwipe),
+                      ExportView, Insights, PanelWindow
+    context/          app-only contexts (Catalog, AppConfig, Deck)
     EntryRoute.jsx   reads the entry's `kind` and dispatches: AppRoute or DeckRoute
   public/
     labs/            SAMPLE ENTRIES — labs/<id>/ (labspace.yaml + *.md, plus a
@@ -93,6 +103,31 @@ docker-bake.hcl      bake targets: app / app-local, authoring / authoring-local
 compose.yaml         local dev stack (app Vite + pulse); `docker compose up --build`
 ```
 
+## Two packages, and the rule that keeps them honest
+
+`app/packages/labspace/` (`@dockersamples/simspace-labspace`) holds the lab
+RUNTIME — instructions pane, terminal pane, contexts, loader — behind a single
+`<Labspace>` component, so a site that isn't this one can mount a lab. Docker
+Learn (`docs.docker.com/learn`) is the first such host; this app is simply the
+runtime's other consumer.
+
+**The app supplies globals a host won't**, which is the trap: Bootstrap loaded
+globally, `data-bs-theme` on `<html>`, an icon font at `/material-symbols.woff2`,
+a react-router above everything, a `ToastContainer`. So **"the app still works"
+proves nothing about embedding**. `app/embed.html` is the check that does — a
+host page carrying none of that, built by `npm run build` so it can't rot. Run it
+with `npm run dev` and open `/embed.html`.
+
+Everything the runtime needs from the app is **injected**, never imported:
+`loadLabspace(url, { parseSlides })` (decks are the app's), `analytics` (pulse is
+the app's), `menuItems` (the service worker is the app's), `wrapTerminal` (the
+pop-out window is the app's). The package never imports from `app/src/`.
+
+The deck is NOT in the package (slides are out of scope for Learn) but it does
+consume it: `DeckRoute` mounts the package's providers, and `DeckView` passes
+`components={deckDirectives}` to the package's `MarkdownRenderer`, which is why
+that renderer takes an extensible component map instead of importing slide parts.
+
 ## The simulator is a package, not app code
 
 `app/packages/simulator/` (`@dockersamples/simspace-simulator`) holds the engine
@@ -119,8 +154,8 @@ Rules that keep that real:
   reaching into `src/engine/*` — if a feature needs something the API doesn't
   expose, widen the API deliberately.
 
-Only `TerminalPanel` (component) and `TerminalContext` (Simulator instance) in
-the app, plus `scripts/validate-lab.ts` (engine, for linting labs), import it.
+Only `TerminalPanel` and `TerminalContext` in the **labspace package**, plus
+`scripts/validate-lab.ts` (engine, for linting labs), import it.
 
 ## Two images, one lab-as-data model
 
@@ -186,8 +221,8 @@ The kit's version is independent of the image tags above — it describes the ki
 
 This is a **JavaScript/React (Vite) project** — all work happens in `app/`.
 
-**The `simulator` package and the app's pure logic are unit-tested; the React UI
-is not.** `npm test` runs both suites (the package's, then the app's) and must stay
+**The packages' and the app's pure logic are unit-tested; the React UI is not.**
+`npm test` runs three suites (simulator, labspace, app) and must stay
 green — add cases for new behaviour. The app suite covers the pieces where a subtle
 bug wouldn't be obvious on screen, above all slide splitting. For the React UI
 there's no suite: verify that by running the app and exercising it, plus lint. The
@@ -204,7 +239,7 @@ npm install             # also links the packages/simulator workspace
 npm run dev             # local dev server (0.0.0.0), serves app/public/labs/
 npm run build           # static build → app/dist (emits labs.json)
 npm run preview         # serve the production build
-npm test                # vitest — the simulator package's suite
+npm test                # vitest — the simulator, labspace, and app suites
 npm run test:watch      # the same suite in watch mode
 npm run typecheck       # tsc on the simulator package (also enforces its boundary)
 npm run lint            # ESLint (JS/JSX only — the package is covered by typecheck)

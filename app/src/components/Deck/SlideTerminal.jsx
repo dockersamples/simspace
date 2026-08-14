@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MockTerminal } from "@dockersamples/simspace-simulator/react";
-import { useTerminal } from "../../context/TerminalContext";
+import { useTerminal } from "@dockersamples/simspace-labspace";
 import { useChildWindow } from "../PanelWindow/useChildWindow";
 import "./SlideTerminal.scss";
 

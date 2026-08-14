@@ -41,7 +41,7 @@ import {
   KINDS,
 } from "./catalog.mjs";
 import { parseSlides } from "../src/deck/splitSlides.js";
-import { LAYOUTS, THEMES, parseColumns } from "../src/context/DeckContext.jsx";
+import { LAYOUTS, THEMES, parseColumns } from "../src/deck/slideConfig.js";
 
 // ── Reporting ─────────────────────────────────────────────────────────────────
 

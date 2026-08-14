@@ -27,7 +27,9 @@ export default defineConfig([
     },
   },
   {
-    files: ["src/**/*Context.jsx", "src/context/**/*Context.jsx"],
+    // Every context file here deliberately exports a provider component plus
+    // the hooks that read it. Matches the runtime package's contexts too.
+    files: ["**/*Context.jsx"],
     rules: {
       "react-refresh/only-export-components": "off",
     },

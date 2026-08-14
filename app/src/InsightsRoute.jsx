@@ -3,7 +3,7 @@ import Spinner from "react-bootstrap/Spinner";
 import { Link, useParams } from "react-router";
 import { useCatalog } from "./context/CatalogContext";
 import { useAppConfig } from "./context/AppConfigContext";
-import { resolveTracking } from "./labspace/tracking";
+import { resolveTracking } from "@dockersamples/simspace-labspace/loader";
 import { InsightsDashboard } from "./components/Insights/InsightsDashboard";
 
 // Instructor-only insights route. Resolves the lab (from the catalog) and its
