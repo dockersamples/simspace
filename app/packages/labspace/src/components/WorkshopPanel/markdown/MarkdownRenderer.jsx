@@ -17,6 +17,11 @@ import { VariableSetButton } from "./VariableSetButton.jsx";
 import { ConditionalDisplay } from "./ConditionalDisplay.jsx";
 import { MarkdownBaseUrlContext } from "./markdownBaseUrl.js";
 import { useMermaidPlugin } from "./useMermaidPlugin.js";
+// The alert styles for `> [!NOTE]` blocks. Imported here rather than @use'd from
+// the SCSS: resolving a bare package specifier inside Sass needs a bundler's
+// custom importer, while a CSS import from JavaScript is something every bundler
+// already understands.
+import "rehype-github-alerts/styling/css/index.css";
 import "./MarkdownRenderer.scss";
 
 /**

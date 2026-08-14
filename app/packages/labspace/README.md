@@ -18,6 +18,7 @@ and navigation. A host supplies those.
 
 ```jsx
 import { Labspace } from "@dockersamples/simspace-labspace";
+import "@dockersamples/simspace-labspace/styles.css";
 
 <div style={{ height: "78vh" }}>
   <Labspace
@@ -28,9 +29,15 @@ import { Labspace } from "@dockersamples/simspace-labspace";
 </div>;
 ```
 
-That is the whole integration. No stylesheet to include, no font to serve, no
-theme to wire, no provider to nest — see `app/embed.html` for a working host
-page that provides none of those and still renders correctly.
+That is the whole integration: one stylesheet, one component. No bundler
+configuration, no font to serve, no theme to wire, no provider to nest. See
+`app/embed.html` for a host page that provides none of those and still renders
+correctly.
+
+**The one import that isn't optional** is `styles.css`. The compiled modules do
+not import their own CSS on purpose: a server-side render loads the package
+through Node, and Node cannot load a `.css` file — which is exactly why libraries
+that do it the other way make their consumers set `vite.ssr.noExternal`.
 
 **Sizing is the one thing a host must get right.** The runtime fills its
 container with `height: 100%`, and a percentage height needs a parent with a
@@ -52,6 +59,23 @@ const config = await loadLabspace(url, { fetchText: readFileFromDisk });
 ```
 
 `/loader` pulls in no React — it's the entry a Node build wants.
+
+### What's in the box
+
+Both packages ship **compiled ESM plus a CSS bundle**, built by
+`app/scripts/build-package.mjs` (run via `npm run build:packages`, and
+automatically on `npm pack`/`npm publish` through `prepack`). `dist/` mirrors
+`src/` file for file rather than bundling, so tree-shaking and the React-free
+`/loader` entry both survive.
+
+The build also refuses to emit output that would break a consumer: every bare
+import must be a declared dependency (npm's hoisting hides missing ones inside
+this monorepo), and every `url()` in the emitted CSS must resolve to a file that
+exists.
+
+Inside this repo the app consumes the packages' **source** through a Vite alias,
+so `npm run dev` hot-reloads changes and nothing ever runs against a stale
+`dist/`.
 
 ### Props worth knowing
 

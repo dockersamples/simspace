@@ -8,18 +8,27 @@
     "*.css"
   ],
   "files": [
-    "src",
+    "dist",
     "README.md"
   ],
   "exports": {
-    ".": "./src/index.ts",
-    "./react": "./src/react/index.ts",
-    "./react/styles.css": "./src/react/MockTerminal.css"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "default": "./dist/react/index.js"
+    },
+    "./react/styles.css": "./dist/react/MockTerminal.css",
+    "./styles.css": "./dist/styles.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build": "node ../../scripts/build-package.mjs .",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "yaml": "^2.6.1"

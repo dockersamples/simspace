@@ -6,6 +6,11 @@ import { scopedKey } from "../../labspace/storage.js";
 import { useWorkshop } from "../../context/WorkshopContext.jsx";
 import { useTabs, CI_TAB_ID } from "../../context/TabContext.jsx";
 import { useTerminal } from "../../context/TerminalContext.jsx";
+// The icon font. Imported from JS, not `@use`'d from the SCSS: `@use` inlines the
+// rules into the importing stylesheet, and sass does not rewrite the relative
+// `url()` inside them — so the compiled CSS would look for the font beside
+// itself instead of beside icons.css, and every icon would silently 404.
+import "../../styles/icons.scss";
 import "./TerminalPanel.scss";
 
 // The pane owns the framing (tab bar + border). It hosts one <MockTerminal> per

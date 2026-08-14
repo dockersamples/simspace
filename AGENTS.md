@@ -118,6 +118,23 @@ proves nothing about embedding**. `app/embed.html` is the check that does — a
 host page carrying none of that, built by `npm run build` so it can't rot. Run it
 with `npm run dev` and open `/embed.html`.
 
+**Both packages ship built output, not source.** `app/scripts/build-package.mjs`
+compiles JSX/TS to ESM and SCSS to one `dist/styles.css`, and `prepack` runs it so
+`npm pack`/`publish` can't ship stale files. This is not cosmetic: shipping source
+forced every consumer to set `vite.ssr.noExternal` and to grow an
+`optimizeDeps.include` list one browser error at a time. Two rules the build
+enforces, because both fail silently in a monorepo — every bare import must be a
+declared dependency (npm hoists the app's `node_modules`, so an undeclared one
+still resolves here), and every `url()` in the emitted CSS must resolve.
+
+The compiled modules deliberately **do not import their own CSS**; a consumer
+imports `@dockersamples/simspace-labspace/styles.css` once. A server render loads
+the package through Node, and Node cannot load a `.css` file — that is the whole
+reason `ssr.noExternal` gets recommended, and this avoids needing it.
+
+`vite.config.js` and `vitest.config.js` alias both package names to their
+**source**, so this app hot-reloads package edits and never tests a stale `dist/`.
+
 Everything the runtime needs from the app is **injected**, never imported:
 `loadLabspace(url, { parseSlides })` (decks are the app's), `analytics` (pulse is
 the app's), `menuItems` (the service worker is the app's), `wrapTerminal` (the
@@ -238,6 +255,7 @@ cd app
 npm install             # also links the packages/simulator workspace
 npm run dev             # local dev server (0.0.0.0), serves app/public/labs/
 npm run build           # static build → app/dist (emits labs.json)
+npm run build:packages  # compile both workspace packages → packages/*/dist
 npm run preview         # serve the production build
 npm test                # vitest — the simulator, labspace, and app suites
 npm run test:watch      # the same suite in watch mode
@@ -307,13 +325,13 @@ the app, with no build step for the package. `@dockersamples/simspace-simulator`
   `.slide-terminal`, DeckView's keyboard handler stands down — otherwise typing
   `docker ps` would flip slides on the space. `Esc` hands control back. If you
   touch either side of this, re-check it in a browser: the trap is that
-  MockTerminal *unmounts its input row while output streams*, so focus lands on a
+  MockTerminal _unmounts its input row while output streams_, so focus lands on a
   wrapper rather than an input. **Swipe navigation defers to the same region**
   (`deckSwipe.js` reuses `isTypingTarget`), plus anything that pans sideways, and
   it suppresses the click a browser fires after a swipe so a gesture can't advance
   twice — `deckSwipe.test.jsx` pins all three.
 - **A render error must never reach the top of the tree.** `MarkdownHooks`
-  (react-markdown) *rethrows a plugin failure during render*, and mermaid renders in
+  (react-markdown) _rethrows a plugin failure during render_, and mermaid renders in
   the BROWSER, so a diagram one device can't draw used to unmount the whole app —
   white screen, mid-talk, no way out but a reload. Two things hold that line and
   both are easy to remove by accident: `errorFallback` on `rehype-mermaid`
@@ -347,4 +365,4 @@ Labs are runtime data, so an author repo never rebuilds the app:
   image's static payload, generates `labs.json`, and publishes.
 - **Container** — the starter's `Dockerfile` generates `labs.json` with the
   authoring image, then `FROM <runtime> + COPY labs/ + labs.json`; `docker run
-  -p 8080:80` serves it.
+-p 8080:80` serves it.
