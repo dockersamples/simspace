@@ -206,6 +206,47 @@ It's an instanced build of Material Symbols — already 92% off the upstream
 values authors may write. See
 `app/packages/labspace/scripts/instance-icon-font.mjs`.
 
+### 3.5 Astro drops function props, silently
+
+An Astro island's props are serialized, so **a function prop never arrives** — and
+nothing warns you. I confirmed it: passing `analytics={{ track: … }}` from a
+`.astro` file builds fine, the island hydrates fine, and `track()` is simply never
+called.
+
+That affects `analytics`, `onSectionChange`, `onError`, `onReady`, `components`
+and `wrapTerminal`. (`fetchText` is safe — it runs in frontmatter, not as a prop.)
+
+The fix is the ordinary Astro pattern: a **React wrapper in your own codebase**
+that supplies the functions, with Astro mounting the wrapper using only
+serializable props.
+
+```jsx
+// src/components/LearnLabspace.jsx  — a React file, so functions are fine here
+import { Labspace } from "@dockersamples/simspace-labspace";
+import { learnAnalytics } from "../lib/analytics";
+
+export function LearnLabspace({ config, labKey }) {
+  return (
+    <Labspace
+      config={config}
+      labKey={labKey}
+      analytics={learnAnalytics}
+      onError={(e) => console.error("lab failed to load", e)}
+    />
+  );
+}
+```
+
+```astro
+---
+import { LearnLabspace } from "../components/LearnLabspace.jsx";
+---
+<LearnLabspace client:load config={config} labKey={scenario} />
+```
+
+You'll want this wrapper as soon as you wire analytics, so it's worth creating
+before you need it.
+
 ---
 
 ## 4. Props
@@ -245,7 +286,30 @@ Bumping `version:` in a `labspace.yaml` invalidates stored progress for that lab
 while keeping the learner's identity — that's the supported way to say "the steps
 changed".
 
-### 5.2 Theming: it follows the reader's OS unless you tell it otherwise
+### 5.2 Resetting a lab
+
+Every lab shows a **Reset control in the terminal pane's tab bar**, whatever you
+pass for `brand`. Resetting re-seeds the shared machine and clears every
+terminal; it asks for confirmation first, and it deliberately does **not** clear
+the learner's completed steps.
+
+If you'd rather put reset in your own page chrome, `onReady` hands you the
+handle — and set `resetButton={false}` so there aren't two:
+
+```jsx
+// inside your React wrapper — not from .astro, see §3.5
+const [lab, setLab] = useState(null);
+
+<>
+  <button onClick={() => lab?.reset()}>Reset lab</button>
+  <Labspace onReady={setLab} resetButton={false} config={config} />
+</>;
+```
+
+`onReady` gives `{ reset, resetProgress }`. Don't turn the built-in off without
+providing a replacement: a simulated lab a learner can't restart is a dead end.
+
+### 5.3 Theming: it follows the reader's OS unless you tell it otherwise
 
 Default is `prefers-color-scheme`. If Learn's theme switch is an explicit
 toggle that doesn't track the system setting, the lab will disagree with the
@@ -256,7 +320,9 @@ The **terminal pane is always dark** by design and ignores `theme`.
 Prose **inherits your page font** on purpose, so the lab reads as part of the
 page. Code blocks and the terminal keep their own monospace stack.
 
-### 5.3 Analytics is silent by default
+### 5.4 Analytics is silent by default
+
+Note §3.5 first: `analytics` must come from a React wrapper, not from `.astro`.
 
 Omit `analytics` and the runtime makes zero network calls and starts no timers —
 there's a test pinning exactly that. Local progress still works; it is not part
@@ -268,12 +334,12 @@ To wire it up, pass `{ track(event, payload) }`. Events: `lab_started`,
 via `subscribePresence(cb)`. `app/src/labspace/pulseAnalytics.js` is a complete
 worked example.
 
-### 5.4 `kind: slides` throws, deliberately
+### 5.5 `kind: slides` throws, deliberately
 
 Slide decks are out of scope. A deck labspace.yaml raises a clear error rather
 than rendering an empty deck. Don't pass `parseSlides`.
 
-### 5.5 Scenario files
+### 5.6 Scenario files
 
 Keep each scenario's files in one directory. Everything a `labspace.yaml` names
 (`simulator:`, `contentPath`, images, `files:`) resolves **relative to the
@@ -285,7 +351,7 @@ dangling `contentPath` / `simulator` / `terminal-id` references, `{{ args.X }}`
 placeholders with no capture, and Run-button commands nothing handles. Authors
 should use the existing `simspace-authoring-kit`.
 
-### 5.6 React and types
+### 5.7 React and types
 
 React is a peer dependency, `>=18`; the Labspace app runs React 19.
 
@@ -306,6 +372,7 @@ in the component's own doc comment meanwhile.
 - [ ] Give the mount element and every wrapper a definite height
 - [ ] Pass a unique `labKey`
 - [ ] Decide on `theme` if Learn's toggle doesn't follow the system
+- [ ] Create the React wrapper (§3.5) before wiring anything function-shaped
 - [ ] Check the JS budget (§3.4) against your page-weight targets
 - [ ] Wire `validate-lab` into CI
 - [ ] Compare against `app/embed.html` if anything looks wrong

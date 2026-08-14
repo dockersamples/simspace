@@ -84,11 +84,22 @@ so `npm run dev` hot-reloads changes and nothing ever runs against a stale
 | `config` / `labspaceUrl`      | a resolved labspace, or one to fetch at mount                         |
 | `labKey`                      | namespaces saved progress, variables, engine state, transcripts       |
 | `brand`                       | `{ logo, eyebrow, backHref }`, or `false` for no header               |
+| `resetButton`                 | show the built-in Reset control (default true)                        |
+| `onReady`                     | called with `{ reset, resetProgress }` for host-provided controls     |
 | `menuItems`                   | extra actions in the header's context menu                            |
 | `theme`                       | `"auto"` (default), `"light"`, `"dark"` — the terminal is always dark |
 | `analytics`                   | where milestone events go; omitted → nothing leaves the page          |
 | `section` / `onSectionChange` | drive the current section from the host's router                      |
 | `components`                  | extra markdown directives                                             |
+
+**Reset** lives in the terminal pane's tab bar and is there whatever you pass for
+`brand` — a lab a learner can't restart is a dead end. To put it in your own
+chrome instead, take the handle from `onReady` and set `resetButton={false}`.
+
+**Function props** (`analytics`, `onReady`, `onSectionChange`, `onError`,
+`components`, `wrapTerminal`) cannot be passed from an `.astro` file: Astro
+serializes island props and drops functions silently. Pass them from a React
+wrapper component instead.
 
 `LabspaceLayout` is the same thing without the workshop provider, for a host
 that needs to read the loaded lab before the runtime mounts. The lab app uses

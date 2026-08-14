@@ -26,7 +26,9 @@ createRoot(document.getElementById("root")).render(
       // Its own storage namespace, so poking at the harness doesn't overwrite
       // the progress or terminal transcripts of the same lab in the app.
       labKey="embed-harness"
-      brand={{ eyebrow: "Lab" }}
+      // No brand at all — the host page has its own header. This is the case
+      // that used to leave a learner with no way to start the lab over.
+      brand={false}
       autoSaveId="embed-harness-split"
     />
   </StrictMode>,
