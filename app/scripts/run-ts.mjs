@@ -13,6 +13,7 @@ import { pathToFileURL } from "node:url";
 import { writeFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { workspaceSource } from "./workspace-source.mjs";
 
 const [, , entry, ...rest] = process.argv;
 if (!entry) {
@@ -27,6 +28,13 @@ const result = await build({
   format: "cjs",
   write: false,
   logLevel: "warning",
+  // Resolve the workspace packages to their SOURCE, the same way vite.config.js
+  // and vitest.config.js do. Without this, esbuild follows their published
+  // `exports` into `dist/` — which is a build artifact, absent from a fresh
+  // checkout and from the authoring image — and `npm run validate-lab` fails
+  // with "Could not resolve @dockersamples/simspace-simulator" before it reads a
+  // single lab.
+  alias: workspaceSource,
 });
 
 const dir = mkdtempSync(join(tmpdir(), "labspace-run-"));
