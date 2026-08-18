@@ -1,0 +1,109 @@
+name: CI
+
+# The checks that have to hold before anything is published.
+#
+# This exists because a regression reached `dockersamples/simspace-authoring:latest`
+# and broke every downstream lab repo's deploy for two days (#2). Nothing ran the
+# repo's own tests on a push or a pull request — `deploy.yml` only builds the app,
+# and `deploy-lab.yml` is the reusable workflow OTHER repos call.
+#
+# ORDER IS LOAD-BEARING: everything below runs against a plain `npm ci` checkout,
+# with no `packages/*/dist` on disk. That is the state CI and the container images
+# are really in, and it is the difference between catching #2 and shipping it —
+# the bug was invisible on a developer machine precisely because a package build
+# had left a dist/ lying around for the resolver to find. `build:packages` is
+# therefore LAST, and is a check in its own right rather than a setup step.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run per branch; a new push supersedes the one still going.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, test, validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+        working-directory: app
+
+      - name: Lint
+        run: npm run lint
+        working-directory: app
+
+      - name: Check formatting
+        run: npm run prettier-check
+        working-directory: app
+
+      - name: Typecheck the simulator package
+        run: npm run typecheck
+        working-directory: app
+
+      - name: Test (simulator, labspace, app)
+        run: npm test
+        working-directory: app
+
+      # The step that #2 broke. It bundles scripts/validate-lab.ts with esbuild,
+      # which has to resolve the workspace packages the same way Vite does.
+      - name: Validate the sample labs
+        run: npm run validate-lab
+        working-directory: app
+
+      - name: Build the app
+        run: npm run build
+        working-directory: app
+
+      # Last, deliberately — see the note at the top. Also a check of the
+      # PUBLISHABLE output: build-package.mjs fails on a bare import that isn't a
+      # declared dependency (npm's hoisting hides those in a monorepo) and on any
+      # url() in the emitted CSS that resolves to nothing.
+      - name: Build the publishable packages
+        run: npm run build:packages
+        working-directory: app
+
+  authoring-image:
+    name: Validate through the authoring image
+    # What downstream lab repos actually run (deploy-lab.yml), so it catches
+    # breakage the source-tree checks can't see — a Dockerfile that forgets to
+    # COPY a new workspace manifest, say. Needs the Docker Hub login below for
+    # the hardened base image, which a pull request from a fork cannot do, so it
+    # is skipped there; `checks` above still gates those.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # for the Docker Hub OIDC token exchange
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Login to Docker Hub (OIDC)
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        env:
+          DOCKERHUB_OIDC_CONNECTIONID: 80de9e44-46f6-4c48-96a5-e0bd0a336f5b
+        with:
+          username: dockersamples
+
+      - name: Build the authoring image
+        run: docker build --target authoring -t simspace-authoring:ci .
+
+      # Byte for byte what deploy-lab.yml runs in every downstream repo.
+      - name: Validate labs through the image
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/app/public/labs:/labs:ro" \
+            simspace-authoring:ci \
+            npm run validate-lab -- /labs

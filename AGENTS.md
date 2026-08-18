@@ -94,9 +94,11 @@ kit/                 THE AUTHORING KIT — a Docker Sandboxes mixin kit publishe
                      as dockersamples/simspace-authoring-kit. spec.yaml + files/, carrying
                      the three authoring skills author repos consume. See below
 scripts/             publish-kit.sh — packages kit/ and pushes the OCI artifact
-.github/workflows/   deploy.yml (Pages for THIS repo) + deploy-lab.yml (reusable
-                     workflow author repos call to validate + deploy their labs)
-                     + publish-kit.yml (publishes kit/)
+.github/workflows/   ci.yml (lint/test/validate on every push + PR — READ ITS
+                     HEADER before reordering it) + deploy.yml (Pages for THIS
+                     repo) + deploy-lab.yml (reusable workflow author repos call
+                     to validate + deploy their labs) + publish-kit.yml
+                     (publishes kit/) + build-images.yml (pushes both images)
 Dockerfile           two images: `production` (nginx runtime) + `authoring`
                      (Node + validate-lab, for author dev/CI)
 docker-bake.hcl      bake targets: app / app-local, authoring / authoring-local
@@ -233,6 +235,31 @@ DRY_RUN=1 ./scripts/publish-kit.sh v1.0.0
 
 The kit's version is independent of the image tags above — it describes the kit
 (skills, guidance, ports, network), not the app.
+
+## CI runs with no `packages/*/dist`
+
+`ci.yml` runs lint, formatting, typecheck, the three test suites, `validate-lab`
+and the app build **before** it builds the packages — and that order is the point
+of the workflow, not an accident of how it was written.
+
+The packages publish built output, so their `exports` point at `dist/`, while
+everything inside this repo resolves them to SOURCE through the shared alias map
+in `app/scripts/workspace-source.mjs`. Miss that map in one place and the tool
+that missed it silently falls through `exports` into `dist/` — which exists on a
+developer machine, because something built it earlier, and does not exist in a
+fresh checkout or in either image.
+
+That is exactly how issue #2 shipped: `run-ts.mjs` (which esbuild-bundles
+`validate-lab.ts`) never got the alias, `npm run validate-lab` passed for
+everyone locally, and every downstream lab repo's deploy broke against the
+published authoring image. So: **anything new that resolves these package names
+imports the shared map**, and CI never builds a package before running the
+checks.
+
+`ci.yml` also validates the labs _through the authoring image_, because that is
+what `deploy-lab.yml` runs in every downstream repo — it catches Dockerfile-level
+breakage (a new workspace manifest that isn't COPYed, say) that the source-tree
+checks cannot see.
 
 ## Commands
 
