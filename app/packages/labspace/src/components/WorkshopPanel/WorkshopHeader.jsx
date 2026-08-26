@@ -19,8 +19,10 @@ import { PresenceBar } from "./PresenceBar.jsx";
 // and where "back" goes. Pass `false` to drop the header entirely when the host
 // page already has one. `menuItems` appends host actions to the context menu —
 // the lab app adds its offline-cache toggle there, which is a property of that
-// app's service worker rather than of the runtime.
-export function WorkshopHeader({ brand = {}, menuItems = [] }) {
+// app's service worker rather than of the runtime. `showReset` hides just the
+// "Reset lab" entry — for a host that keeps the brand header but drives reset
+// from its own chrome via `onReady` (mirrors `resetButton` on <Labspace>).
+export function WorkshopHeader({ brand = {}, menuItems = [], showReset = true }) {
   const workshop = useWorkshop();
   const { title, sections } = workshop;
   const { activeSection } = useActiveSection();
@@ -151,15 +153,17 @@ export function WorkshopHeader({ brand = {}, menuItems = [] }) {
             style={{ top: menu.y, left: menu.x }}
             role="menu"
           >
-            <button
-              type="button"
-              className="workshop-context-menu-item"
-              role="menuitem"
-              onClick={resetLab}
-            >
-              <span className="material-symbols-outlined">restart_alt</span>
-              Reset lab
-            </button>
+            {showReset && (
+              <button
+                type="button"
+                className="workshop-context-menu-item"
+                role="menuitem"
+                onClick={resetLab}
+              >
+                <span className="material-symbols-outlined">restart_alt</span>
+                Reset lab
+              </button>
+            )}
             {progress?.hasSteps && (
               <button
                 type="button"

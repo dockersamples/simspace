@@ -21,6 +21,7 @@ export function WorkshopPanel({
   menuItems,
   components,
   theme = "auto",
+  showReset = true,
 }) {
   const { activeSection } = useActiveSection();
 
@@ -29,7 +30,7 @@ export function WorkshopPanel({
       className="workshop-panel"
       data-labspace-theme={theme === "auto" ? undefined : theme}
     >
-      <WorkshopHeader brand={brand} menuItems={menuItems} />
+      <WorkshopHeader brand={brand} menuItems={menuItems} showReset={showReset} />
 
       <div className="workshop-scroll">
         <div className="workshop-body">

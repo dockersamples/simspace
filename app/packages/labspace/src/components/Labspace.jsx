@@ -85,6 +85,7 @@ export function LabspaceLayout({
                   menuItems={menuItems}
                   theme={theme}
                   components={components}
+                  showReset={resetButton}
                 />
               </Panel>
               <PanelResizeHandle className="labspace-resize-handle">
@@ -145,8 +146,9 @@ export function LabspaceLayout({
  *   onError        Called if the lab fails to load (it also renders the error).
  *   wrapTerminal   Decorate the terminal pane, e.g. to host it in a pop-out
  *                  window. Receives the pane, returns what to render.
- *   resetButton    Show the built-in "Reset lab" control in the terminal pane's
- *                  tab bar. Default true. Set false only if you provide your own
+ *   resetButton    Show the built-in "Reset lab" control — both the terminal
+ *                  pane's tab bar icon and the brand header's context-menu
+ *                  entry. Default true. Set false only if you provide your own
  *                  via `onReady` — a lab with no way to start over is a dead end.
  *   onReady        Called with `{ reset, resetProgress }` once the lab is
  *                  running, for a host that wants to drive it from its own
