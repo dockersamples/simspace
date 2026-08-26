@@ -23,7 +23,11 @@ import { PresenceBar } from "./PresenceBar.jsx";
 // app's service worker rather than of the runtime. `showReset` hides just the
 // "Reset lab" entry — for a host that keeps the brand header but drives reset
 // from its own chrome via `onReady` (mirrors `resetButton` on <Labspace>).
-export function WorkshopHeader({ brand = {}, menuItems = [], showReset = true }) {
+export function WorkshopHeader({
+  brand = {},
+  menuItems = [],
+  showReset = true,
+}) {
   const workshop = useWorkshop();
   const { title, sections } = workshop;
   const { activeSection } = useActiveSection();
