@@ -151,6 +151,22 @@ describe("the analytics seam", () => {
     expect(completions).toHaveLength(1);
   });
 
+  it("clears completed steps when the terminal broadcasts a reset", async () => {
+    mount(undefined);
+    await act(async () => {
+      globalThis.__broadcast({ type: "step", stepId: "step-1" });
+    });
+    expect(screen.getByTestId("probe")).toHaveTextContent("done");
+
+    await act(async () => {
+      globalThis.__broadcast({ type: "reset" });
+    });
+
+    // A reset terminal with old checkmarks still showing would be confusing —
+    // the two always clear together.
+    expect(screen.getByTestId("probe")).toHaveTextContent("not-done");
+  });
+
   it("starts no timer for an adapter that did not ask for a heartbeat", async () => {
     const setInterval = vi.spyOn(globalThis, "setInterval");
 

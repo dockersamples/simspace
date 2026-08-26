@@ -12,8 +12,9 @@ import { PresenceBar } from "./PresenceBar.jsx";
 // segmented progress bar so the learner always knows where they are.
 //
 // The brand mark hosts a hidden right-click menu with a "Reset lab" action.
-// It's deliberately out of the way — resetting re-seeds the whole shared
-// machine, so it's mainly a tool for authors/testers rather than learners.
+// It's deliberately out of the way — resetting clears every terminal and the
+// learner's progress, so it's mainly a tool for authors/testers rather than
+// learners.
 //
 // `brand` is the host's identity, not this package's: a logo URL, an eyebrow,
 // and where "back" goes. Pass `false` to drop the header entirely when the host
@@ -46,7 +47,7 @@ export function WorkshopHeader({ brand = {}, menuItems = [], showReset = true })
     if (!terminal?.resetAll) return;
     if (
       window.confirm(
-        "Reset the lab? This clears every terminal and restores the starting state.",
+        "Reset this lab? Your terminals and progress will be cleared, and you'll start over from the beginning.",
       )
     ) {
       terminal.resetAll();
@@ -58,15 +59,15 @@ export function WorkshopHeader({ brand = {}, menuItems = [], showReset = true })
     panelWindow?.toggle();
   }, [panelWindow, closeMenu]);
 
-  // Progress is intentionally NOT cleared by "Reset lab" (re-seeding the
-  // exercise shouldn't erase what the learner has completed). This is the
-  // explicit, separate way to clear it.
+  // "Reset lab" already clears progress along with the terminals. This is for
+  // the rarer case of wanting a clean set of checkmarks without touching the
+  // running lab.
   const resetProgress = useCallback(() => {
     closeMenu();
     if (!progress?.resetProgress) return;
     if (
       window.confirm(
-        "Reset your progress? This clears your completed-step check-marks. Your lab state is unaffected.",
+        "Reset your progress? This clears your completed-step checkmarks. Your terminals are unaffected.",
       )
     ) {
       progress.resetProgress();

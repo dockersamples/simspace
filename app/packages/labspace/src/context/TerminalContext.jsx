@@ -90,7 +90,9 @@ export function TerminalContextProvider({ children }) {
   );
 
   // Reset re-seeds the shared machine once, then tells every terminal to clear
-  // its transcript and re-greet.
+  // its transcript and re-greet. The `reset` broadcast also tells
+  // ProgressContext to clear completed-step checkmarks — carrying old progress
+  // past a reset terminal would be confusing, so the two always move together.
   const resetAll = useCallback(() => {
     if (!simulator) return;
     try {

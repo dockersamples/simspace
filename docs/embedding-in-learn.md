@@ -289,9 +289,10 @@ changed".
 ### 5.2 Resetting a lab
 
 Every lab shows a **Reset control in the terminal pane's tab bar**, whatever you
-pass for `brand`. Resetting re-seeds the shared machine and clears every
-terminal; it asks for confirmation first, and it deliberately does **not** clear
-the learner's completed steps.
+pass for `brand`. Resetting re-seeds the shared machine, clears every terminal,
+and clears the learner's completed steps along with it — a reset terminal with
+old checkmarks still showing would be confusing. It asks for confirmation
+first.
 
 If you'd rather put reset in your own page chrome, `onReady` hands you the
 handle — and set `resetButton={false}` so there aren't two:
@@ -306,8 +307,11 @@ const [lab, setLab] = useState(null);
 </>;
 ```
 
-`onReady` gives `{ reset, resetProgress }`. Don't turn the built-in off without
-providing a replacement: a simulated lab a learner can't restart is a dead end.
+`onReady` gives `{ reset, resetProgress }`. `reset` clears terminals and
+progress together; `resetProgress` is the narrower action for clearing
+checkmarks alone, without touching the running lab. Don't turn the built-in
+reset off without providing a replacement: a simulated lab a learner can't
+restart is a dead end.
 
 ### 5.3 Theming: it follows the reader's OS unless you tell it otherwise
 

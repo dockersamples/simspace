@@ -122,6 +122,10 @@ export function ProgressContextProvider({
     if (!subscribe) return undefined;
     return subscribe((event) => {
       if (event.type === "reset") {
+        // A lab reset re-seeds the terminals; carrying old checkmarks past that
+        // would show progress the learner no longer has, so it clears with them.
+        setCompleted(progress.resetProgress(labKey));
+        labCompleteSentRef.current = false;
         track("reset");
         return;
       }

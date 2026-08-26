@@ -42,11 +42,11 @@ export function TerminalPanel({ showReset = true }) {
     [register],
   );
 
-  // Re-seeds the whole shared machine, so it asks first.
+  // Clears terminals and progress, so it asks first.
   const confirmReset = useCallback(() => {
     if (
       window.confirm(
-        "Reset the lab? This clears every terminal and restores the starting state.",
+        "Reset this lab? Your terminals and progress will be cleared, and you'll start over from the beginning.",
       )
     ) {
       resetAll();

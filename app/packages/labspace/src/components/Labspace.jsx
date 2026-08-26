@@ -152,9 +152,12 @@ export function LabspaceLayout({
  *                  via `onReady` — a lab with no way to start over is a dead end.
  *   onReady        Called with `{ reset, resetProgress }` once the lab is
  *                  running, for a host that wants to drive it from its own
- *                  chrome. Like every function prop here, it cannot come from an
- *                  `.astro` file — Astro drops function props silently. Pass it
- *                  from a React wrapper.
+ *                  chrome. `reset` clears terminals AND progress together;
+ *                  `resetProgress` is the separate, narrower action for
+ *                  clearing checkmarks without touching the running lab. Like
+ *                  every function prop here, it cannot come from an `.astro`
+ *                  file — Astro drops function props silently. Pass it from a
+ *                  React wrapper.
  *   defaultSplit   Instructions width as a percentage. Default 50.
  *   autoSaveId     Persist the reader's split position under this key.
  */
