@@ -139,7 +139,12 @@ export function CodeBlock({ node, inline, className, children, ...props }) {
           language={isPrompt ? "text" : language}
           PreTag="div"
           className="bg-none"
-          wrapLines={highlightLines.length > 0 || printMode}
+          // Always true, even with no highlighted lines and outside print mode:
+          // without it, lines are one flat inline run broken only by a literal
+          // "\n" text node, and browsers don't reliably reset the x-position at
+          // that forced break — later lines render a few pixels left of the
+          // first. Wrapping each line in its own block box fixes that.
+          wrapLines={true}
           wrapLongLines={printMode}
           showLineNumbers={highlightLines.length > 0}
           lineNumberStyle={{ display: "none" }}
