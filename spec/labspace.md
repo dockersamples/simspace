@@ -443,9 +443,12 @@ app's `config.json` — NOT per lab:
     "endpoint": "https://pulse.example.com",
     "presence": true,
     "identity": "optional-name"
-  }
+  },
+  "title": "Acme Labs"
 }
 ```
+
+`config.json`'s other field, `title`, is unrelated to tracking — see §10.3.
 
 When that default is set, **every lab is tracked automatically** (bucketed by its
 catalog id) — a lab needs no `tracking:` field at all. With no `config.json`
@@ -483,6 +486,22 @@ Behaviour:
   works from section navigation alone.
 
 See `pulse/README.md` for the full backend model and deployment.
+
+### 10.3 `title` — deployment-wide site name
+
+`config.json`'s `title` field names the *deployment*, not a lab — it replaces
+the default `"Labspace"` on the landing page (shown when the catalog has more
+than one entry) and in that page's browser tab title (`"<title> — <heading>"`).
+It has no effect once inside a lab, where the tab title is the lab's own
+`title:` field (§4) instead.
+
+```json
+{ "title": "Acme Labs" }
+```
+
+With no `config.json`, or no `title` in it, the default `"Labspace"` is used.
+See `README.md` (Deploying) for how `config.json` is provided in dev vs.
+production.
 
 ---
 

@@ -103,12 +103,16 @@ with `tracking: false` in its `labspace.yaml` (see
 pointing at `http://localhost:8888`, so `docker compose up` lights up presence
 out of the box.
 
+The same `config.json` also carries an optional `title`, the deployment-wide
+site name shown on the landing page and browser tab in place of the default
+`"Labspace"` (see [`spec/labspace.md`](spec/labspace.md) §10.3).
+
 **Dev vs. production endpoint.** The committed `config.json` is the dev default.
-The deploy pipeline overwrites it with the production `pulse` URL — set a repo
-variable `PULSE_ENDPOINT` and the publish workflow writes `config.json` from it
-(and removes it when unset, so a demo with no backend simply tracks nothing).
-Lab authors don't need the compose — they use the prebuilt authoring image (see
-`simspace-starter`).
+The deploy pipeline overwrites it with the production `pulse` URL and site
+title — set a repo variable `PULSE_ENDPOINT` and the publish workflow writes
+`config.json` from it (and removes it when unset, so a demo with no backend
+simply tracks nothing). Lab authors don't need the compose — they use the
+prebuilt authoring image (see `simspace-starter`).
 
 ## Authoring a lab
 

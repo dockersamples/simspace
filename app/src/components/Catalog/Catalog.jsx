@@ -47,6 +47,7 @@ function LabCompletedCount({ tracking }) {
 // single lab is entered directly, with no landing page).
 export function Catalog({ labs }) {
   const appConfig = useAppConfig();
+  const siteTitle = appConfig?.title || "Labspace";
 
   // The catalog can hold labs, slide decks, or both, so the copy adapts rather
   // than calling a deck a lab. "Choose a lab" stays the wording for a lab-only
@@ -67,15 +68,15 @@ export function Catalog({ labs }) {
         : "Pick a hands-on lab below. Everything runs right in your browser — no setup required.";
 
   useEffect(() => {
-    document.title = `Labspace — ${heading}`;
-  }, [heading]);
+    document.title = `${siteTitle} — ${heading}`;
+  }, [siteTitle, heading]);
 
   return (
     <div className="catalog">
       <header className="catalog-header">
         <div className="catalog-brand">
           <img src="docker.svg" alt="" className="catalog-brand-logo" />
-          <span className="catalog-eyebrow">Labspace</span>
+          <span className="catalog-eyebrow">{siteTitle}</span>
         </div>
         <h1 className="catalog-title">{heading}</h1>
         <p className="catalog-subtitle">{subtitle}</p>
