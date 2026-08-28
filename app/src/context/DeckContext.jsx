@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { useNavigate, useParams } from "react-router";
-import { LAYOUTS, THEMES, parseColumns } from "../deck/slideConfig";
+import { deriveSlidePresentation, countFragments } from "../deck/deriveSlide";
 import {
   substituteVariables,
   useWorkshop,
@@ -28,7 +28,11 @@ import {
 // presentation beat within a slide, not a place — putting it in the URL would
 // litter history with entries nobody wants to walk back through.
 
-const DeckContext = createContext(null);
+// Exported so the print/export view can supply a synthetic value for EVERY
+// slide at once (rather than "the current one", which is all the router-driven
+// provider below tracks) and still reuse the exact same slide-rendering
+// components as the live deck. See DeckExportView.
+export const DeckContext = createContext(null);
 
 export function DeckContextProvider({ children }) {
   const workshop = useWorkshop();
@@ -122,81 +126,14 @@ export function DeckContextProvider({ children }) {
     () => (current ? substituteVariables(current.notes, variables || {}) : ""),
     [current, variables],
   );
-  // The slide's regions (the columns of a `split`), substituted the same way.
-  // Every layout reads this; non-split layouts simply use the first entry.
-  const regions = useMemo(
-    () =>
-      (current?.regions ?? []).map((region) =>
-        substituteVariables(region, variables || {}),
-      ),
-    [current, variables],
+
+  // Layout, theme, columns, image, chrome, and the substituted regions — one
+  // shared function so the print/export view derives every slide the exact
+  // same way instead of duplicating these rules (and risking them drifting).
+  const { regions, layout, columns, image, theme, chrome } = useMemo(
+    () => deriveSlidePresentation(current, { workshop, variables }),
+    [current, workshop, variables],
   );
-
-  // Presentation config: the slide's own settings layered over the deck's
-  // defaults, so an author sets the brand once in labspace.yaml and overrides
-  // per slide only where a slide differs.
-  const layout = useMemo(() => {
-    const raw = current?.config?.layout;
-    return LAYOUTS.includes(raw) ? raw : "default";
-  }, [current]);
-
-  // `columns: 1 2` weights a split's columns instead of sharing the width
-  // equally. Real decks are full of asymmetric pairs — a narrow label column
-  // against a wide description — and forcing them to 1:1 rewrites the design.
-  // Accepts a list or a string; anything unparseable falls back to equal
-  // columns, which is the layout's own default.
-  const columns = useMemo(
-    () => parseColumns(current?.config?.columns),
-    [current],
-  );
-
-  // A full-bleed image for `layout: image`, resolved like every other slide
-  // asset so `image: assets/x.png` sits next to the chapter file. `alt:` is a
-  // sibling key rather than part of the path because this image is content —
-  // a deck read on a screen reader or exported to a printed handout still owes
-  // the reader a description of it.
-  const image = useMemo(() => {
-    const src = resolveAsset(current?.config?.image, current?.baseUrl);
-    if (!src) return null;
-    return { src, alt: current?.config?.alt ?? "" };
-  }, [current]);
-
-  // Precedence: the slide's own theme, then the layout's default, then the deck
-  // default, then light.
-  //
-  // The layout default deliberately outranks the DECK default. A deck-wide
-  // `theme: light` means "content slides are light" — read as outranking the
-  // layout it would flatten every chapter marker back to white, which is the one
-  // thing a divider slide exists not to be. An author who genuinely wants a light
-  // divider says so on that slide, where it's visible.
-  const theme = useMemo(() => {
-    const fromSlide = current?.config?.theme;
-    if (THEMES.includes(fromSlide)) return fromSlide;
-    if (layout === "title" || layout === "image") return "dark";
-    if (layout === "section") return "tint";
-    return THEMES.includes(workshop.theme) ? workshop.theme : "light";
-  }, [current, workshop.theme, layout]);
-
-  // Chrome text. An explicit empty string suppresses a band the deck default
-  // would otherwise supply, which is why this checks for undefined rather than
-  // falsiness.
-  const chrome = useMemo(() => {
-    const config = current?.config ?? {};
-    const brand = workshop.brand ?? {};
-    const pick = (key) =>
-      config[key] !== undefined ? config[key] : brand[key];
-    return {
-      eyebrow: pick("eyebrow") ?? "",
-      source: pick("source") ?? "",
-      byline: config.byline ?? "",
-      // Overridable per slide because a dark surface needs the reversed mark —
-      // the one piece of brand that legitimately varies slide to slide. A slide's
-      // own value is lab-relative (the loader already resolved `brand.logo`), so
-      // resolve it here against the slide's directory.
-      logo: resolveAsset(pick("logo"), current?.baseUrl) ?? null,
-      showChrome: config.chrome !== false && brand.chrome !== false,
-    };
-  }, [current, workshop.brand]);
 
   const value = useMemo(
     () => ({
@@ -241,32 +178,6 @@ export function DeckContextProvider({ children }) {
   );
 
   return <DeckContext.Provider value={value}>{children}</DeckContext.Provider>;
-}
-
-/**
- * Resolves a slide-relative asset path against the slide's directory, so a config
- * value like `logo: assets/docker-logo-white.svg` behaves like every other path in
- * a lab. Absolute paths, full URLs, and already-resolved values pass through.
- */
-function resolveAsset(path, baseUrl) {
-  if (!path || typeof path !== "string") return path;
-  if (/^([a-z]+:)?\/\//i.test(path) || path.startsWith("/")) return path;
-  if (!baseUrl) return path;
-  try {
-    return new URL(path, baseUrl).toString();
-  } catch {
-    return path;
-  }
-}
-
-/**
- * Counts the `:::fragment` containers in a slide's markdown. Cheap string scan
- * rather than an AST walk: this runs on every slide change and the directive is
- * unambiguous at the start of a line.
- */
-function countFragments(markdown) {
-  const matches = (markdown || "").match(/^\s*:::fragment\b/gm);
-  return matches ? matches.length : 0;
 }
 
 export const useDeck = () => useContext(DeckContext);

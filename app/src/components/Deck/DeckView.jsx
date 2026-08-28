@@ -251,7 +251,10 @@ export function DeckView() {
  * is the one thing a full-bleed image has to get past. Nothing renders for any
  * other layout — a picture in the text flow is an ordinary markdown image.
  */
-function SlideBleedImage() {
+// Exported so the print/export view can reuse it verbatim per slide — see
+// DeckExportView, which supplies its own DeckContext value per slide instead
+// of the router-driven "current slide" this file tracks.
+export function SlideBleedImage() {
   const { layout, image } = useDeck();
   if (layout !== "image" || !image) return null;
   return <img className="deck-image-bleed" src={image.src} alt={image.alt} />;
@@ -269,7 +272,7 @@ function SlideBleedImage() {
  * headline that lives *inside* the left column — without inspecting content or
  * adding a second layout name.
  */
-function SlideRegions() {
+export function SlideRegions() {
   const { layout, regions, current, columns: weights } = useDeck();
   const baseUrl = current?.baseUrl;
 
@@ -336,7 +339,7 @@ function SlideRegions() {
  * below. Driven entirely by config (deck-level `brand`, overridable per slide),
  * so a deck opts into the full Docker chrome without any slide markup.
  */
-function SlideChrome({ position }) {
+export function SlideChrome({ position }) {
   const { chrome, index, total, layout } = useDeck();
   if (!chrome.showChrome) return null;
 

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MockTerminal } from "@dockersamples/simspace-simulator/react";
-import { useTerminal } from "@dockersamples/simspace-labspace";
+import { useTerminal, usePrintMode } from "@dockersamples/simspace-labspace";
 import { useChildWindow } from "../PanelWindow/useChildWindow";
 import "./SlideTerminal.scss";
 
@@ -19,6 +19,7 @@ import "./SlideTerminal.scss";
 // same terminal — same simulator, same transcript, no message bus.
 export function SlideTerminal({ node }) {
   const terminal = useTerminal();
+  const printMode = usePrintMode();
   const props = node?.properties ?? {};
 
   // Match the id to a declared terminal so `terminal-id=` on a code fence and
@@ -77,6 +78,26 @@ export function SlideTerminal({ node }) {
       active.blur();
     }
   }, []);
+
+  // Print/export renders every slide at once with no interaction to come — a
+  // live terminal there would boot the simulator dozens of times over for
+  // something nobody can click. Show the same static shape instead, so a
+  // reader still sees a terminal belongs on this slide.
+  if (printMode) {
+    return (
+      <div className="slide-terminal slide-terminal-print" style={{ height }}>
+        <div className="slide-terminal-bar">
+          <span className="slide-terminal-label">
+            <span className="material-symbols-outlined">terminal</span>
+            {terminalId}
+          </span>
+        </div>
+        <div className="slide-terminal-placeholder">
+          Live demo terminal — run the lab to try it.
+        </div>
+      </div>
+    );
+  }
 
   // A deck may declare no `simulator:` at all. Say so plainly rather than
   // rendering an inert black box the author will file a bug about.
