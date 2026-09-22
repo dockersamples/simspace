@@ -222,7 +222,7 @@ The one-line form works too: `<!-- layout: split -->`.
 | --------- | ------------------------------------------------------------------------- |
 | `layout`  | One of §5's layouts. Default `default`.                                    |
 | `theme`   | `light` · `dark` · `tint`. See §9 for how the default is chosen.            |
-| `eyebrow` | Top-right label. `""` suppresses the deck default.                         |
+| `eyebrow` | Small label directly above the headline. `""` suppresses the deck default. |
 | `source`  | Bottom-left citation. `""` suppresses the deck default.                    |
 | `byline`  | Replaces `source` in the footer on a `title` layout.                       |
 | `logo`    | Overrides the deck logo — a dark surface needs the reversed mark. Slide-relative. |
@@ -350,6 +350,13 @@ badge would end up in the very captures the mode exists for.
 `layout:` in a slide's config selects one of six arrangements. Everything else
 about the slide is ordinary markdown.
 
+Every layout centres its content vertically on the slide — the reference
+template's most consistent habit — except `image`, which anchors its panel to the
+foot of the picture.
+
+The "default theme" column applies only when the deck itself names no `theme:`;
+a deck that does names the surface for every layout but `image`. See §9.
+
 | Layout    | Shape                                                            | Default theme |
 | --------- | ---------------------------------------------------------------- | ------------- |
 | `default` | Heading, then content flowing beneath it. The workhorse.          | deck default  |
@@ -358,7 +365,7 @@ about the slide is ordinary markdown.
 | `split`   | Regions as columns, optionally under a header band (§3.5, §5.3)    | deck default  |
 | `stats`   | Heading, then the slide's `:::stat` blocks side by side            | deck default  |
 | `quote`   | A pull quote at billboard size, with attribution                   | deck default  |
-| `image`   | A full-bleed picture with the words in a panel over it (§5.4)      | `dark`        |
+| `image`   | A full-bleed picture with the words in a panel over it (§5.4)      | `dark` (wins over the deck default) |
 
 Notes on the ones with conventions attached:
 
@@ -403,10 +410,10 @@ hunting through the stylesheet:
 
 | Custom property    | Default  | Used by                                        |
 | ------------------ | -------- | ---------------------------------------------- |
-| `--deck-fs-hero`   | `5.6cqi` | `title`/`section` headline, a stat's number      |
-| `--deck-fs-h1`     | `4cqi`   | a content slide's headline                       |
-| `--deck-fs-h2`     | `2.5cqi` | `h2`, and a `quote`                              |
-| `--deck-fs-h3`     | `2cqi`   | `h3` — usually a column's main statement          |
+| `--deck-fs-hero`   | `4.8cqi` | `title`/`section` headline, a stat's number      |
+| `--deck-fs-h1`     | `3.4cqi` | a content slide's headline                       |
+| `--deck-fs-h2`     | `2.2cqi` | `h2`, and a `quote`                              |
+| `--deck-fs-h3`     | `1.8cqi` | `h3` — usually a column's main statement          |
 | `--deck-fs-lead`   | `1.7cqi` | the standfirst under a title/section headline     |
 | `--deck-fs-body`   | `1.45cqi`| prose and list items — the default               |
 | `--deck-fs-small`  | `1.25cqi`| card bodies, table cells, stat captions          |
@@ -416,6 +423,11 @@ hunting through the stylesheet:
 Body copy sits deliberately above the reference deck's equivalent (its two-column
 list is 24px, or 1.25cqi): that deck is sized for a projector, whereas these are
 also read at laptop size in a browser window.
+
+The display sizes sit ~15% *below* where they were when headings were set in
+Inter. A mono puts every glyph on the same advance, so the same headline runs
+materially wider at the same size — the old `5.6cqi` hero ran a short title off
+the edge of the slide. Body sizes are untouched: prose is still Inter.
 
 Two structural rules make the scale mean what it says, and both are easy to undo
 by accident:
@@ -665,35 +677,56 @@ theme: light # surface every slide starts from
 
 brand:
   logo: assets/docker-logo-deep-blue.svg # slide-relative
-  eyebrow: "A Tour of Docker" # top-right label
+  eyebrow: "A Tour of Docker" # label above the headline
   source: "DOCKER DEVELOPER PLATFORM · 2026" # bottom-left citation
 ```
 
-| Surface | Use                                                                 |
-| ------- | ------------------------------------------------------------------- |
-| `light` | Body-copy white. Content slides.                                     |
-| `dark`  | Deep blue with the brand wave background. Openers, quotes, emphasis.  |
-| `tint`  | Light blue. Chapter dividers.                                        |
+| Surface | Use                                                                    |
+| ------- | ---------------------------------------------------------------------- |
+| `light` | Near-white with the template's dot texture. Content slides, and the default for a whole deck. |
+| `dark`  | Deep `#0c101a` with the same dot texture. Openers, quotes, emphasis.    |
+| `tint`  | Light blue. Chapter dividers.                                          |
 
-**Theme precedence** is: the slide's own `theme:`, then the **layout's** default
-(§5), then the deck default, then `light`. The layout default deliberately
-outranks the deck default — a deck-wide `theme: light` means "content slides are
-light", and letting it outrank the layout would flatten every chapter divider back
-to white, which is the one thing a divider exists not to be.
+**Theme precedence** is: the slide's own `theme:`, then `image` (always `dark`),
+then the **deck's** `theme:` if it names one, then the **layout's** default (§5),
+then `light`.
 
-**Chrome.** The top band carries the logo and eyebrow; the bottom band carries the
-source (or a `title` slide's `byline`) and an automatic zero-padded page number.
-A slide overrides any of them, suppresses one with `""`, or drops both bands with
-`chrome: false`.
+The deck's own `theme:` outranks the layout default. A deck that says
+`theme: light` gets light on every layout — opener and divider included — because
+the common reason to say it is a room whose projector you have not seen, and the
+safe play there is to put the whole deck on the one surface you tested. A deck
+that names **no** theme still gets the layout defaults, so existing decks keep
+their dark openers and tinted dividers.
+
+`image` stays ahead of the deck default: its overlay is a scrim over an arbitrary
+photograph, and light-on-dark is the only combination that reliably survives that.
+A slide's own `theme:` overrides even this.
+
+> **Migrating a deck to `theme: light`.** A `title`, `section` or `quote` slide
+> that used to be dark is now light, so any `logo:` override pointing at the
+> reversed (white) mark on those slides renders invisible. Drop the override and
+> the deck-level logo applies.
+
+**Chrome.** The eyebrow sits directly above the slide's headline, so it travels
+with the content when a layout centres it. The bottom band carries the source (or
+a `title` slide's `byline`), an automatic zero-padded page number, and the logo. A
+slide overrides any of them, suppresses one with `""`, or drops the chrome
+entirely with `chrome: false`.
 
 **Brand assets are slide-relative**, like every other path in a lab, so a deck
 carries its own logo and stays a portable, self-contained bundle. Absolute paths
 and full URLs pass through untouched.
 
-**Fonts.** The theme sets display type in **Inter** and mono in **Roboto Mono**,
-both of which the app already ships. The reference design uses ABC Repro, a
-licensed face; using what's already bundled means the theme carries no font
-licensing question and no extra download.
+**Fonts.** The theme sets display type — every heading, the eyebrow, the footer
+and a stat's number — in **IBM Plex Mono**, body copy in **Inter**, and code in
+**Roboto Mono**. The mono display face is the loudest thing about the Docker/Next
+template and the face it actually embeds; IBM Plex Mono is OFL, so the theme still
+carries no font licensing question. Only the four weights the deck uses are
+bundled.
+
+Headings carry **no negative letter-spacing**. The tracking the scale used to
+apply was tuned for a heavy geometric sans; a mono is already set on a fixed
+advance, and pulling it tighter collides glyph pairs.
 
 ## 10. Progress and tracking
 

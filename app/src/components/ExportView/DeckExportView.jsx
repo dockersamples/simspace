@@ -103,8 +103,8 @@ function ExportSlide({ slide, index, total, workshop, variables }) {
         >
           <SlideBleedImage />
           <div className="deck-frame">
-            <SlideChrome position="top" />
             <div className="deck-body">
+              <SlideChrome position="top" />
               <SlideErrorBoundary>
                 <SlideRegions />
               </SlideErrorBoundary>

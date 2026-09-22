@@ -80,44 +80,66 @@
     0 1px 2px rgba(16, 24, 40, 0.06),
     0 18px 48px -18px rgba(16, 24, 40, 0.28);
 
-  // Docker brand palette. Ocean is the primary, deep the dark surface, light the
-  // tint. Extended blues are reserved for diagrams, never chrome.
-  --docker-ocean: #2560ff;
-  --docker-deep: #00153c;
+  // Docker brand palette, sampled from the Docker/Next template PDF rather than
+  // eyeballed: ocean is the #1d63ed the reference actually fills its charts and
+  // eyebrows with, deep the #0c101a of its dark pages. Extended blues are
+  // reserved for diagrams, never chrome.
+  --docker-ocean: #1d63ed;
+  --docker-deep: #0c101a;
   --docker-light: #d9e5fc;
 
-  --deck-bg: #ffffff;
-  --deck-surface: #f9fafb;
-  --deck-rule: #e7ebf3;
-  --deck-fg: #0f121b;
-  --deck-fg-2: #4a5670;
-  --deck-fg-3: #6c7e9d;
-  --deck-heading: #0f121b;
+  // Light surface. Not pure white: the reference sits on a near-white that lets
+  // the dot texture read without ever becoming a visible pattern, and pure white
+  // next to it looks like a slide that failed to load its background.
+  --deck-bg: #fdfdfd;
+  --deck-surface: #f7f9fb;
+  --deck-rule: #e8ebf0;
+  --deck-fg: #0c101a;
+  --deck-fg-2: #4a5057;
+  --deck-fg-3: #8a9099;
+  --deck-heading: #0c101a;
   --deck-accent: var(--docker-ocean);
-  --deck-cite: #6c7e9d;
+  --deck-cite: #8a9099;
 
-  // Display face is Inter at heavy weight with tight tracking. The reference
-  // deck uses ABC Repro (a licensed Dinamo face); Inter already ships with the
-  // app, so the theme carries no font licensing question at all.
-  --deck-font-display: "Inter Variable", Inter, system-ui, sans-serif;
+  // Display face is IBM Plex Mono — the face the reference template embeds, and
+  // the thing that makes a slide read as Docker/Next rather than as a generic
+  // sans deck. It is OFL, so the theme still carries no font licensing question.
+  //
+  // Body copy stays Inter. The reference sets headlines in mono and prose in a
+  // sans for the same reason: a paragraph of mono is slow to read from a room.
+  --deck-font-display: "IBM Plex Mono", ui-monospace, monospace;
+  --deck-font-body: "Inter Variable", Inter, system-ui, sans-serif;
   --deck-font-mono:
     "Roboto Mono Variable", "Roboto Mono", ui-monospace, monospace;
 
   // ── The type scale. Tune the deck's typography here. ──
-  --deck-fs-hero: 5.6cqi; // title / section headline, and a stat's number
-  --deck-fs-h1: 4cqi; // a content slide's headline
-  --deck-fs-h2: 2.5cqi;
-  --deck-fs-h3: 2cqi; // usually a column's main statement
+  // Display sizes are ~15% below the Inter-era values. A mono sets every glyph on
+  // the same advance, so the same headline at the same size runs materially wider
+  // — kept at 5.6cqi, "Build for what's next" ran off the edge of the slide. The
+  // body sizes are unchanged: prose is still Inter.
+  --deck-fs-hero: 4.8cqi; // title / section headline, and a stat's number
+  --deck-fs-h1: 3.4cqi; // a content slide's headline
+  --deck-fs-h2: 2.2cqi;
+  --deck-fs-h3: 1.8cqi; // usually a column's main statement
   --deck-fs-lead: 1.7cqi; // the standfirst under a title or section headline
   --deck-fs-body: 1.45cqi; // prose and list items — the default
   --deck-fs-small: 1.25cqi; // card bodies, table cells, stat captions
   --deck-fs-code: 1.1cqi;
   --deck-fs-micro: 0.85cqi; // eyebrow, footer, labels, tags
 
-  --deck-pad: 5cqi; // slide margin, and the footer's horizontal inset
+  --deck-pad: 6cqi; // slide margin for content
+  // The footer is inset LESS than the content, which is what makes it read as
+  // a rule along the edge of the slide rather than as another column of text.
+  --deck-footer-inset: 2.2cqi;
 
-  background: var(--deck-bg);
+  // The light surface's dot texture, from the template's own asset. `cover` on a
+  // 1920×1080 source rather than a repeated tile, so the dots scale WITH the
+  // slide and hold the same density at any display size — a fixed-px tile would
+  // go coarse on a projector and invisible on a laptop.
+  background: var(--deck-bg) url("../deck/bg-light-dots.png") center / cover
+    no-repeat;
   color: var(--deck-fg);
+  font-family: var(--deck-font-body);
   line-height: 1.45;
 }
 
@@ -144,10 +166,15 @@
   --deck-fg-2: rgba(255, 255, 255, 0.72);
   --deck-fg-3: rgba(255, 255, 255, 0.5);
   --deck-heading: #ffffff;
-  --deck-accent: #6fa7f7;
+  // The brand ocean does not have the contrast for text on the deep surface;
+  // this is the reference's own lifted blue for dark pages.
+  --deck-accent: #8ab4ff;
   --deck-cite: rgba(255, 255, 255, 0.5);
 
-  background: var(--docker-deep) url("../deck/bg-deep-waves.png") center / cover
+  // The template's dark texture, matching the light surface's dot field rather
+  // than the wave motif the theme carried before — so a `theme: dark` slide in a
+  // light deck reads as the same design, not a different one.
+  background: var(--docker-deep) url("../deck/bg-deep-dots.png") center / cover
     no-repeat;
 }
 
@@ -155,18 +182,30 @@
   --deck-bg: var(--docker-light);
   --deck-surface: rgba(255, 255, 255, 0.55);
   --deck-rule: rgba(0, 21, 60, 0.12);
+  --deck-accent: #12419f;
+  --deck-cite: #3c5480;
   background: var(--deck-bg);
 }
 
-// ── Chrome: the branded top and bottom bands ────────────────────────────────
-.deck-topbar {
+// ── Chrome: the eyebrow, and the footer band ───────────────────────────────
+// The eyebrow is a label ON the headline — small, mono, brand blue, sitting
+// directly above it with the tight spacing of a caption rather than the airy
+// gap of a separate band. That adjacency is most of what makes the reference's
+// content slides read the way they do.
+.deck-eyebrow {
   flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 2cqi;
-  height: 1.7cqi;
-  margin-bottom: 2.1cqi;
+  font-family: var(--deck-font-display);
+  font-size: var(--deck-fs-micro);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--deck-accent);
+  margin-bottom: 0.9cqi;
+  // One line, always: a wrapped eyebrow pushes the slide's content down. Long
+  // labels are the author's to shorten.
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .deck-logo {
@@ -176,40 +215,42 @@
   display: block;
 }
 
-.deck-eyebrow {
-  font-size: var(--deck-fs-micro);
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--deck-accent);
-  text-align: right;
-  // One line, always: a wrapped eyebrow doubles the topbar's height and pushes
-  // the slide's content down. Long labels are the author's to shorten.
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .deck-footer {
   position: absolute;
-  left: var(--deck-pad);
-  right: var(--deck-pad);
+  left: var(--deck-footer-inset);
+  right: var(--deck-footer-inset);
   // Relative to the FRAME's padding box, which is the canvas edge — so this is an
   // inset from the bottom of the slide, not from the bottom of the padding.
   bottom: 2.5cqi;
   display: flex;
-  align-items: baseline;
+  // `center`, not `baseline`: the mark is an image with no baseline of its own,
+  // so a baseline row hangs it off the bottom of the text it sits beside.
+  align-items: center;
   justify-content: space-between;
   gap: 2cqi;
-  font-family: var(--deck-font-mono);
+  font-family: var(--deck-font-display);
   font-size: var(--deck-fs-micro);
   font-weight: 500;
-  letter-spacing: 0.06em;
+  // The reference letterspaces its footer wordmark far wider than ordinary small
+  // caps — it reads as a rule along the bottom of the slide rather than as a line
+  // of text, which is the point.
+  letter-spacing: 0.34em;
   text-transform: uppercase;
 }
 
 .deck-source {
   color: var(--deck-cite);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// Page number and mark, together at the right end.
+.deck-footer-end {
+  display: flex;
+  align-items: center;
+  gap: 1.4cqi;
+  flex: 0 0 auto;
 }
 
 .deck-pagenum {
@@ -225,8 +266,23 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  // Clears the absolutely-positioned footer (its inset plus its own line box).
-  padding-bottom: 4cqi;
+  // Vertically centred, which is the reference's single most consistent habit:
+  // on every page the eyebrow/headline/content group sits across the middle band
+  // of the slide with open space above and below. Top-aligning it — what every
+  // layout except title/section/quote did before — stacks everything against the
+  // top edge and leaves a pool of dead space at the bottom of a short slide, and
+  // short slides are most of a deck.
+  //
+  // Set here rather than per layout so the six layouts agree by default; `image`
+  // still overrides to flex-end, because its panel belongs at the foot of the
+  // picture. `center` on a flex column does not stop a tall slide scrolling: the
+  // group only moves while there is slack to move it in.
+  justify-content: center;
+  // No bottom padding to clear the footer any more: the footer sits 2.5cqi off
+  // the canvas edge and the frame's own 6cqi padding already ends well above it.
+  // The old 4cqi was clearance the frame now provides, and leaving it in would
+  // quietly break the vertical centring above — content centred inside a box
+  // 4cqi short at the bottom rides visibly high on the slide.
   overflow: hidden;
 }
 
@@ -248,13 +304,21 @@
 // generous top margin. On a slide that reads as a page title inside a page, so
 // reset it here (the instructions pane does the same for itself).
 .deck-canvas {
+  // Headings are mono, and the tracking that went with Inter goes with it. The
+  // old scale pulled -0.035em to stop a heavy geometric sans from looking loose;
+  // a mono is already spaced on a fixed advance, and negative tracking collides
+  // the glyphs — which on IBM Plex Mono first shows up as `ll` and `rt` fusing.
+  // The reference sets its headlines at the face's natural width, so: zero.
+  //
+  // Weight drops from 800 to 700 for the same reason — 700 is the heaviest
+  // IBM Plex Mono ships, and it is the weight the reference embeds.
   h1,
   h2,
   h3,
   h4 {
     font-family: var(--deck-font-display);
     color: var(--deck-heading);
-    letter-spacing: -0.035em;
+    letter-spacing: 0;
     margin: 0 0 0.5em;
     padding-bottom: 0;
     border-bottom: none;
@@ -263,29 +327,29 @@
 
   h1 {
     font-size: var(--deck-fs-h1);
-    font-weight: 800;
-    line-height: 1.02;
+    font-weight: 700;
+    line-height: 1.1;
   }
 
   h2 {
     font-size: var(--deck-fs-h2);
-    font-weight: 800;
-    line-height: 1.08;
-    letter-spacing: -0.025em;
+    font-weight: 700;
+    line-height: 1.16;
   }
 
-  // 1.88cqi is the reference deck's 36px feature-title. An h3 on a slide is
-  // usually a column's main statement, not a minor subheading.
+  // An h3 on a slide is usually a column's main statement, not a minor
+  // subheading.
   h3 {
     font-size: var(--deck-fs-h3);
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-weight: 600;
   }
 
+  // Small enough that mono costs more width than it buys emphasis — a card's
+  // sub-label is prose, so it stays in the body face.
   h4 {
+    font-family: var(--deck-font-body);
     font-size: var(--deck-fs-body);
     font-weight: 700;
-    letter-spacing: 0;
   }
 
   p {
@@ -428,10 +492,8 @@
 }
 
 // ── Layout: default ────────────────────────────────────────────────────────
-// Heading, then content flowing beneath it. The workhorse.
-.deck-canvas--default .deck-body {
-  justify-content: flex-start;
-}
+// Heading, then content flowing beneath it. The workhorse. Vertical placement is
+// the shared `.deck-body` rule — nothing layout-specific left to say.
 
 // ── Layout: title ──────────────────────────────────────────────────────────
 // The opener. Vertically centred, largest type in the deck, and a byline in the
@@ -443,7 +505,7 @@
 
   h1 {
     font-size: var(--deck-fs-hero);
-    letter-spacing: -0.04em;
+    line-height: 1.06;
   }
 
   // The line under the title is a standfirst, not body copy.
@@ -465,7 +527,7 @@
 
   h1 {
     font-size: var(--deck-fs-hero);
-    letter-spacing: -0.04em;
+    line-height: 1.06;
   }
 
   // On a divider the supporting line is the accent colour — it's a list of what
@@ -492,7 +554,13 @@
   }
 
   .deck-columns {
-    flex: 1;
+    // Sized to its content, NOT `flex: 1`. Growing to fill the body leaves the
+    // body with no slack, and a flex container with no slack cannot centre
+    // anything — the columns silently pinned themselves to the top of the slide
+    // and no amount of `justify-content` on the parent moved them. Shrink is
+    // still enabled, so a column taller than the slide compresses and scrolls
+    // inside its own region rather than pushing the footer off the canvas.
+    flex: 0 1 auto;
     min-height: 0;
     display: grid;
     // `columns: 1 2` on the slide sets --deck-column-tracks; without it every
@@ -568,8 +636,7 @@
     font-family: var(--deck-font-display);
     font-size: var(--deck-fs-h2);
     font-weight: 700;
-    line-height: 1.22;
-    letter-spacing: -0.025em;
+    line-height: 1.3;
     color: var(--deck-heading);
     max-width: 40em;
     text-wrap: balance;
@@ -671,7 +738,6 @@
 
   h1 {
     font-size: var(--deck-fs-h1);
-    letter-spacing: -0.03em;
     margin: 0;
   }
 
@@ -694,8 +760,8 @@
 // One set of tokens the components read, so a card and a tag share a palette.
 .deck-accent-blue {
   --a-line: var(--docker-ocean);
-  --a-fill: rgba(37, 96, 255, 0.1);
-  --a-text: #1746c4;
+  --a-fill: rgba(29, 99, 237, 0.08);
+  --a-text: #1550c8;
 }
 .deck-accent-green {
   --a-line: #2d9568;
@@ -722,8 +788,8 @@
 // bright variant and let the fill carry the hue.
 .deck-canvas--dark {
   .deck-accent-blue {
-    --a-line: #6fa7f7;
-    --a-text: #9dc1fb;
+    --a-line: #8ab4ff;
+    --a-text: #a8c8ff;
   }
   .deck-accent-green {
     --a-line: #3fb950;
@@ -763,10 +829,13 @@
 .deck-stat-value {
   font-family: var(--deck-font-display);
   font-size: var(--deck-fs-hero);
-  font-weight: 900;
-  line-height: 0.92;
-  letter-spacing: -0.045em;
-  color: var(--deck-heading);
+  font-weight: 700;
+  line-height: 1;
+  // Brand blue, not the heading colour: in the reference the figure is the one
+  // coloured thing on the slide, which is what makes it the thing you read first.
+  // `--a-line` rather than a literal, so a stat with `accent=green` stays green
+  // and the dark surface's lifted blue is picked up automatically.
+  color: var(--a-line);
   font-variant-numeric: tabular-nums lining-nums;
 }
 
@@ -970,8 +1039,8 @@
   }
 
   &.active {
-    color: #2560ff;
-    background: rgba(37, 96, 255, 0.12);
+    color: #1d63ed;
+    background: rgba(29, 99, 237, 0.12);
   }
 }
 
@@ -988,7 +1057,7 @@
 
 .deck-progress-bar {
   height: 100%;
-  background: #2560ff;
+  background: #1d63ed;
   transition: width 180ms ease-out;
 }
 
@@ -1083,7 +1152,6 @@
   font-family: var(--deck-font-display);
   font-size: var(--deck-fs-h3);
   font-weight: 700;
-  letter-spacing: -0.03em;
   margin: 0 0 0.5em;
 }
 

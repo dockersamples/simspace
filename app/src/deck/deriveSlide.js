@@ -40,20 +40,34 @@ export function deriveSlidePresentation(slide, { workshop, variables }) {
     return { src, alt: slide?.config?.alt ?? "" };
   })();
 
-  // Precedence: the slide's own theme, then the layout's default, then the deck
-  // default, then light.
+  // Precedence: the slide's own theme, then `image` (always dark), then an
+  // EXPLICIT deck theme, then the layout's default, then light.
   //
-  // The layout default deliberately outranks the DECK default. A deck-wide
-  // `theme: light` means "content slides are light" — read as outranking the
-  // layout it would flatten every chapter marker back to white, which is the one
-  // thing a divider slide exists not to be. An author who genuinely wants a light
-  // divider says so on that slide, where it's visible.
+  // The deck's own `theme:` outranks the layout default, and that is a deliberate
+  // reversal of the rule this used to carry. The old order let the layout win, so
+  // a deck-wide `theme: light` still produced a dark opener and a tinted divider
+  // — three surfaces in a deck that asked for one. That is a fine default for a
+  // deck shown on a screen you control, and the wrong one for a conference
+  // projector of unknown gamma, where the safe play is to put the whole deck on
+  // the surface you tested. A deck that says `theme: light` now gets light
+  // throughout, which is also what the reference template's light pages show.
+  //
+  // A deck that names no theme is unchanged: the layout defaults below still
+  // apply, so existing decks keep their dark openers and tinted dividers.
+  // Per-slide `theme:` still wins over everything, so an author who wants one
+  // dark opener in a light deck says so on that slide, where it is visible.
+  //
+  // `image` is the exception that stays ahead of the deck default: its overlay is
+  // a scrim over an arbitrary photograph, and light-on-dark is the only
+  // combination that reliably stays readable there. A slide can still override it.
   const theme = (() => {
     const fromSlide = slide?.config?.theme;
     if (THEMES.includes(fromSlide)) return fromSlide;
-    if (layout === "title" || layout === "image") return "dark";
+    if (layout === "image") return "dark";
+    if (THEMES.includes(workshop.theme)) return workshop.theme;
+    if (layout === "title") return "dark";
     if (layout === "section") return "tint";
-    return THEMES.includes(workshop.theme) ? workshop.theme : "light";
+    return "light";
   })();
 
   // Chrome text. An explicit empty string suppresses a band the deck default

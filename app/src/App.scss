@@ -7,6 +7,21 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/roboto-mono";
 
+// The slide deck's display face. The Docker/Next template sets every headline in
+// a mono, and that is the single loudest thing about it — in Inter the deck reads
+// as a generic sans deck no matter how the colours are tuned. IBM Plex Mono is
+// the face the reference PDF actually embeds, and it is OFL, so adopting it keeps
+// the "no font licensing question" property the theme was built for.
+//
+// Static weights rather than a variable axis: IBM Plex Mono has no variable
+// build. Only the four the deck uses are imported — the family is display type
+// here, not a text face, so the italics and the thin end of the range would be
+// bytes nobody renders.
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@fontsource/ibm-plex-mono/600.css";
+@import "@fontsource/ibm-plex-mono/700.css";
+
 // Colors defined by brand guidelines
 // Beyond blue, each is the 700 variant of the color
 $blue: #2560ff;

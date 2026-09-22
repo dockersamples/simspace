@@ -2,7 +2,6 @@
 layout: title
 eyebrow: Developer Platform · Tech Talk
 byline: Docker Engineering
-logo: assets/docker-logo-white.svg
 -->
 
 # Build. Ship. Run.

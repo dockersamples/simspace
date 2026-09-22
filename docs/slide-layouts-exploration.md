@@ -1,6 +1,11 @@
 # Exploration: slide layouts
 
-**Status:** Research / pre-decision. Nothing implemented.
+**Status:** Research / pre-decision, now superseded. The theme shipped; see
+[`spec/slidedeck.md`](../spec/slidedeck.md) for what it actually does.
+
+Open question 3 below (ABC Repro licensing, §4.2) is resolved: the display face
+is **IBM Plex Mono**, which is OFL and is the face the Docker/Next template PDF
+embeds. Nothing is self-hosted under a commercial licence.
 
 Follows on from [`slidedeck-exploration.md`](slidedeck-exploration.md) and the
 shipped `kind: slides` support. Sources: `references/screenshots/` (13 designed

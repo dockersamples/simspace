@@ -147,8 +147,13 @@ export function DeckView() {
             {/* Fragments are revealed by CSS driven from context, so the markdown
                 renderer stays unaware of presentation state. */}
             <FragmentContext.Provider value={deck.fragment}>
-              <SlideChrome position="top" />
               <div className="deck-body">
+                {/* The eyebrow renders INSIDE the body, not as a band above it.
+                    It labels the headline it sits on, so it has to travel with
+                    the content when a layout anchors that content to the bottom
+                    of the slide — hoisted out to the top of the frame it ends up
+                    stranded against the far edge, captioning nothing. */}
+                <SlideChrome position="top" />
                 {/* The boundary rides the canvas's `key={current.id}`, so it
                     remounts on every slide change — an error boundary holds its
                     failed state until it unmounts, and without that a single bad
@@ -335,28 +340,23 @@ export function SlideRegions() {
 }
 
 /**
- * The branded top and bottom bands: logo + eyebrow above, source + page number
- * below. Driven entirely by config (deck-level `brand`, overridable per slide),
- * so a deck opts into the full Docker chrome without any slide markup.
+ * The branded chrome: an eyebrow above the headline, and a footer carrying the
+ * source, the page number and the mark. Driven entirely by config (deck-level
+ * `brand`, overridable per slide), so a deck opts into the full Docker chrome
+ * without any slide markup.
+ *
+ * The mark sits in the FOOTER rather than opposite the eyebrow at the top, which
+ * is where the reference template puts it and, less obviously, what lets the
+ * eyebrow move down beside its headline: the two used to share a flex row, so
+ * neither could go anywhere without the other.
  */
 export function SlideChrome({ position }) {
   const { chrome, index, total, layout } = useDeck();
   if (!chrome.showChrome) return null;
 
   if (position === "top") {
-    if (!chrome.logo && !chrome.eyebrow) return null;
-    return (
-      <header className="deck-topbar">
-        {chrome.logo ? (
-          <img className="deck-logo" src={chrome.logo} alt="" />
-        ) : (
-          <span />
-        )}
-        {chrome.eyebrow && (
-          <span className="deck-eyebrow">{chrome.eyebrow}</span>
-        )}
-      </header>
-    );
+    if (!chrome.eyebrow) return null;
+    return <div className="deck-eyebrow">{chrome.eyebrow}</div>;
   }
 
   // A title slide carries a byline where a content slide carries its source.
@@ -365,8 +365,12 @@ export function SlideChrome({ position }) {
   return (
     <footer className="deck-footer">
       <span className="deck-source">{left}</span>
-      <span className="deck-pagenum">
-        {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+      <span className="deck-footer-end">
+        <span className="deck-pagenum">
+          {String(index + 1).padStart(2, "0")} /{" "}
+          {String(total).padStart(2, "0")}
+        </span>
+        {chrome.logo && <img className="deck-logo" src={chrome.logo} alt="" />}
       </span>
     </footer>
   );
