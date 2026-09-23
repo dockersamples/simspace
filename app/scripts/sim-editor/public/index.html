@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>sim-editor</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="brand">sim&#8209;editor</span>
+        <select
+          id="file-select"
+          class="file-select"
+          aria-label="Open spec"
+        ></select>
+        <span id="doc-meta" class="doc-meta"></span>
+      </div>
+      <div class="topbar-right">
+        <span id="dirty" class="dirty" hidden>unsaved changes</span>
+        <button id="undo" class="btn" title="Undo (Ctrl/Cmd+Z)" disabled>
+          Undo
+        </button>
+        <button id="revert" class="btn" title="Discard all unsaved changes">
+          Revert
+        </button>
+        <button
+          id="review"
+          class="btn btn-primary"
+          title="Review the diff and save (Ctrl/Cmd+S)"
+        >
+          Review &amp; save
+        </button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- Left: the ordered scenario list. Order IS priority. -->
+      <section class="pane pane-list" aria-label="Scenarios">
+        <div class="pane-head">
+          <input
+            id="filter"
+            class="filter"
+            type="search"
+            placeholder="Filter by id, command, state…"
+            aria-label="Filter scenarios"
+          />
+        </div>
+        <div class="tabs" role="tablist" aria-label="Sections">
+          <button class="tab is-active" role="tab" data-list="scenarios">
+            Scenarios
+          </button>
+          <button class="tab" role="tab" data-list="state">State</button>
+          <button class="tab" role="tab" data-list="lab">Lab</button>
+        </div>
+        <div id="list" class="list" role="list"></div>
+        <div class="pane-foot">
+          <button id="add-command" class="btn btn-small">+ Command</button>
+          <button id="add-agent" class="btn btn-small">+ Agent prompt</button>
+        </div>
+      </section>
+
+      <!-- Middle: the editor for whatever is selected. -->
+      <section class="pane pane-edit" aria-label="Editor">
+        <div id="editor" class="editor"></div>
+      </section>
+
+      <!-- Right: try it, and what the file doesn't show you. -->
+      <section class="pane pane-side" aria-label="Console and checks">
+        <div class="tabs" role="tablist" aria-label="Side panel">
+          <button class="tab is-active" role="tab" data-side="console">
+            Try it
+          </button>
+          <button class="tab" role="tab" data-side="checks">
+            Checks <span id="checks-count" class="badge-count"></span>
+          </button>
+          <button class="tab" role="tab" data-side="yaml">YAML</button>
+        </div>
+        <div id="side" class="side"></div>
+      </section>
+    </main>
+
+    <div id="modal-root"></div>
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

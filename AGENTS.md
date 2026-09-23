@@ -84,7 +84,8 @@ app/                 THE PRODUCT — the consolidated static React app
                      generated labs.json: one entry opens directly, several show a
                      landing page. labs.json is git-ignored.
   scripts/           Node tooling: validate-lab.ts (linter + catalog regen),
-                     catalog.mjs + generate-catalog.mjs (build labs.json), run-ts.mjs
+                     catalog.mjs + generate-catalog.mjs (build labs.json), run-ts.mjs,
+                     sim-editor/ (a local GUI for editing a simulator.yaml — own README)
   dist/              build output — generated, do not edit
 pulse/               OPTIONAL presence + analytics backend (Node/TS, its own
                      README). Labs are still static and server-free; a lab opts
@@ -268,7 +269,9 @@ This is a **JavaScript/React (Vite) project** — all work happens in `app/`.
 **The packages' and the app's pure logic are unit-tested; the React UI is not.**
 `npm test` runs three suites (simulator, labspace, app) and must stay
 green — add cases for new behaviour. The app suite covers the pieces where a subtle
-bug wouldn't be obvious on screen, above all slide splitting. For the React UI
+bug wouldn't be obvious on screen, above all slide splitting, and `scripts/` for
+the same reason — `sim-editor`'s YAML writer rewrites an author's lab file, where
+a subtle bug corrupts it silently rather than showing up on screen. For the React UI
 there's no suite: verify that by running the app and exercising it, plus lint. The
 one exception is the deck's swipe hook (`deckSwipe.test.jsx`, which opts into jsdom
 with a `@vitest-environment` comment) — reproducing a gesture by hand means picking
@@ -276,6 +279,13 @@ up a phone.
 
 Verify **lab content** (the `labspace.yaml` / `simulator.yaml` / markdown) with
 `npm run validate-lab` — always run it after editing a lab.
+
+`npm run edit-sim` opens **sim-editor**, a local GUI for a `simulator.yaml`:
+the scenarios in match order, a form for the selected one (trigger, arg
+matchers, pre/post state, output lines and their delays), and a console that
+runs commands through the real engine against unsaved edits. It writes
+surgically — only the bytes you edited — and shows the diff before saving. See
+[`app/scripts/sim-editor/README.md`](app/scripts/sim-editor/README.md).
 
 ```bash
 cd app
@@ -291,6 +301,7 @@ npm run lint            # ESLint (JS/JSX only — the package is covered by type
 npm run prettier-check  # Prettier (use `npm run prettier` to auto-format)
 npm run validate-lab    # validate every lab under public/labs + regenerate labs.json
 npm run generate-catalog -- public/labs public/labs.json   # write labs.json only
+npm run edit-sim        # sim-editor: a GUI for a simulator.yaml (default port 5174)
 ```
 
 `validate-lab` (`scripts/validate-lab.ts`) validates **every** lab under

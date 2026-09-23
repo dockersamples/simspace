@@ -41,7 +41,8 @@ app/                  the consolidated static app (build + deploy this)
   public/
     labs/             sample entries — labs/<id>/ (labspace.yaml + *.md, plus a
                       simulator.yaml for labs); includes a slide deck + its lab
-  scripts/            validate-lab + catalog generation
+  scripts/            validate-lab + catalog generation, and sim-editor —
+                      a local GUI for editing a simulator.yaml (npm run edit-sim)
 pulse/                OPTIONAL presence + analytics backend (Node/TS). Labs stay
                       static; the deployment points app/public/config.json at it.
                       See pulse/README.md
@@ -146,6 +147,11 @@ services:                        # optional external-URL tabs (iframes)
 - **`simulator.yaml`** declares scenarios for each command a learner runs. See
   [`spec/simulator.md`](spec/simulator.md) for the full scenario reference, and
   [`spec/labspace.md`](spec/labspace.md) for every `labspace.yaml` field.
+  `npm run edit-sim` opens a **GUI for it** — the scenarios in match order,
+  forms for the trigger, pre/post state and output pacing, and a console that
+  runs commands through the real engine. It rewrites only the lines you edit
+  and shows the diff first; see
+  [`app/scripts/sim-editor/README.md`](app/scripts/sim-editor/README.md).
 - **Markdown sections** use `$$variable$$` substitution and support runnable
   code blocks (a Run button), `save-as=<path>` blocks (a Save button), file
   links, variable prompts, and OS-conditional content.
