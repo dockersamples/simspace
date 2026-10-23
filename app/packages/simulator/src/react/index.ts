@@ -20,6 +20,7 @@ export { MockTerminal } from "./MockTerminal";
 export type {
   MockTerminalHandle,
   MockTerminalProps,
+  RunCommandOptions,
   TerminalChange,
   TerminalEvent,
 } from "./MockTerminal";

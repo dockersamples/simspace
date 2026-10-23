@@ -25,10 +25,22 @@ export interface TerminalEvent {
   type: "state" | "reset";
 }
 
+/** Options for {@link MockTerminalHandle.runCommand}. */
+export interface RunCommandOptions {
+  /** Re-focus the terminal input after the command completes. Default true. */
+  focus?: boolean;
+}
+
 /** Imperative API for driving the terminal from outside (Run / Save buttons). */
 export interface MockTerminalHandle {
-  /** Runs a command line as if it were typed at the prompt. */
-  runCommand: (text: string) => void;
+  /**
+   * Runs a command line as if it were typed at the prompt. By default the
+   * input is re-focused once the command completes, as it is after a typed
+   * command. Pass `{ focus: false }` when the caller is a Run button: focus
+   * stays where it is, so on a touch device the keyboard does not open and
+   * the page does not zoom or jump away from the button that was pressed.
+   */
+  runCommand: (text: string, options?: RunCommandOptions) => void;
   /** Writes content to a path in the virtual filesystem. */
   saveFile: (path: string, content: string) => void;
 }
@@ -217,6 +229,8 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const prevBusyRef = useRef(false);
+    // Set for the one run that must leave focus where it is (see runCommand).
+    const skipRefocusRef = useRef(false);
     const completionRef = useRef<{
       candidates: string[];
       index: number;
@@ -316,9 +330,9 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     // in the submit() finally block because setBusy(false) only queues a render —
     // the input is still disabled when finally runs, so focus() would be a no-op.
     // This effect fires after React commits the busy=false update, when the input
-    // is already re-enabled.
+    // is already re-enabled. A run started with `focus: false` skips it.
     useEffect(() => {
-      if (prevBusyRef.current && !busy) {
+      if (prevBusyRef.current && !busy && !skipRefocusRef.current) {
         inputRef.current?.focus();
       }
       prevBusyRef.current = busy;
@@ -585,7 +599,7 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     // Runs a raw line through the terminal exactly as if it had been typed and
     // submitted. Shared by the Enter handler and the imperative runCommand().
     const runLine = useCallback(
-      async (raw: string) => {
+      async (raw: string, { focus = true }: RunCommandOptions = {}) => {
         if (busy || !simulator) return;
         const line = raw.trim();
 
@@ -609,6 +623,7 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
         // While collecting input, every line is a value (empty included); only
         // the abort words are special. Dispatch to the input handler.
         if (inInput) {
+          skipRefocusRef.current = !focus;
           setBusy(true);
           try {
             await runInputTurn(line, currentMode);
@@ -627,6 +642,7 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
           return;
         }
 
+        skipRefocusRef.current = !focus;
         setBusy(true);
         try {
           if (currentMode.kind === "session") {
@@ -787,7 +803,8 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
     useImperativeHandle(
       ref,
       () => ({
-        runCommand: (text: string) => void runLine(text),
+        runCommand: (text: string, options?: RunCommandOptions) =>
+          void runLine(text, options),
         saveFile,
       }),
       [runLine, saveFile],
