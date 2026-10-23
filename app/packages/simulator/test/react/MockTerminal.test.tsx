@@ -210,6 +210,75 @@ scenarios:
   });
 });
 
+describe("MockTerminal focus after a run", () => {
+  /*
+    The refocus is a reaction to busy going true and then false, so a run has to
+    take real time for React to commit both. That needs streaming on (the
+    fixture turns it off) and the run outside `act`, which would batch the two
+    renders into one. Waiting for the input to come back says the run is over.
+  */
+  const TypingTerminal = ({
+    handle,
+  }: {
+    handle: React.RefObject<MockTerminalHandle | null>;
+  }) => (
+    <MockTerminal
+      ref={handle}
+      simulator={new Simulator({ spec: SPEC })}
+      streaming
+      streamDelayMs={30}
+    />
+  );
+
+  const run = (
+    ref: React.RefObject<MockTerminalHandle | null>,
+    line: string,
+    options?: { focus?: boolean },
+  ) => {
+    ref.current!.runCommand(line, options);
+  };
+
+  it("re-focuses the input after a command by default", async () => {
+    const ref = createRef<MockTerminalHandle>();
+    render(<TypingTerminal handle={ref} />);
+    run(ref, "docker ps");
+    await screen.findByText("abc123 nginx");
+    const input = await screen.findByLabelText("terminal input");
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  it("leaves focus alone when the run asks not to take it", async () => {
+    const ref = createRef<MockTerminalHandle>();
+    render(
+      <div>
+        <button type="button">Run</button>
+        <TypingTerminal handle={ref} />
+      </div>,
+    );
+    const button = screen.getByRole("button", { name: "Run" });
+    button.focus();
+    run(ref, "docker ps", { focus: false });
+    await screen.findByText("abc123 nginx");
+    await screen.findByLabelText("terminal input");
+    expect(document.activeElement).toBe(button);
+  });
+
+  it("does not let a skipped refocus leak into the next run", async () => {
+    const ref = createRef<MockTerminalHandle>();
+    render(<TypingTerminal handle={ref} />);
+    run(ref, "docker ps", { focus: false });
+    await screen.findByText("abc123 nginx");
+    await screen.findByLabelText("terminal input");
+    // Two output lines, so the run outlasts a render and the input unmounts.
+    run(ref, "docker ps");
+    await waitFor(() =>
+      expect(screen.getAllByText("abc123 nginx")).toHaveLength(2),
+    );
+    const input = await screen.findByLabelText("terminal input");
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+});
+
 describe("MockTerminal persistence", () => {
   // The behaviour this refactor introduced: persistence is opt-in via an
   // explicit key, so an embedded terminal on a docs page starts clean.
