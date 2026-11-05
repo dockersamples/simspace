@@ -1,9 +1,10 @@
 name: Publish the Simspace kit
 
-# Publishes kit/ as an OCI artifact to docker.io/dockersamples/simspace-authoring-kit —
-# the authoring skills and agent guidance a Simspace lab repo consumes through
-# its .sbxenv.yaml. This is NOT an image; the two Simspace images are built by
-# build-images.yml, and this workflow pushes no container.
+# Publishes kit/ as a Docker Sandboxes v3 kit to
+# docker.io/dockersamples/simspace-authoring-kit — the authoring skills and agent
+# guidance a Simspace lab repo consumes through its .sbxenv.yaml. A v3 kit is
+# itself an OCI image (descriptor annotation + a layer of skills); the two
+# Simspace images are built by build-images.yml and are unrelated to it.
 #
 # The kit exists so the skills stop ageing with the repo that vendored them: a
 # lab repo generated a year ago resolves this artifact fresh on every
@@ -105,31 +106,21 @@ jobs:
 
           echo "tag=${tag} move-latest=${move_latest} skip=${skip}"
 
-      - name: Install sbx
+      - name: Set up buildx
         if: steps.plan.outputs.skip != 'true'
-        # `sbx kit` is daemon-free — only `kit add` needs sandboxd — so a plain
-        # runner with no VM and no KVM is enough. Kit spec v2 landed in v0.38.0,
-        # so the latest stable release can read kit/spec.yaml; no nightly needed.
-        run: |
-          set -euo pipefail
-          version=$(gh api repos/docker/sbx-releases/releases/latest --jq .tag_name)
-          echo "installing sbx ${version}"
-          tmp=$(mktemp -d)
-          gh release download "$version" \
-            --repo docker/sbx-releases \
-            --pattern DockerSandboxes-linux-amd64.tar.gz \
-            --dir "$tmp"
-          tar xzf "$tmp/DockerSandboxes-linux-amd64.tar.gz" -C "$tmp"
-          # The installer runs under sudo, so create the parent unprivileged
-          # first: if ~/.docker is absent it would be created root-owned, and the
-          # docker login below then cannot write config.json into it — the only
-          # credential `sbx kit push` and `oras` read. That failure would land a
-          # long way from its cause.
-          mkdir -p "$HOME/.docker"
-          sudo PREFIX="$HOME/.docker/sbx" "$tmp/docker-sbx/install.sh"
-          echo "$HOME/.docker/sbx/bin" >> "$GITHUB_PATH"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # A v3 kit is built by the docker/sandbox-kit:3 BuildKit frontend, which
+        # BuildKit pulls itself from the descriptor's `# syntax=` line — so this
+        # is the only tooling needed, and sbx is not installed at all. The
+        # container driver is required, not a preference: the `docker` driver
+        # with the classic image store can drop the descriptor's manifest
+        # annotation on push, producing a kit that builds and then does not
+        # resolve. The name must match BUILDER in scripts/publish-kit.sh.
+        # No QEMU: the recipe is `FROM scratch` + COPY, so it runs nothing and
+        # a multi-platform build needs no emulation.
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          name: kit-builder
+          driver: docker-container
 
       - name: Log in to Docker Hub (OIDC)
         if: steps.plan.outputs.skip != 'true' && env.DRY_RUN == ''
@@ -137,7 +128,7 @@ jobs:
         # permission lets the action exchange a GitHub OIDC token for a
         # short-lived Docker Hub token, so there is no PAT to leak or rotate.
         # This populates the Docker credential store, which is what both
-        # `sbx kit push` and oras read.
+        # `docker buildx --push` and oras read.
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         env:
           DOCKERHUB_OIDC_CONNECTIONID: 80de9e44-46f6-4c48-96a5-e0bd0a336f5b

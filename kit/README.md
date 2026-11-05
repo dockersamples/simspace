@@ -32,8 +32,8 @@ authors against today's Simspace.
 
 | | |
 | --- | --- |
-| **Skills** | `authoring-lab`, `authoring-slidedeck`, `importing-slidedeck`, installed to `~/.claude/skills/` |
-| **Agent instructions** | Orientation, the authoring loop, and the rules that are easy to get wrong — written to `kits-memory/simspace.md` and indexed from the agent's memory file |
+| **Skills** | `authoring-lab`, `authoring-slidedeck`, `importing-slidedeck`, bundled as `agent-skill@1` and exposed in the agent's skill directory |
+| **Agent instructions** | Orientation, the authoring loop, and the rules that are easy to get wrong — an `agent-context` capability the runtime writes into the agent's guidance |
 | **Ports** | `5173` (live preview) and `8888` (pulse — presence, analytics, the instructor insights dashboard) |
 | **Network** | Docker Hub, so the engine in the sandbox can pull the Simspace images; `raw.githubusercontent.com` / `api.github.com` / `github.com`, for [`sample-cli-output`](https://github.com/dockersamples/sample-cli-output) and the specs |
 
@@ -67,6 +67,12 @@ kits:
 
 Kits are applied when a sandbox is **created**. An existing sandbox keeps the
 skills it was built with — `sbx env rm && sbx env run` to pick up a newer kit.
+
+## Kit spec
+
+This is a [Docker Sandboxes kit spec v3](https://github.com/docker/sandbox-kit-spec)
+kit, so it needs an `sbx` release that supports Kits v3 and can only be combined
+with other v3 kits — an agent kit still on spec v2 will not compose with it.
 
 ## Source
 
