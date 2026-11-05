@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Publish kit/ as an OCI artifact to <registry>/<namespace>/simspace-authoring-kit.
 #
-# The kit is the spec plus its files/ tree — the authoring skills and the agent
-# guidance. It is NOT an image; nothing here builds or pushes a container. The
-# two Simspace images are built by build-images.yml.
+# The kit is a Docker Sandboxes v3 kit: simspace.yaml (the descriptor) plus
+# simspace.dockerfile (the recipe that lays the authoring skills into an overlay
+# layer). A v3 kit IS an OCI image — the docker/sandbox-kit:3 BuildKit frontend
+# validates the descriptor, builds the recipe, and annotates the result — but it
+# is not one of the two Simspace images, which build-images.yml builds.
 #
 # Usage:
 #   scripts/publish-kit.sh <tag>
@@ -16,8 +18,11 @@
 #   NAMESPACE     default dockersamples
 #   TAG_LATEST    default latest    — the rolling tag MOVE_LATEST re-points
 #   MOVE_LATEST   default false     — also re-point the rolling tag
-#   SIGN          set to any value  — pass --sign (needs a prior `sbx login`)
-#   DRY_RUN       set to any value  — resolve and report, publish nothing
+#   PLATFORMS     default linux/amd64,linux/arm64
+#   BUILDER       default kit-builder — a docker-container buildx builder. The
+#                 `docker` driver with the classic image store can discard the
+#                 descriptor's manifest annotation, so it is never used here.
+#   DRY_RUN       set to any value  — validate and report, publish nothing
 #
 # Emits `ref=`, `digest=`, `pushed=` and `reused=` on stdout, one per line, so CI
 # can redirect into $GITHUB_OUTPUT. Everything human goes to stderr, which keeps
@@ -38,17 +43,19 @@ REGISTRY=${REGISTRY:-docker.io}
 NAMESPACE=${NAMESPACE:-dockersamples}
 TAG_LATEST=${TAG_LATEST:-latest}
 MOVE_LATEST=${MOVE_LATEST:-false}
-SIGN=${SIGN:-}
+PLATFORMS=${PLATFORMS:-linux/amd64,linux/arm64}
+BUILDER=${BUILDER:-kit-builder}
 DRY_RUN=${DRY_RUN:-}
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 KIT_DIR="$REPO_ROOT/kit"
+DESCRIPTOR="$KIT_DIR/simspace.yaml"
 
 # The KEY=VALUE stream CI redirects into $GITHUB_OUTPUT moves to fd 3, and this
 # script's stdout is rerouted to stderr. Structurally, rather than appending
-# `>&2` to each command: `sbx kit validate` prints "VALID: …", `sbx kit push`
-# prints "Pushed …", and `oras tag` prints too — any one of them lands in
+# `>&2` to each command: `docker buildx build` prints its progress, and
+# `oras tag` prints too — either of them lands in
 # $GITHUB_OUTPUT as a malformed line and fails the step with "Invalid format".
 # Command substitution is unaffected: $(oras manifest fetch …) still captures
 # that process's own stdout.
@@ -58,19 +65,19 @@ log() { echo "$@"; }
 die() { echo "error: $*"; exit 1; }
 emit() { echo "$1=$2" >&3; }
 
-[ -f "$KIT_DIR/spec.yaml" ] || die "no kit/spec.yaml at $KIT_DIR"
+[ -f "$DESCRIPTOR" ] || die "no kit/simspace.yaml at $KIT_DIR"
 
 # The reference is composed here, never read from the spec or taken as an
-# argument. `sbx kit push` uses whatever reference it is handed verbatim — it
-# derives nothing from the kit name and validates nothing against it — so a
-# wrong value would push a kit manifest over an unrelated tag in this namespace,
-# `dockersamples/simspace` itself included.
+# argument. v3 descriptors carry no `name` — identity IS the reference — and
+# `buildx --push` uses whatever it is handed verbatim, so a wrong value would
+# push a kit over an unrelated tag in this namespace, `dockersamples/simspace`
+# itself included.
 ref="${REGISTRY}/${NAMESPACE}/simspace-authoring-kit"
 
 log "kit         : ${KIT_DIR}"
 log "reference   : ${ref}:${tag}"
 log "rolling tag : $([ "$MOVE_LATEST" = "true" ] && echo "${ref}:${TAG_LATEST}" || echo "(not moved)")"
-log "signing     : $([ -n "$SIGN" ] && echo "yes" || echo "no")"
+log "platforms    : ${PLATFORMS}"
 
 summarise() {
   [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
@@ -86,22 +93,27 @@ summarise() {
 # that breaks the kit report a green publish job — the failure would surface on
 # merge instead, which is what this job exists to prevent.
 log ""
-if command -v sbx >/dev/null; then
-  log "==> validating"
-  sbx kit validate "$KIT_DIR"
+if docker buildx inspect "$BUILDER" >/dev/null 2>&1; then
+  # `sbx kit validate` does not accept a v3 source kit, so the build is the
+  # validation: the frontend decodes and validates the descriptor before it
+  # builds any content, naming the offending field and line. `cacheonly`
+  # suppresses the export, not the build — the recipe still runs, which is what
+  # catches a bad COPY path too.
+  log "==> validating (descriptor + recipe)"
+  docker buildx build --builder "$BUILDER" "$KIT_DIR" -f "$DESCRIPTOR" --output type=cacheonly
 else
-  # Someone inspecting the plan locally should not need sbx installed; CI always
-  # has it, so this branch never runs there. Loud rather than silent, because the
-  # point of the step above is that it is not skippable by accident.
-  [ -n "$DRY_RUN" ] || die "sbx is not on PATH — install it from https://github.com/docker/sbx-releases"
-  log "!!! sbx not on PATH — SKIPPING validation (dry run only)"
+  # Someone inspecting the plan locally should not need a builder; CI always
+  # has one, so this branch never runs there. Loud rather than silent, because
+  # the point of the step above is that it is not skippable by accident.
+  [ -n "$DRY_RUN" ] || die "buildx builder '$BUILDER' not found — docker buildx create --name $BUILDER --driver docker-container --bootstrap"
+  log "!!! buildx builder '$BUILDER' not found — SKIPPING validation (dry run only)"
 fi
 
 if [ -n "$DRY_RUN" ]; then
   log ""
   log "DRY RUN — nothing is published. Would:"
   log "  1. check ${ref}:${tag} does not already exist"
-  log "  2. sbx kit push ${KIT_DIR} ${ref}:${tag}${SIGN:+ --sign}"
+  log "  2. docker buildx build ${KIT_DIR} -f simspace.yaml --push -t ${ref}:${tag} --platform ${PLATFORMS}"
   if [ "$MOVE_LATEST" = "true" ]; then
     # Described rather than shown as a command: the digest does not exist until
     # step 2 has run, and the retag addresses the manifest by digest so a racing
@@ -163,11 +175,13 @@ fi
 
 if [ "$reused" = "false" ]; then
   log "==> pushing"
-  # shellcheck disable=SC2086 # SIGN is a flag or empty, deliberately unquoted
-  sbx kit push "$KIT_DIR" "${ref}:${tag}" ${SIGN:+--sign}
+  # --provenance=mode=min: full provenance would add an attestation manifest to
+  # the index, and `latest` is retagged by digest below, so keep it minimal.
+  docker buildx build --builder "$BUILDER" "$KIT_DIR" -f "$DESCRIPTOR" \
+    --platform "$PLATFORMS" --provenance=mode=min --push -t "${ref}:${tag}"
 
-  # The push does not echo the digest, and re-reading the tag later would let a
-  # racing push swap the manifest we then advertise as the rolling tag.
+  # Read the digest straight after the push: re-reading the tag later would let
+  # a racing push swap the manifest we then advertise as the rolling tag.
   digest=$(oras manifest fetch --descriptor "${ref}:${tag}" | jq -r .digest)
   # An `if`, not `[ -n "$d" ] && [ "$d" != null ]`: set -e does not fire when the
   # FIRST test of an && list fails, so that form falls through with an empty
@@ -179,8 +193,8 @@ if [ "$reused" = "false" ]; then
 fi
 
 if [ "$MOVE_LATEST" = "true" ]; then
-  # Retag by digest rather than pushing a second time. A second push re-packs the
-  # kit, and the pack stamps org.opencontainers.image.created, so the second
+  # Retag by digest rather than pushing a second time. A second build re-stamps
+  # org.opencontainers.image.created, so the second
   # manifest almost always digests differently — and if the pushes are signed,
   # each digest carries its OWN signature, so the two tags would advertise
   # different attestations for one source. "Almost always" is the problem: that

@@ -91,9 +91,10 @@ pulse/               OPTIONAL presence + analytics backend (Node/TS, its own
                      in via a `tracking:` block. Not built by the app pipeline.
 spec/                the format specifications + catalog (see above)
 kit/                 THE AUTHORING KIT — a Docker Sandboxes mixin kit published
-                     as dockersamples/simspace-authoring-kit. spec.yaml + files/, carrying
-                     the three authoring skills author repos consume. See below
-scripts/             publish-kit.sh — packages kit/ and pushes the OCI artifact
+                     as dockersamples/simspace-authoring-kit. simspace.yaml + simspace.dockerfile
+                     + skills/, carrying the three authoring skills author repos
+                     consume. See below
+scripts/             publish-kit.sh — builds kit/ with buildx and pushes the OCI artifact
 .github/workflows/   ci.yml (lint/test/validate on every push + PR — READ ITS
                      HEADER before reordering it) + deploy.yml (Pages for THIS
                      repo) + deploy-lab.yml (reusable workflow author repos call
@@ -199,22 +200,34 @@ from the separate **`dockersamples/simspace-starter`** template — is just thei
 
 A third published artifact, and the one that carries **agent** knowledge of the
 format: a [Docker Sandboxes](https://docs.docker.com/ai/sandboxes/customize/kits/)
-mixin kit pushed to `docker.io/dockersamples/simspace-authoring-kit`.
+mixin kit (**kit spec v3**) pushed to `docker.io/dockersamples/simspace-authoring-kit`.
 
 ```
 kit/
-  spec.yaml     kind: mixin — agentInstructions, network allow-list, ports 5173/8888
-  README.md     the Docker Hub overview
-  files/home/.claude/skills/
+  simspace.yaml        v3 descriptor, kind: mixin — agent-skill@1 per skill,
+                       agent-context, network-policy allow-list, ports 5173/8888
+  simspace.dockerfile  the recipe: FROM scratch + COPY the skills into an overlay
+  README.md            the Docker Hub overview
+  skills/
     authoring-lab/          sections, scenarios, milestones, labspace reference
     authoring-slidedeck/    kind: slides — layouts, theme, components, demos
     importing-slidedeck/    pptx/PDF → deck, plus two stdlib-only inventory tools
 ```
 
-`files/home/` lands in the sandbox's `/home/agent/`, so the skills install as
-personal skills the agent picks up automatically. A mixin's
-`agentInstructions.content` is written to `kits-memory/simspace.md` and indexed
-from the agent's memory file.
+v3 has no implicit file copy (v2's `files/home/` is gone). The recipe puts each
+skill under `/usr/share/simspace-authoring/skills/`, and an `agent-skill@1` entry
+per skill in `simspace.yaml` has the runtime expose it in the agent's skill
+directory — which the agent's own kit declares, so this works for any agent.
+**Adding a skill means three edits**: the `skills/<name>/` directory, a `COPY`
+line in the dockerfile, and an `agent-skill@1` entry in the descriptor; miss the
+last and it builds green but never reaches the agent. The skills must stay out
+of `~/.claude/skills` itself — a skill already at the destination is a conflict.
+The guidance is inline `agent-context` content, offered as both @1 and @2 (via a
+YAML anchor) while runtimes roll @2 out; edit the one copy.
+
+A v3 kit can only compose with other v3 kits, so a repo consuming this one needs
+a v3 agent kit beside it. Run the format's own checks before publishing — the
+build validates the descriptor, and `kit-tck validate` judges the result.
 
 **Why it's here and not in the starter.** The skills used to be committed into
 `simspace-starter`, so every generated repo froze them at generation time —
