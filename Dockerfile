@@ -57,5 +57,12 @@ COPY app/packages/simulator/package.json ./packages/simulator/
 COPY app/packages/labspace/package.json ./packages/labspace/
 RUN npm ci
 COPY app/ ./
+# The workspace packages' `exports` point at compiled dist/ (gitignored). Vite
+# aliases them to source (see vite.config.js), but validate-lab runs through a
+# standalone esbuild (scripts/run-ts.mjs) with no such alias, so it resolves the
+# real exports and needs dist/ to exist. Build the packages before the image is
+# used, or `npm run validate-lab` fails with "Could not resolve
+# @dockersamples/simspace-simulator".
+RUN npm run build:packages
 EXPOSE 5173
 CMD ["npm", "run", "dev"]
