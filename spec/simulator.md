@@ -801,9 +801,9 @@ scenarios:
           - "Agent session ended."
 ```
 
-After applying the scenario's effects, the simulator displays a banner (a
-whale ASCII art, title, and scripted-environment disclaimer), then `intro`,
-and enters the REPL. The session ends on `/exit`, `/quit`, or the Reset
+After applying the scenario's effects, the simulator displays a banner (the
+Docker logo in braille art, a title, and a scripted-environment disclaimer), then
+`intro`, and enters the REPL. The session ends on `/exit`, `/quit`, or the Reset
 button.
 
 ### 14.2 Turns — agent scenarios
