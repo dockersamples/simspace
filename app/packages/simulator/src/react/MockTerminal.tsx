@@ -110,7 +110,7 @@ type LineKind =
   | "agent"
   | "system"
   | "think"
-  | "whale"
+  | "logo"
   | "title"
   | "warn"
   | "dim";
@@ -161,15 +161,21 @@ const EXIT_COMMANDS = new Set(["/exit", "/quit"]);
 /** Lines that abort an in-progress interactive input and return to the shell. */
 const INPUT_ABORT = new Set(["/cancel", "/exit", "/quit"]);
 
-const WHALE = [
-  "                  ##         .",
-  "            ## ## ##        ==",
-  "         ## ## ## ##       ===",
-  '     /"""""""""""""""""\\___/ ===',
-  "     {                       /  ===-",
-  "     \\______ O           __/",
-  "       \\    \\         __/",
-  "        \\____\\_______/",
+/**
+ * The Docker logo, in braille, drawn in a single flat brand colour (see
+ * `.term-logo`). Rows are 2-space indented to line up with the banner text below.
+ */
+const LOGO = [
+  "  ⠀⢀⣤⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀⣿⣿⣿⣿⣿⣿⣶⣄⠀⣠⣶⣿⣿⣿⣿⣿⣿",
+  "  ⢠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣷⣿⣿⣿⣿⣿⣿⣿⣿",
+  "  ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡄⠀⠘⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠏",
+  "  ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣄⠀⠀⠉⠛⠛⠛⢻⣿⣿⣿⡟⠛⠛⠛⠋⠁",
+  "  ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣤⣤⣤⣤⣼⣿⣿⣿⡇",
+  "  ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇",
+  "  ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇",
+  "  ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇",
+  "  ⠘⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟",
+  "  ⠀⠈⠛⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠋",
 ];
 
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
@@ -427,7 +433,7 @@ export const MockTerminal = forwardRef<MockTerminalHandle, MockTerminalProps>(
         // Built-in banner so the "this is scripted" disclaimer is always present.
         await emit([
           { text: "", kind: "system" },
-          ...WHALE.map((text) => ({ text, kind: "whale" as LineKind })),
+          ...LOGO.map((text) => ({ text, kind: "logo" as LineKind })),
           { text: "", kind: "system" },
           { text: "  Simulator · Agent Session", kind: "title" },
           { text: "", kind: "system" },

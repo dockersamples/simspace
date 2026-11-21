@@ -8,6 +8,7 @@
   --term-fg: #d1d5da;
   --term-dim: #6e7681;
   --term-blue: #4fc3f7;
+  --term-docker-base: #6172ff;
   --term-yellow: #e3b341;
   --term-green: #7ee787;
   --term-red: #ff7b72;
@@ -76,8 +77,12 @@
 .term-think {
   color: var(--term-yellow);
 }
-.term-whale {
-  color: var(--term-blue);
+/* The Docker logo: braille rows, so line-height 1 keeps the dot rows contiguous
+   (the terminal's 1.5 would stripe it). Flat Docker "Base" blue (#6172ff) from the
+   brand palette; the brand guidelines rule out gradients and effects. */
+.term-logo {
+  color: var(--term-docker-base);
+  line-height: 1;
 }
 .term-title {
   color: var(--term-fg);
